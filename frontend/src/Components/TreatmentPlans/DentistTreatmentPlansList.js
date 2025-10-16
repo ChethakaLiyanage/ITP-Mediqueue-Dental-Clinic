@@ -675,11 +675,17 @@ export default function TreatmentPlansList() {
                 const queueRes = await authenticatedFetch(`${API_BASE}/api/queue/status/${encodeURIComponent(rxPlan.patientCode)}`);
                 const queueData = await queueRes.json();
                 
-                if (!queueRes.ok || queueData.status !== "in_treatment") {
-                  alert("Prescriptions can only be created when the patient status is 'In Treatment' in the queue.");
+                console.log('🔍 Queue status check for patient:', rxPlan.patientCode);
+                console.log('📊 Queue status response:', queueData);
+                console.log('📊 Queue status value:', queueData.status);
+                console.log('📊 Status comparison:', queueData.status?.toLowerCase(), '===', 'in_treatment');
+                
+                if (!queueRes.ok || queueData.status?.toLowerCase() !== "in_treatment") {
+                  alert(`Prescriptions can only be created when the patient status is 'In Treatment' in the queue. Current status: "${queueData.status || 'Unknown'}"`);
                   return;
                 }
               } catch (e) {
+                console.error('❌ Error checking queue status:', e);
                 alert("Could not verify patient queue status. Please ensure patient is 'In Treatment'.");
                 return;
               }
