@@ -47,7 +47,7 @@ const DentistQueue_router = require("./Routes/DentistQueueRoutes");
 const manager_router = require("./Routes/ManagerRoutes");
 const admin_router = require("./Routes/AdminRoutes");
 const managerAuth_router = require("./Routes/ManagerAuthRoutes");
-const minventory_router = require("./Routes/InventoryRoutes");
+const inventory_router = require("./Routes/InventoryRoutes");
 const inventoryRequest_router = require("./Routes/InventoryRequestRoutes");
 const notification_router = require("./Routes/InventoryNotificationRoutes");
 const receptionistDashboard_router = require("./Routes/ReceptionistDashboardRoutes");
@@ -80,7 +80,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/auth", auth_router);
 app.use("/auth/manager", managerAuth_router);
 app.use("/auth/receptionist", receptionistAuth_router);
-app.use("/receptionist", receptionistAuth_router); // Add direct receptionist routes
+// app.use("/receptionist", receptionistAuth_router); // Removed - conflicts with inquiry routes
 app.use("/auth", profile_router);
 
 // Backward-compatible direct auth endpoints
@@ -109,7 +109,7 @@ app.use("/api/queue", Queue_router);
 app.use("/api/dentist-queue", DentistQueue_router);
 app.use("/admin", admin_router);
 app.use("/managers", manager_router);
-app.use("/api/inventory", minventory_router);
+app.use("/api/inventory", inventory_router);
 app.use("/api/inventory-requests", inventoryRequest_router);
 app.use("/api/inventory-notifications", notification_router);
 app.use("/api/receptionist", receptionistDashboard_router);

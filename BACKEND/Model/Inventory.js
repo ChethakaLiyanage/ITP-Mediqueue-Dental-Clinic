@@ -31,6 +31,10 @@ const InventorySchema = new Schema(
       type: String,
       trim: true
     },
+    description: {
+      type: String,
+      trim: true
+    },
     minStockLevel: {
       type: Number,
       default: 10
@@ -64,7 +68,6 @@ InventorySchema.pre("save", async function (next) {
 });
 
 // Index for faster queries
-InventorySchema.index({ itemCode: 1 });
 InventorySchema.index({ itemName: 1 });
 InventorySchema.index({ isActive: 1 });
 

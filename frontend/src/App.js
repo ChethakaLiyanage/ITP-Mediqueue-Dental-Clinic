@@ -27,6 +27,7 @@ import ForgotPassword from "./Components/Auth/ForgotPassword";
 import ResetPassword from "./Components/Auth/ResetPassword";
 import PatientRegister from "./Components/Register/PatientRegister";
 import ManagerNav from "./Components/Nav/ManagerNav";
+import ManagerDashboard from "./Components/Dashboard/ManagerDashboard";
 import Inventory from "./Components/Inventory/Inventory";
 import InventoryRequestReading from "./Components/Inventory/Inventoryrequestreading";
 import Reports from "./Components/Pages/Reports";
@@ -94,7 +95,8 @@ export default function App() {
       </Route>
       {/* Manager routes */}
       <Route path="/manager" element={<ManagerNav />}>
-        <Route index element={<Navigate to="inventory" replace />} />
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<ManagerDashboard />} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="inventory-request" element={<InventoryRequestReading />} />
         <Route path="reports" element={<Reports />} />

@@ -35,9 +35,22 @@ export default function ReceptionistUnregisteredPatients() {
         setLoading(true);
         setError("");
 
+        const token = localStorage.getItem('token');
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const res = await fetch(
           `${API_BASE}/receptionist/unregistered-patients?search=${encodeURIComponent(debouncedSearch)}&limit=50`,
-          { credentials: "include", signal: controller.signal }
+          { 
+            headers,
+            credentials: "include", 
+            signal: controller.signal 
+          }
         );
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -152,7 +165,17 @@ function UnregisteredPatientDrawer({ apiBase, code, onClose }) {
         setLoading(true);
         setError("");
 
+        const token = localStorage.getItem('token');
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const res = await fetch(`${apiBase}/receptionist/unregistered-patients/${code}`, {
+          headers,
           credentials: "include",
           signal: controller.signal,
         });

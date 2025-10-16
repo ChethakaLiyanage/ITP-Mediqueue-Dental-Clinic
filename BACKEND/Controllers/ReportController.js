@@ -4,6 +4,7 @@ const Dentist = require("../Model/DentistModel");
 const Feedback = require("../Model/FeedbackModel");
 const InventoryItem = require("../Model/Inventory");
 const InventoryMovement = require("../Model/InventoryRequest");
+const Queue = require("../Model/QueueModel");
 
 // GET /api/manager/reports/overview
 const getOverview = async (req, res) => {
@@ -25,14 +26,51 @@ const getOverview = async (req, res) => {
 // GET /api/manager/reports/dentist-workload
 const dentistWorkload = async (req, res) => {
 	try {
-		const agg = await Appointment.aggregate([
-			{ $group: { _id: "$dentist", count: { $sum: 1 } } },
-			{ $lookup: { from: "dentists", localField: "_id", foreignField: "_id", as: "dentist" } },
-			{ $unwind: "$dentist" },
-			{ $project: { _id: 0, dentistId: "$dentist._id", dentistName: "$dentist.name", count: 1 } }
+		// Get all dentists
+		const dentists = await Dentist.find({}).populate('userId', 'name').lean();
+		
+		// Count queue entries per dentist
+		const queueCounts = await Queue.aggregate([
+			{ $group: { 
+				_id: "$dentistCode",
+				total: { $sum: 1 },
+				completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
+				inTreatment: { $sum: { $cond: [{ $eq: ["$status", "in_treatment"] }, 1, 0] } },
+				waiting: { $sum: { $cond: [{ $eq: ["$status", "waiting"] }, 1, 0] } }
+			}}
 		]);
-		return res.status(200).json({ workload: agg });
+		
+		// Map queue counts by dentist code
+		const countsMap = {};
+		queueCounts.forEach(item => {
+			countsMap[item._id] = {
+				total: item.total,
+				completed: item.completed,
+				inTreatment: item.inTreatment,
+				waiting: item.waiting
+			};
+		});
+		
+		// Build workload array
+		const workload = dentists.map(dentist => {
+			const dentistCode = dentist.dentistCode;
+			const counts = countsMap[dentistCode] || { total: 0, completed: 0, inTreatment: 0, waiting: 0 };
+			
+			return {
+				dentistId: dentist._id,
+				dentistCode: dentistCode,
+				dentistName: dentist.userId?.name || dentist.name || 'Unknown Dentist',
+				specialty: dentist.specialization || 'General',
+				totalPatients: counts.total,
+				completed: counts.completed,
+				inTreatment: counts.inTreatment,
+				waiting: counts.waiting
+			};
+		}).sort((a, b) => b.totalPatients - a.totalPatients);
+		
+		return res.status(200).json({ workload });
 	} catch (err) {
+		console.error("dentistWorkload error:", err);
 		return res.status(500).json({ message: "Failed to load dentist workload", error: String(err) });
 	}
 };
@@ -98,7 +136,10 @@ const exportInventoryCsv = async (req, res) => {
 		res.setHeader("Content-Disposition", `attachment; filename="Midique_Inventory_Report_${new Date().toISOString().split('T')[0]}.csv"`);
 		return res.status(200).send(csv);
 	} catch (err) {
-		return res.status(500).json({ message: "Failed to export CSV", error: String(err) });
+		console.error("exportInventoryCsv error:", err);
+		if (!res.headersSent) {
+			return res.status(500).json({ message: "Failed to export CSV", error: String(err) });
+		}
 	}
 };
 
@@ -207,18 +248,25 @@ const exportInventoryPdf = async (req, res) => {
 			   .fillColor('#e5e7eb')
 			   .stroke();
 			
+			// Safe field extraction with defaults
+			const itemName = item.name || item.itemName || 'Unknown';
+			const itemSku = item.sku || item.itemCode || 'N/A';
+			const itemUnit = item.unit || 'unit';
+			const itemQty = item.quantity || 0;
+			const itemThreshold = item.lowStockThreshold || 10;
+			
 			// Status color
-			const status = item.quantity <= item.lowStockThreshold ? 'LOW STOCK' : 'OK';
-			const statusColor = item.quantity <= item.lowStockThreshold ? '#dc2626' : '#059669';
+			const status = itemQty <= itemThreshold ? 'LOW STOCK' : 'OK';
+			const statusColor = itemQty <= itemThreshold ? '#dc2626' : '#059669';
 			
 			// Row data
 			doc.fillColor('#374151')
 			   .fontSize(9)
-			   .text(item.name, colPositions[0], currentY + 6, { width: colWidths[0] })
-			   .text(item.sku, colPositions[1], currentY + 6, { width: colWidths[1] })
-			   .text(item.unit, colPositions[2], currentY + 6, { width: colWidths[2] })
-			   .text(item.quantity.toString(), colPositions[3], currentY + 6, { width: colWidths[3] })
-			   .text(item.lowStockThreshold.toString(), colPositions[4], currentY + 6, { width: colWidths[4] })
+			   .text(itemName, colPositions[0], currentY + 6, { width: colWidths[0] })
+			   .text(itemSku, colPositions[1], currentY + 6, { width: colWidths[1] })
+			   .text(itemUnit, colPositions[2], currentY + 6, { width: colWidths[2] })
+			   .text(String(itemQty), colPositions[3], currentY + 6, { width: colWidths[3] })
+			   .text(String(itemThreshold), colPositions[4], currentY + 6, { width: colWidths[4] })
 			   .fillColor(statusColor)
 			   .text(status, colPositions[5], currentY + 6, { width: colWidths[5] });
 			
@@ -240,15 +288,18 @@ const exportInventoryPdf = async (req, res) => {
 		
 		doc.end();
 	} catch (err) {
-		return res.status(500).json({ message: "Failed to export PDF", error: String(err) });
+		console.error("exportInventoryPdf error:", err);
+		if (!res.headersSent) {
+			return res.status(500).json({ message: "Failed to export PDF", error: String(err) });
+		}
 	}
 };
 
 // GET /api/manager/reports/stock-requests.csv
 const exportStockRequestsCsv = async (req, res) => {
 	try {
-		const StockRequest = require("../Model/InventoryRequest");
-		const requests = await StockRequest.find({}).populate('item').sort({ createdAt: -1 });
+		const InventoryRequest = require("../Model/InventoryRequest");
+		const requests = await InventoryRequest.find({}).sort({ createdAt: -1 }).lean();
 		const currentDate = new Date().toLocaleDateString();
 		
 		const csvLines = [];
@@ -259,18 +310,22 @@ const exportStockRequestsCsv = async (req, res) => {
 		csvLines.push("");
 		
 		// Column headers
-		const header = ["Request Date", "Item Name", "SKU", "Requested Quantity", "Status", "Note"];
+		const header = ["Request Code", "Request Date", "Dentist", "Items", "Status", "Notes"];
 		csvLines.push(header.map(h => `"${h}"`).join(","));
 		
 		// Data rows
 		requests.forEach(request => {
+			const itemsList = request.items && request.items.length > 0 
+				? request.items.map(i => `${i.itemName} (${i.quantity})`).join('; ')
+				: 'No items';
+			
 			const row = [
+				`"${request.requestCode || 'N/A'}"`,
 				`"${new Date(request.createdAt).toLocaleDateString()}"`,
-				`"${request.item ? request.item.name : 'Unknown Item'}"`,
-				`"${request.item ? request.item.sku : 'N/A'}"`,
-				request.requestedQuantity,
-				`"${request.status.toUpperCase()}"`,
-				`"${request.note || 'No note'}"`
+				`"${request.dentistName || 'Unknown'}"`,
+				`"${itemsList}"`,
+				`"${request.status || 'Pending'}"`,
+				`"${request.notes || 'No notes'}"`
 			];
 			csvLines.push(row.join(","));
 		});
@@ -279,9 +334,9 @@ const exportStockRequestsCsv = async (req, res) => {
 		csvLines.push("");
 		csvLines.push("SUMMARY");
 		csvLines.push(`"Total Requests","${requests.length}"`);
-		csvLines.push(`"Pending Requests","${requests.filter(r => r.status === 'pending').length}"`);
-		csvLines.push(`"Approved Requests","${requests.filter(r => r.status === 'approved').length}"`);
-		csvLines.push(`"Rejected Requests","${requests.filter(r => r.status === 'rejected').length}"`);
+		csvLines.push(`"Pending Requests","${requests.filter(r => r.status === 'Pending').length}"`);
+		csvLines.push(`"Approved Requests","${requests.filter(r => r.status === 'Approved').length}"`);
+		csvLines.push(`"Rejected Requests","${requests.filter(r => r.status === 'Rejected').length}"`);
 		
 		const csv = csvLines.join("\n");
 		
@@ -289,20 +344,36 @@ const exportStockRequestsCsv = async (req, res) => {
 		res.setHeader("Content-Disposition", `attachment; filename="Midique_StockRequests_Report_${new Date().toISOString().split('T')[0]}.csv"`);
 		return res.status(200).send(csv);
 	} catch (err) {
-		return res.status(500).json({ message: "Failed to export stock requests CSV", error: String(err) });
+		console.error("exportStockRequestsCsv error:", err);
+		if (!res.headersSent) {
+			return res.status(500).json({ message: "Failed to export stock requests CSV", error: String(err) });
+		}
 	}
 };
 
 // GET /api/manager/reports/comprehensive.pdf
 const exportComprehensivePdf = async (req, res) => {
 	try {
-		const StockRequest = require("../Model/InventoryRequest");
-		const [items, requests, overview, workload] = await Promise.all([
-			InventoryItem.find({}).sort({ name: 1 }),
-			StockRequest.find({}).populate('item').sort({ createdAt: -1 }),
-			getOverview(req, res),
-			dentistWorkload(req, res)
+		// Fetch all data needed for the comprehensive report
+		const [items, appointments, dentists, feedbackAgg, queueData] = await Promise.all([
+			InventoryItem.find({}).sort({ name: 1 }).lean(),
+			Appointment.find({}).lean(),
+			Dentist.find({}).populate('userId', 'name').lean(),
+			Feedback.aggregate([{ $group: { _id: null, avgRating: { $avg: "$rating" } } }]),
+			Queue.aggregate([
+				{ $group: { 
+					_id: "$dentistCode",
+					total: { $sum: 1 },
+					completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } }
+				}}
+			])
 		]);
+		
+		// Calculate statistics
+		const appointmentsCount = appointments.length;
+		const dentistsCount = dentists.length;
+		const avgRating = feedbackAgg[0]?.avgRating || 0;
+		const lowStockItems = items.filter(item => item.quantity <= (item.lowStockThreshold || 10));
 		
 		const currentDate = new Date().toLocaleDateString();
 		const currentTime = new Date().toLocaleTimeString();
@@ -349,8 +420,8 @@ const exportComprehensivePdf = async (req, res) => {
 		   .fillColor('#374151')
 		   .text('1. Executive Summary')
 		   .text('2. Inventory Management')
-		   .text('3. Stock Requests')
-		   .text('4. Analytics & Reports')
+		   .text('3. Dentist Workload Analysis')
+		   .text('4. Low Stock Alerts')
 		   .moveDown(1);
 		
 		// Page 2: Executive Summary
@@ -362,13 +433,47 @@ const exportComprehensivePdf = async (req, res) => {
 		
 		doc.fontSize(12)
 		   .fillColor('#374151')
+		   .text(`Total Appointments: ${appointmentsCount}`)
+		   .text(`Total Dentists: ${dentistsCount}`)
+		   .text(`Average Rating: ${avgRating.toFixed(2)} / 5.0`)
+		   .text(`Low Stock Items: ${lowStockItems.length}`)
+		   .moveDown(1);
+		
+		// Dentist Workload Section (from Queue data)
+		doc.fontSize(16)
+		   .fillColor('#1f2937')
+		   .text('DENTIST WORKLOAD (Patient Queue History)', { underline: true })
+		   .moveDown(0.5);
+		
+		// Map queue data by dentist code
+		const queueMap = {};
+		queueData.forEach(q => {
+			queueMap[q._id] = { total: q.total, completed: q.completed };
+		});
+		
+		dentists.forEach((dentist, index) => {
+			const dentistCode = dentist.dentistCode;
+			const queueStats = queueMap[dentistCode] || { total: 0, completed: 0 };
+			const dentistName = dentist.userId?.name || dentist.name || `Dentist ${index + 1}`;
+			
+			doc.fontSize(12)
+			   .fillColor('#374151')
+			   .text(`${dentistName} (${dentistCode || 'N/A'}): ${queueStats.total} patients (${queueStats.completed} completed)`)
+			   .moveDown(0.3);
+		});
+		
+		doc.moveDown(1);
+		
+		// Inventory Section
+		doc.fontSize(16)
+		   .fillColor('#1f2937')
+		   .text('INVENTORY MANAGEMENT', { underline: true })
+		   .moveDown(0.5);
+		
+		doc.fontSize(12)
+		   .fillColor('#374151')
 		   .text(`Total Inventory Items: ${items.length}`)
-		   .text(`Low Stock Items: ${items.filter(i => i.quantity <= i.lowStockThreshold).length}`)
-		   .text(`Total Stock Requests: ${requests.length}`)
-		   .text(`Pending Requests: ${requests.filter(r => r.status === 'pending').length}`)
-		   .text(`Total Appointments: ${overview.appointmentsCount}`)
-		   .text(`Active Dentists: ${overview.dentistsCount}`)
-		   .text(`Average Rating: ${overview.avgRating ? overview.avgRating.toFixed(1) : 'N/A'}`)
+		   .text(`Low Stock Items: ${lowStockItems.length}`)
 		   .moveDown(1);
 		
 		// Page 3: Inventory Details
@@ -446,7 +551,10 @@ const exportComprehensivePdf = async (req, res) => {
 		
 		doc.end();
 	} catch (err) {
-		return res.status(500).json({ message: "Failed to export comprehensive PDF", error: String(err) });
+		console.error("exportComprehensivePdf error:", err);
+		if (!res.headersSent) {
+			return res.status(500).json({ message: "Failed to export comprehensive PDF", error: String(err) });
+		}
 	}
 };
 

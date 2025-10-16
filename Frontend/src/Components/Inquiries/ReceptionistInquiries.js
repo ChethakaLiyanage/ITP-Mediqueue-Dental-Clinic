@@ -9,8 +9,20 @@ const qs = (obj = {}) =>
   ).toString();
 
 const getJSON = async (path, params = {}) => {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const url = API_BASE + path + (Object.keys(params).length ? `?${qs(params)}` : "");
-  const res = await fetch(url, { credentials: "include" });
+  const res = await fetch(url, { 
+    headers,
+    credentials: "include" 
+  });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 };

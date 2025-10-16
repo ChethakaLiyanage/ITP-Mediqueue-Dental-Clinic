@@ -1,14 +1,17 @@
 const express = require("express");
 const manager_router = express.Router();
+const managerController = require("../Controllers/ManagerControllers");
 
-const manager = require("../Model/ManagerModel")
+// Get all managers
+manager_router.get("/", managerController.getAllManagers);
 
-const managerController = require("../Controllers/ManagerControllers")
+// Get manager by code
+manager_router.get("/code/:managerCode", managerController.getManagerByCode);
 
-manager_router.get("/" , managerController.getAllManagers);
-manager_router.get("/:id" , managerController.getById);
-manager_router.get("/code/:managerCode", managerController.getByCode);
-manager_router.post("/",managerController.addManagers);
+// Get manager by ID
+manager_router.get("/:id", managerController.getManagerById);
 
+// Create a new manager
+manager_router.post("/", managerController.createManager);
 
-module.exports = manager_router ;
+module.exports = manager_router;

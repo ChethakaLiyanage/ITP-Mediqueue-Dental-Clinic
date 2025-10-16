@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../Model/User");
 const ReceptionistModel = require("../Model/ReceptionistModel");
 const DentistModel = require("../Model/DentistModel");
+const ManagerModel = require("../Model/ManagerModel");
 
 module.exports = async function requireAuth(req, res, next) {
   const h =
@@ -77,6 +78,17 @@ module.exports = async function requireAuth(req, res, next) {
       if (patient) {
         req.user.patientCode = patient.patientCode;
         console.log('Patient code attached:', patient.patientCode);
+      }
+    }
+
+    // 🔹 If manager, attach managerCode
+    if (user.role === "Manager") {
+      const manager = await ManagerModel.findOne({ userId: user._id }).select(
+        "managerCode"
+      );
+      if (manager) {
+        req.user.managerCode = manager.managerCode;
+        console.log('Manager code attached:', manager.managerCode);
       }
     }
 

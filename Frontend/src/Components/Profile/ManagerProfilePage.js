@@ -64,7 +64,7 @@ export default function ManagerProfilePage() {
     setError(null);
     
     try {
-      // Fetch manager data by manager code
+      // First, try to get the manager by code
       const mRes = await fetch(`${API_BASE}/managers/code/${encodeURIComponent(managerCode)}`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -73,6 +73,43 @@ export default function ManagerProfilePage() {
       });
       
       if (!mRes.ok) {
+        // If not found by code, try to find by managerCode in the User model
+        if (mRes.status === 404) {
+          console.log("Manager not found by code, trying to find by user role...");
+          const userRes = await fetch(`${API_BASE}/users/role/Manager`, {
+            headers: { 
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (userRes.ok) {
+            const usersData = await userRes.json();
+            const managerUser = Array.isArray(usersData) 
+              ? usersData.find(u => u.managerCode === managerCode || u.manager?.managerCode === managerCode)
+              : null;
+              
+            if (managerUser) {
+              setUser(managerUser);
+              setProfile({
+                department: managerUser.department || '',
+                managerCode: managerUser.managerCode || managerCode
+              });
+              
+              // Set form data
+              setForm({
+                name: managerUser.name || '',
+                email: managerUser.email || '',
+                contact_no: managerUser.contact_no || '',
+                department: managerUser.department || ''
+              });
+              
+              setLoading(false);
+              return;
+            }
+          }
+        }
+        
         const errorData = await mRes.json().catch(() => ({}));
         throw new Error(errorData.message || `Error: ${mRes.status}`);
       }
@@ -80,13 +117,22 @@ export default function ManagerProfilePage() {
       const mData = await mRes.json();
       console.log("Manager data response:", mData);
       
-      if (mData && mData.manager) {
-        setProfile(mData.manager);
+      if (mData && (mData.manager || mData.user)) {
+        const managerData = mData.manager || mData.user;
+        setProfile(managerData);
         
-        // Fetch user data if userId exists
-        const userId = mData.manager.userId;
-        if (userId) {
-          const uRes = await fetch(`${API_BASE}/users/${encodeURIComponent(userId)}`, {
+        // If we have a userId, fetch the user details
+        if (mData.user) {
+          const userData = mData.user;
+          setUser(userData);
+          setForm({
+            name: userData.name || '',
+            email: userData.email || '',
+            contact_no: userData.contact_no || '',
+            department: managerData.department || ''
+          });
+        } else if (managerData.userId) {
+          const uRes = await fetch(`${API_BASE}/users/${encodeURIComponent(managerData.userId)}`, {
             headers: { 
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -95,13 +141,28 @@ export default function ManagerProfilePage() {
           
           if (uRes.ok) {
             const uData = await uRes.json();
-            setUser(uData.users || uData.user || null);
+            const userData = uData.users || uData.user || uData;
+            setUser(userData);
+            
+            setForm({
+              name: userData.name || '',
+              email: userData.email || '',
+              contact_no: userData.contact_no || '',
+              department: managerData.department || ''
+            });
           }
+        } else {
+          setUser(null);
+          setForm({
+            name: '',
+            email: '',
+            contact_no: '',
+            department: managerData.department || ''
+          });
         }
       } else {
         throw new Error("No manager data received");
       }
-      
     } catch (error) {
       console.error("Error fetching profile:", error);
       setError(`Failed to load profile: ${error.message}`);
@@ -127,6 +188,16 @@ export default function ManagerProfilePage() {
     }
   }, [profile, user]);
   
+  // Handle logout
+  const handleLogout = () => {
+    try { 
+      localStorage.removeItem('auth');
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -134,6 +205,14 @@ export default function ManagerProfilePage() {
       ...prev,
       [name]: value
     }));
+    
+    // If department is being updated, also update the profile state
+    if (name === 'department') {
+      setProfile(prev => ({
+        ...prev,
+        department: value
+      }));
+    }
   };
 
   // Save profile changes
@@ -152,44 +231,79 @@ export default function ManagerProfilePage() {
       return;
     }
 
+    setLoading(true);
     try {
-      // Update manager fields
-      await fetch(`${API_BASE}/managers/code/${encodeURIComponent(managerCode)}`, {
+      // Update user data
+      const userUpdate = fetch(`${API_BASE}/users/${user._id}`, {
         method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}` 
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ department: form.department }),
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          contact_no: form.contact_no
+        })
       });
-      
-      // Update user fields
-      if (user?._id) {
-        await fetch(`${API_BASE}/users/${encodeURIComponent(user._id)}`, {
+
+      // Update manager data if we have a manager profile
+      let managerUpdate = Promise.resolve();
+      if (profile?._id) {
+        managerUpdate = fetch(`${API_BASE}/managers/${profile._id}`, {
           method: 'PUT',
-          headers: { 
-            'Content-Type': 'application/json', 
-            'Authorization': `Bearer ${token}` 
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ 
-            email: form.email, 
-            contact_no: form.contact_no 
-          }),
+          body: JSON.stringify({
+            department: form.department
+          })
+        });
+      } else if (profile?.managerCode) {
+        // If we don't have a profile ID but have a manager code, try to create or update
+        managerUpdate = fetch(`${API_BASE}/managers/code/${profile.managerCode}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            department: form.department,
+            userId: user._id
+          })
         });
       }
-      
-      setEditing(false);
-      fetchProfile();
-      alert('Profile updated successfully');
-    } catch (e) {
-      console.error('Update error:', e);
-      alert(e.message || 'Failed to update');
-    }
-  };
 
-  const handleLogout = () => {
-    try { localStorage.removeItem('auth'); } catch {}
-    navigate('/login', { replace: true });
+      // Wait for both updates to complete
+      const [userRes, managerRes] = await Promise.all([userUpdate, managerUpdate]);
+
+      if (!userRes.ok) {
+        const errorData = await userRes.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update user profile');
+      }
+
+      const updatedUser = await userRes.json();
+      setUser(updatedUser.user || updatedUser);
+      
+      // Update profile data if manager update was successful
+      if (managerRes && managerRes.ok) {
+        const managerData = await managerRes.json();
+        setProfile(prev => ({
+          ...prev,
+          ...(managerData.manager || managerData),
+          department: form.department
+        }));
+      }
+
+      setEditing(false);
+      alert('Profile updated successfully!');
+    } catch (err) {
+      console.error('Update error:', err);
+      setError(err.message || 'Error updating profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Render loading state

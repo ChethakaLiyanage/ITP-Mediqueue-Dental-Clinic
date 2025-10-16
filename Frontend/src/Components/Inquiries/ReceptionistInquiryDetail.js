@@ -4,7 +4,19 @@ import { API_BASE, postJSON } from "../api";
 import "./receptionistinquiries.css";
 
 const getJSON = async (path) => {
-  const res = await fetch(API_BASE + path, { credentials: "include" });
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const res = await fetch(API_BASE + path, { 
+    headers,
+    credentials: "include" 
+  });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 };

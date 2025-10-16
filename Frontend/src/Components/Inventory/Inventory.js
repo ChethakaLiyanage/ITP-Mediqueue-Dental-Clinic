@@ -1,24 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
-import { API_BASE } from '../api';
+// Using Font Awesome classes instead of react-icons
+import { API_BASE } from '../../api';
+import { useAuth } from "../../Contexts/AuthContext";
 import './Inventory.css';
 
 const Inventory = () => {
   const navigate = useNavigate();
+  const { token, user, isAuthenticated } = useAuth();
   
-  // Get auth data from localStorage
-  const auth = useMemo(() => {
-    try { 
-      return JSON.parse(localStorage.getItem("auth") || "{}");
-    } catch (error) { 
-      console.error('Error parsing auth data:', error);
-      return {}; 
-    }
-  }, []);
-
-  const token = auth?.token || "";
-
+  // All hooks must be called at the top level, before any conditional returns
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -35,6 +26,13 @@ const Inventory = () => {
   // Fetch all inventory items
   const fetchItems = async () => {
     setLoading(true);
+    
+    // Debug: Log the fetch request details
+    console.log('=== FETCH INVENTORY ITEMS ===');
+    console.log('Token:', token ? 'Present' : 'Missing');
+      console.log('API_BASE:', API_BASE);
+      console.log('Request URL:', `${API_BASE}/api/inventory`);
+    
     try {
       const response = await fetch(`${API_BASE}/api/inventory`, {
         headers: { 
@@ -43,23 +41,72 @@ const Inventory = () => {
         }
       });
       
+      console.log('Fetch Response status:', response.status);
+      console.log('Fetch Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        throw new Error('Failed to fetch inventory items');
+        let errorMessage = `HTTP ${response.status}: Failed to fetch inventory items`;
+        try {
+          const errorData = await response.json();
+          console.log('Fetch Error response data:', errorData);
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          console.log('Could not parse fetch error response as JSON');
+          const textResponse = await response.text().catch(() => 'Unknown error');
+          console.log('Fetch Text response:', textResponse);
+          errorMessage = textResponse || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
+      console.log('Fetch Success data:', data);
       setItems(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching items:', error);
-      alert('Failed to load inventory items');
+      console.error('Fetch Error stack:', error.stack);
+      alert(`Failed to load inventory items: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    console.log('=== INVENTORY USEEFFECT ===');
+    console.log('isAuthenticated:', isAuthenticated);
+    console.log('token exists:', !!token);
+    console.log('token length:', token ? token.length : 0);
+    
+    if (!isAuthenticated || !token) {
+      console.log('User not authenticated, redirecting to login');
+      alert('Please log in to access inventory');
+      navigate('/login');
+      return;
+    }
+    
+    console.log('User authenticated, fetching items...');
     fetchItems();
-  }, [token]);
+  }, [token, isAuthenticated, navigate]);
+  
+  console.log('=== INVENTORY AUTH DEBUG ===');
+  console.log('isAuthenticated:', isAuthenticated);
+  console.log('token exists:', !!token);
+  console.log('user:', user);
+  console.log('user role:', user?.role);
+  
+  // Temporarily allow any authenticated user for testing
+  // if (isAuthenticated && user && user.role !== 'Manager' && user.role !== 'manager') {
+  //   console.log('User is not a manager, redirecting...');
+  //   navigate('/');
+  //   return <div>Access denied. Managers only.</div>;
+  // }
+  
+  // Immediate redirect if not authenticated
+  if (!isAuthenticated || !token) {
+    console.log('Not authenticated, redirecting to login...');
+    navigate('/login');
+    return <div>Redirecting to login...</div>;
+  }
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -74,10 +121,23 @@ const Inventory = () => {
 
   // Add new item
   const handleAddItem = async () => {
+    if (!isAuthenticated || !token) {
+      alert('Please log in to add items');
+      navigate('/login');
+      return;
+    }
+
     if (!formData.itemName.trim()) {
       alert('Please enter item name');
       return;
     }
+
+    // Debug: Log the request details
+    console.log('=== ADD ITEM REQUEST ===');
+    console.log('Token:', token ? 'Present' : 'Missing');
+    console.log('API_BASE:', API_BASE);
+    console.log('Form Data:', formData);
+      console.log('Request URL:', `${API_BASE}/api/inventory`);
     
     try {
       const response = await fetch(`${API_BASE}/api/inventory`, {
@@ -89,9 +149,39 @@ const Inventory = () => {
         body: JSON.stringify(formData)
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        throw new Error('Failed to add item');
+        let errorMessage = `HTTP ${response.status}: Failed to add item`;
+        
+        // Handle specific HTTP status codes
+        if (response.status === 401) {
+          errorMessage = 'Unauthorized: Please log in first';
+          console.log('401 Error - redirecting to login');
+          navigate('/login');
+        } else if (response.status === 403) {
+          errorMessage = 'Forbidden: You do not have permission to add items';
+        } else if (response.status === 500) {
+          errorMessage = 'Server error: Please try again later';
+        }
+        
+        try {
+          const errorData = await response.json();
+          console.log('Error response data:', errorData);
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          console.log('Could not parse error response as JSON');
+          const textResponse = await response.text().catch(() => 'Unknown error');
+          console.log('Text response:', textResponse);
+          errorMessage = textResponse || errorMessage;
+        }
+        console.error('API Error:', errorMessage);
+        throw new Error(errorMessage);
       }
+
+      const result = await response.json();
+      console.log('Success response:', result);
 
       await fetchItems();
       setFormData({ 
@@ -106,7 +196,15 @@ const Inventory = () => {
       alert('Item added successfully');
     } catch (error) {
       console.error('Error adding item:', error);
-      alert('Failed to add item');
+      console.error('Error stack:', error.stack);
+      
+      // Show more detailed error message
+      let errorMsg = error.message;
+      if (!errorMsg || errorMsg === 'Failed to add item') {
+        errorMsg = 'Unknown error occurred. Please check console for details.';
+      }
+      
+      alert(`Failed to add item: ${errorMsg}`);
     }
   };
 
@@ -189,7 +287,7 @@ const Inventory = () => {
   // Increase quantity by 1
   const increaseQuantity = async (item) => {
     try {
-      const response = await fetch(`${API_BASE}/inventory/${item._id}`, {
+      const response = await fetch(`${API_BASE}/api/inventory/${item._id}`, {
         method: 'PUT',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -245,7 +343,7 @@ const Inventory = () => {
             });
           }}
         >
-          <FaPlus /> Add Item
+          <i className="fas fa-plus"></i> Add Item
         </button>
       </div>
 
@@ -390,14 +488,14 @@ const Inventory = () => {
                       onClick={() => startEditing(item)}
                       title="Edit item"
                     >
-                      <FaEdit />
+                      <i className="fas fa-edit"></i>
                     </button>
                     <button 
                       className="action-btn delete"
                       onClick={() => deleteItem(item._id)}
                       title="Delete item"
                     >
-                      <FaTrash />
+                      <i className="fas fa-trash"></i>
                     </button>
                   </td>
                 </tr>

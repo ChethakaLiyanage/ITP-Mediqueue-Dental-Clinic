@@ -1,72 +1,94 @@
-const Manager = require("../Model/ManagerModel")
+const Manager = require("../Model/ManagerModel");
 
-const getAllManagers = async(req , res , next) => {
-
-    let managers ;
-
-    //get all users
-    try{
-        managers = await Manager.find();
-    }catch(err){
-        console.log(err);
-    }
-    //not any users found
-    if(!managers){
-        return res.status(404).json({message :"User Not Found"})
-    }
-
-    //Display all users
-    return res.status(200).json({managers});
-};
-const addManagers = async(req,res,next)=>{
-
-    const {userId,department} = req.body;
-
-    let managers;
-
-    try{
-        
-        managers = new Manager({userId,department});
-        //to save in database
-        await managers.save();
-
-    return res.status(201).json({ managers });
-    } catch (err) {
-    console.error("addManagers error:", err);
-
-    // common duplicate key: nic or generated patientCode
-    if (err?.code === 11000) {
-      return res.status(409).json({ message: "Duplicate key", detail: err.keyValue });
-    }
-    return res.status(422).json({ message: err.message || "Unable to add manager" });
-  };
-};
-
-
-const getById = async(req , res , next) => {
-    try {
-    const { id } = req.manager; // assuming JWT auth
-    const manager = await Manager.findById(id);
-    if (!manager) return res.status(404).json({ message: "Manager not found" });
-    res.status(200).json({ user });
-  } catch (err) {
-    res.status(500).json({ message: "Server error" });
-  }
-
-};
-const getByCode = async (req, res) => {
+// Create Manager
+const createManager = async (req, res) => {
   try {
-    const { managerCode } = req.params;
-    const manager = await Manager.findOne({ managerCode }).lean();
-    if (!manager) return res.status(404).json({ message: "Manager not found" });
-    return res.status(200).json({ manager });
+    const manager = new Manager(req.body);
+    await manager.save();
+    return res.status(201).json(manager);
   } catch (err) {
-    console.error("getByCode error:", err);
+    console.error("createManager error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
 
-exports.getAllManagers = getAllManagers ;
-exports.addManagers = addManagers ;
-exports.getById = getById ;
-exports.getByCode =getByCode ;
+const managerPopulate = { path: "userId", select: "name email role contact_no" };
+const managerSelect = "managerCode userId department createdAt updatedAt";
+
+// Get All Managers (Paginated)
+const getAllManagers = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page || "1", 10);
+    const limit = parseInt(req.query.limit || "50", 10);
+
+    const managers = await Manager.find({})
+      .select(managerSelect)
+      .populate(managerPopulate)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    const total = await Manager.countDocuments();
+    return res.status(200).json({ total, page, limit, managers });
+  } catch (err) {
+    console.error("getAllManagers error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get Manager by Mongo ID
+const getManagerById = async (req, res) => {
+  try {
+    const manager = await Manager.findById(req.params.id)
+      .select(managerSelect)
+      .populate(managerPopulate)
+      .lean();
+
+    if (!manager) {
+      return res.status(404).json({ message: "Manager not found" });
+    }
+
+    return res.status(200).json(manager);
+  } catch (err) {
+    console.error("getManagerById error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get Manager by Code
+const getManagerByCode = async (req, res) => {
+  try {
+    const manager = await Manager.findOne({ managerCode: req.params.managerCode })
+      .select(managerSelect)
+      .populate(managerPopulate)
+      .lean();
+
+    if (!manager) {
+      return res.status(404).json({ message: "Manager not found" });
+    }
+
+    const { userId: userDoc = null, ...rest } = manager;
+    const response = {
+      manager: {
+        ...rest,
+        userId: userDoc ? userDoc._id : null,
+      },
+    };
+
+    if (userDoc) {
+      response.user = userDoc;
+    }
+
+    return res.status(200).json(response);
+  } catch (err) {
+    console.error("getManagerByCode error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = {
+  createManager,
+  getAllManagers,
+  getManagerById,
+  getManagerByCode,
+};

@@ -41,8 +41,10 @@ exports.getInventoryByCode = async (req, res) => {
 
 // Create new inventory item
 exports.createInventory = async (req, res) => {
+  console.log('=== CREATE INVENTORY REQUEST ===');
   console.log('Request body:', req.body); // Log the incoming request body
   console.log('Request headers:', req.headers); // Log request headers
+  console.log('User from middleware:', req.user); // Log user info
   
   try {
     const { itemName, quantity, unit, category, minStockLevel, supplier } = req.body;

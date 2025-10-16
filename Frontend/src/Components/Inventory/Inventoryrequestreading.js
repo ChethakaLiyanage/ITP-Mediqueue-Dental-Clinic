@@ -1,27 +1,55 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { API_BASE } from '../api';
-import { FaCheck, FaTimes, FaSpinner, FaEye } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { API_BASE } from '../../api';
+import { useAuth } from '../../Contexts/AuthContext';
+// Using Font Awesome classes instead of react-icons
 import './inventoryrequestreading.css';
 
 const InventoryRequestReading = () => {
+  const navigate = useNavigate();
+  const { token, user, isAuthenticated } = useAuth();
+  
+  // All hooks must be called at the top level, before any conditional returns
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
-  
-  // Get auth token
-  const token = useMemo(() => {
-    try {
-      const auth = JSON.parse(localStorage.getItem('auth') || '{}');
-      return auth?.token || '';
-    } catch {
-      return '';
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    console.log('=== INVENTORY REQUEST USEEFFECT ===');
+    console.log('isAuthenticated:', isAuthenticated);
+    console.log('token exists:', !!token);
+    
+    if (!isAuthenticated || !token) {
+      console.log('User not authenticated, redirecting to login');
+      navigate('/login');
+      return;
     }
-  }, []);
+    
+    console.log('User authenticated, fetching requests...');
+    fetchRequests();
+  }, [token, isAuthenticated, navigate]);
+  
+  // Immediate redirect if not authenticated
+  if (!isAuthenticated || !token) {
+    console.log('Not authenticated, redirecting to login...');
+    navigate('/login');
+    return <div>Redirecting to login...</div>;
+  }
 
   // Fetch all inventory requests
   const fetchRequests = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
+      console.log('=== FETCH INVENTORY REQUESTS ===');
+      console.log('Token:', token ? 'Present' : 'Missing');
+      console.log('API_BASE:', API_BASE);
+      console.log('Request URL:', `${API_BASE}/api/inventory-requests`);
+      
       const response = await fetch(`${API_BASE}/api/inventory-requests`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -29,15 +57,32 @@ const InventoryRequestReading = () => {
         }
       });
       
+      console.log('Fetch Response status:', response.status);
+      console.log('Fetch Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        throw new Error('Failed to fetch requests');
+        let errorMessage = `HTTP ${response.status}: Failed to fetch inventory requests`;
+        try {
+          const errorData = await response.json();
+          console.log('Fetch Error response data:', errorData);
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          console.log('Could not parse fetch error response as JSON');
+          const textResponse = await response.text().catch(() => 'Unknown error');
+          console.log('Fetch Text response:', textResponse);
+          errorMessage = textResponse || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
-      setRequests(data);
+      console.log('Fetch Success data:', data);
+      console.log('Number of requests found:', Array.isArray(data) ? data.length : 0);
+      setRequests(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching requests:', error);
-      alert('Failed to load inventory requests');
+      console.error('Fetch Error stack:', error.stack);
+      setError(`Failed to load inventory requests: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -50,7 +95,7 @@ const InventoryRequestReading = () => {
       
       // First, update the request status
       const updateResponse = await fetch(`${API_BASE}/api/inventory-requests/${requestId}/status`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -59,38 +104,22 @@ const InventoryRequestReading = () => {
       });
       
       if (!updateResponse.ok) {
-        throw new Error('Failed to update status');
-      }
-      
-      // Find the request in the current state to get its details
-      const currentRequest = requests.find(req => req._id === requestId);
-      
-      if (currentRequest) {
-        // Create a notification for this status change
-        const notificationResponse = await fetch(`${API_BASE}/api/inventory-notifications`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            requestId: requestId,
-            dentistCode: currentRequest.dentistCode,
-            items: currentRequest.items.map(item => ({
-              itemName: item.itemName,
-              itemCode: item.itemCode || '',
-              quantity: item.quantity
-            })),
-            notes: currentRequest.notes || '',
-            status: newStatus
-          })
-        });
-        
-        if (!notificationResponse.ok) {
-          console.error('Failed to create notification, but status was updated');
-          // Continue even if notification fails, as the main status update succeeded
+        let errorMessage = `HTTP ${updateResponse.status}: Failed to update status`;
+        try {
+          const errorData = await updateResponse.json();
+          console.error('Update Error response data:', errorData);
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error('Could not parse update error response as JSON');
+          const textResponse = await updateResponse.text().catch(() => 'Unknown error');
+          console.error('Update Text response:', textResponse);
+          errorMessage = textResponse || errorMessage;
         }
+        throw new Error(errorMessage);
       }
+      
+      // Backend automatically creates notifications when status is updated
+      console.log(`Request ${requestId} status updated to ${newStatus}`);
       
       // Refresh the list to show updated status
       await fetchRequests();
@@ -106,9 +135,20 @@ const InventoryRequestReading = () => {
     }
   };
 
-  useEffect(() => {
-    fetchRequests();
-  }, [token]);
+  // Filter and search functionality
+  const filteredRequests = requests.filter(request => {
+    const matchesSearch = searchTerm === '' || 
+      request.requestCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.dentistCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.dentistName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.items?.some(item => 
+        item.itemName?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    
+    const matchesStatus = statusFilter === 'All' || request.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
 
   // Status badge component
   const StatusBadge = ({ status }) => {
@@ -129,15 +169,58 @@ const InventoryRequestReading = () => {
   if (loading) {
     return (
       <div className="loading-container">
-        <FaSpinner className="spinner" />
-        <p>Loading requests...</p>
+        <div className="spinner"></div>
+        <p>Loading inventory requests...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="inventory-requests-container">
+        <div className="error-container">
+          <i className="fas fa-exclamation-triangle"></i>
+          <h3>Error Loading Requests</h3>
+          <p>{error}</p>
+          <button 
+            className="retry-btn"
+            onClick={fetchRequests}
+          >
+            <i className="fas fa-redo"></i> Retry
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="inventory-requests-container">
-      <h2>Inventory Requests</h2>
+      <div className="requests-header">
+        <h2>Inventory Requests</h2>
+        <div className="requests-controls">
+          <div className="search-box">
+            <i className="fas fa-search"></i>
+            <input
+              type="text"
+              placeholder="Search requests, dentist, or items..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="filter-box">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="All">All Status</option>
+              <option value="Pending">Pending</option>
+              <option value="Approved">Approved</option>
+              <option value="Rejected">Rejected</option>
+              <option value="Fulfilled">Fulfilled</option>
+            </select>
+          </div>
+        </div>
+      </div>
       
       <div className="requests-table-container">
         <table className="requests-table">
@@ -152,14 +235,17 @@ const InventoryRequestReading = () => {
             </tr>
           </thead>
           <tbody>
-            {requests.length === 0 ? (
+            {filteredRequests.length === 0 ? (
               <tr>
                 <td colSpan="6" className="no-requests">
-                  No inventory requests found
+                  {requests.length === 0 
+                    ? 'No inventory requests found' 
+                    : 'No requests match your search criteria'
+                  }
                 </td>
               </tr>
             ) : (
-              requests.map((request) => (
+              filteredRequests.map((request) => (
                 <tr key={request._id}>
                   <td>{request.requestCode}</td>
                   <td>{request.dentistCode}</td>
@@ -185,9 +271,9 @@ const InventoryRequestReading = () => {
                           disabled={updatingId === request._id}
                         >
                           {updatingId === request._id ? (
-                            <FaSpinner className="spinner" />
+                            <i className="fas fa-spinner fa-spin"></i>
                           ) : (
-                            <FaCheck />
+                            <i className="fas fa-check"></i>
                           )}
                           Approve
                         </button>
@@ -197,9 +283,9 @@ const InventoryRequestReading = () => {
                           disabled={updatingId === request._id}
                         >
                           {updatingId === request._id ? (
-                            <FaSpinner className="spinner" />
+                            <i className="fas fa-spinner fa-spin"></i>
                           ) : (
-                            <FaTimes />
+                            <i className="fas fa-times"></i>
                           )}
                           Reject
                         </button>
@@ -212,9 +298,9 @@ const InventoryRequestReading = () => {
                         disabled={updatingId === request._id}
                       >
                         {updatingId === request._id ? (
-                          <FaSpinner className="spinner" />
+                          <i className="fas fa-spinner fa-spin"></i>
                         ) : (
-                          <FaCheck />
+                          <i className="fas fa-check"></i>
                         )}
                         Mark as Fulfilled
                       </button>

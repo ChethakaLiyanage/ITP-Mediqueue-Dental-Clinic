@@ -1,12 +1,18 @@
-const express = require("express");
-const router = express.Router();
-const inquiryController = require("../Controllers/InquiryControllers");
+const express = require('express');
+const inventory_router = express.Router();
+const inventoryController = require('../Controllers/InventoryControllers');
+const requireAuth = require('../middleware/requireAuth');
 
-router.post("/", inquiryController.addInquiry);
-router.get("/", inquiryController.getAllInquiries);
-router.get("/:id", inquiryController.getById);
-router.get("/code/:code", inquiryController.getByCode);
-router.put("/:id", inquiryController.updateInquiry);
-router.delete("/:id", inquiryController.deleteInquiry);
+// Test route to verify the router is working
+inventory_router.get('/test', (req, res) => {
+  res.json({ message: 'Inventory routes are working!' });
+});
 
-module.exports = router;
+inventory_router.get('/', requireAuth, inventoryController.getAllInventory);
+inventory_router.get('/low-stock', requireAuth, inventoryController.getLowStockItems);
+inventory_router.post('/', requireAuth, inventoryController.createInventory);
+inventory_router.get('/:id', requireAuth, inventoryController.getInventoryById);
+inventory_router.put('/:id', requireAuth, inventoryController.updateInventory);
+inventory_router.delete('/:id', requireAuth, inventoryController.deleteInventory);
+
+module.exports = inventory_router;

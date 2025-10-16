@@ -1,13 +1,13 @@
 const express = require('express');
-const minventory_router = express.Router();
+const inventory_router = express.Router();
 const inventoryController = require('../Controllers/InventoryControllers');
-const { authenticate } = require('../middleware/auth'); // Your auth middleware
+const requireAuth = require('../middleware/requireAuth'); // Use the comprehensive auth middleware
 
-minventory_router.get('/', authenticate, inventoryController.getAllInventory);
-minventory_router.get('/low-stock', authenticate, inventoryController.getLowStockItems);
-minventory_router.get('/:id', authenticate, inventoryController.getInventoryById);
-minventory_router.post('/', authenticate, inventoryController.createInventory);
-minventory_router.put('/:id', authenticate, inventoryController.updateInventory);
-minventory_router.delete('/:id', authenticate, inventoryController.deleteInventory);
+inventory_router.get('/', requireAuth, inventoryController.getAllInventory);
+inventory_router.get('/low-stock', requireAuth, inventoryController.getLowStockItems);
+inventory_router.get('/:id', requireAuth, inventoryController.getInventoryById);
+inventory_router.post('/', requireAuth, inventoryController.createInventory);
+inventory_router.put('/:id', requireAuth, inventoryController.updateInventory);
+inventory_router.delete('/:id', requireAuth, inventoryController.deleteInventory);
 
-module.exports = minventory_router;
+module.exports = inventory_router;
