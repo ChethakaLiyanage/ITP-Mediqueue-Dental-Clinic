@@ -63,16 +63,26 @@ TreatmentplanSchema.index({ patientCode: 1, planCode: 1 }, { unique: true });
 /* -------------------------- planCode auto-generation -------------------------- */
 TreatmentplanSchema.pre("save", async function (next) {
   try {
+    console.log('=== TREATMENT PLAN MODEL PRE-SAVE ===');
+    console.log('Document isNew:', this.isNew);
+    console.log('Document planCode:', this.planCode);
+    console.log('Document dentistCode:', this.dentistCode);
+    
     this.updated_date = new Date();
 
     // Only generate when creating a new doc and planCode not set
     if (this.isNew && !this.planCode) {
+      console.log('Generating new plan code...');
       // Use dentistCode for global counter instead of per-patient
       const scope = `tplan:${this.dentistCode}`; // Global counter per dentist
+      console.log('Counter scope:', scope);
 
       // If all plans were deleted for this dentist, reset counter so we start at TP-001 again
       const existingCount = await this.constructor.countDocuments({ dentistCode: this.dentistCode });
+      console.log('Existing count for dentist:', existingCount);
+      
       if (existingCount === 0) {
+        console.log('Resetting counter to 0...');
         await Counter.findOneAndUpdate(
           { scope },
           { $set: { seq: 0 } },
@@ -80,16 +90,22 @@ TreatmentplanSchema.pre("save", async function (next) {
         );
       }
 
+      console.log('Incrementing counter...');
       const c = await Counter.findOneAndUpdate(
         { scope },
         { $inc: { seq: 1 } },
         { upsert: true, new: true }
       );
+      console.log('Counter result:', c);
+      
       this.planCode = `TP-${pad(c.seq, 3)}`; // e.g., TP-001, TP-002, TP-003...
+      console.log('Generated planCode:', this.planCode);
     }
 
+    console.log('Pre-save completed successfully');
     next();
   } catch (err) {
+    console.error('Pre-save error:', err);
     next(err);
   }
 });

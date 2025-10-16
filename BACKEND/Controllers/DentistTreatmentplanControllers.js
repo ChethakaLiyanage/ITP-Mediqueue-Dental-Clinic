@@ -13,8 +13,12 @@ try {
 
 /* --------------------------------- helpers -------------------------------- */
 async function writeHistory(event, afterDoc, extra = {}) {
-  if (!TreatmentplanHistory || !afterDoc) return;
+  if (!TreatmentplanHistory || !afterDoc) {
+    console.log('History write skipped - TreatmentplanHistory:', !!TreatmentplanHistory, 'afterDoc:', !!afterDoc);
+    return;
+  }
   try {
+    console.log('Writing history for event:', event, 'planCode:', afterDoc.planCode);
     await TreatmentplanHistory.create({
       event, // "create" | "update" | "archive" | "restore"
       patientCode: afterDoc.patientCode,
@@ -24,7 +28,9 @@ async function writeHistory(event, afterDoc, extra = {}) {
       snapshot: afterDoc,
       ...extra,
     });
+    console.log('History written successfully for:', afterDoc.planCode);
   } catch (e) {
+    console.error("History write failed:", e?.message, e?.stack);
     console.warn("history write skipped:", e?.message);
   }
 }
@@ -131,7 +137,15 @@ const addTreatmentplans = async (req, res) => {
     return res.status(201).json({ treatmentplans: doc });
   } catch (err) {
     console.error("addTreatmentplans error:", err);
-    return res.status(500).json({ message: "Unable to add treatment plan" });
+    console.error("Error details:", {
+      message: err.message,
+      stack: err.stack,
+      name: err.name
+    });
+    return res.status(500).json({ 
+      message: "Unable to add treatment plan",
+      error: err.message 
+    });
   }
 };
 
