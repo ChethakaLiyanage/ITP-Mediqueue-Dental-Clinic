@@ -149,12 +149,16 @@ export default function DashboardMetrics() {
           method: 'GET'
         });
         const plansData = plansRes.data;
-        const todayPlans = plansData.treatmentplans?.filter(plan => {
-          const planDate = new Date(plan.createdAt);
+        console.log('📊 Treatment plans API response:', plansData);
+        
+        // Handle different response structures
+        const plans = plansData.treatmentplans || plansData || [];
+        const todayPlans = plans.filter(plan => {
+          const planDate = new Date(plan.createdAt || plan.created_date);
           return planDate >= todayStart && planDate <= todayEnd;
-        }) || [];
+        });
         setPlansCount(todayPlans.length);
-        console.log('📊 Today\'s treatment plans:', todayPlans.length);
+        console.log('📊 Today\'s treatment plans:', todayPlans.length, 'out of', plans.length, 'total');
       } catch (err) {
         console.error('Error fetching treatment plans:', err);
         setPlansCount(0);
@@ -166,12 +170,16 @@ export default function DashboardMetrics() {
           method: 'GET'
         });
         const rxData = rxRes.data;
-        const todayRx = rxData.items?.filter(rx => {
+        console.log('📊 Prescriptions API response:', rxData);
+        
+        // Handle different response structures
+        const prescriptions = rxData.items || rxData || [];
+        const todayRx = prescriptions.filter(rx => {
           const rxDate = new Date(rx.createdAt);
           return rxDate >= todayStart && rxDate <= todayEnd;
-        }) || [];
+        });
         setRxCount(todayRx.length);
-        console.log('📊 Today\'s prescriptions:', todayRx.length);
+        console.log('📊 Today\'s prescriptions:', todayRx.length, 'out of', prescriptions.length, 'total');
       } catch (err) {
         console.error('Error fetching prescriptions:', err);
         setRxCount(0);
