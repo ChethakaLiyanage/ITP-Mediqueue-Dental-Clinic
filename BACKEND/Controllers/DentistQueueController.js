@@ -1,6 +1,7 @@
 // Controllers/DentistQueueController.js
 const Queue = require("../Model/QueueModel");
 const Appointment = require("../Model/AppointmentModel");
+const Schedule = require("../Model/ScheduleModel");
 const Patient = require("../Model/PatientModel");
 const User = require("../Model/User");
 
@@ -53,6 +54,32 @@ async function getTodayQueueForDentist(req, res) {
             } catch {}
 
             if (!appt) {
+              // Final fallback: try schedule to extract reason
+              try {
+                const d = new Date(q.date);
+                const s = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+                const e = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                const sched = await Schedule.findOne({
+                  dentistCode: q.dentistCode,
+                  date: { $gte: s, $lte: e },
+                  patientCode: q.patientCode,
+                })
+                  .sort({ date: 1 })
+                  .lean();
+
+                if (sched) {
+                  return {
+                    ...q,
+                    queueNo: q.queueCode,
+                    patientCode: q.patientCode,
+                    patientName: "Unknown",
+                    reason: sched.reason || "-",
+                    appointment_date: q.date,
+                    isBookingForSomeoneElse: false,
+                  };
+                }
+              } catch {}
+
               console.warn('⚠️ No appointment found for queue:', q.appointmentCode);
               return {
                 ...q,
