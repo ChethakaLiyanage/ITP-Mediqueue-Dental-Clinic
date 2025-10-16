@@ -671,19 +671,34 @@ export default function TreatmentPlansList() {
               }
               
               // Check if patient is "In Treatment" before allowing prescription creation
+              // Use the same data source as the UI to avoid inconsistencies
               try {
-                const queueRes = await authenticatedFetch(`${API_BASE}/api/queue/status/${encodeURIComponent(rxPlan.patientCode)}`);
+                console.log('🔍 Checking patient status from today\'s queue for:', rxPlan.patientCode);
+                
+                // Get today's queue data (same as UI) instead of individual status API
+                const queueRes = await authenticatedFetch(`${API_BASE}/api/dentist-queue/today?dentistCode=${encodeURIComponent(dentistCode)}`);
                 const queueData = await queueRes.json();
                 
-                console.log('🔍 Queue status check for patient:', rxPlan.patientCode);
-                console.log('📊 Queue status response:', queueData);
-                console.log('📊 Queue status value:', queueData.status);
-                console.log('📊 Status comparison:', queueData.status?.toLowerCase(), '===', 'in_treatment');
+                console.log('📊 Today\'s queue data:', queueData);
                 
-                if (!queueRes.ok || queueData.status?.toLowerCase() !== "in_treatment") {
-                  alert(`Prescriptions can only be created when the patient status is 'In Treatment' in the queue. Current status: "${queueData.status || 'Unknown'}"`);
+                // Find the patient in today's queue
+                const patientInQueue = queueData.find(item => item.patientCode === rxPlan.patientCode);
+                
+                if (!patientInQueue) {
+                  alert(`Patient ${rxPlan.patientCode} not found in today's queue.`);
                   return;
                 }
+                
+                const patientStatus = patientInQueue.status || patientInQueue.queueStatus || "";
+                console.log('📊 Patient status from queue:', patientStatus);
+                console.log('📊 Status comparison:', patientStatus?.toLowerCase(), '===', 'in_treatment');
+                
+                if (patientStatus?.toLowerCase() !== "in_treatment") {
+                  alert(`Prescriptions can only be created when the patient status is 'In Treatment' in the queue. Current status: "${patientStatus || 'Unknown'}"`);
+                  return;
+                }
+                
+                console.log('✅ Patient status verified as "in_treatment"');
               } catch (e) {
                 console.error('❌ Error checking queue status:', e);
                 alert("Could not verify patient queue status. Please ensure patient is 'In Treatment'.");
