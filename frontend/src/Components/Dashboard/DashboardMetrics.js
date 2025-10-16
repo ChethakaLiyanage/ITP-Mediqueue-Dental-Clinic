@@ -143,11 +143,39 @@ export default function DashboardMetrics() {
       setTodayCount(uniqueQueue.length);
       setQueue(uniqueQueue);
 
-      // Treatment plans - temporarily disabled to fix infinite loop
-      setPlansCount(0);
+      // Get today's treatment plans count
+      try {
+        const plansRes = await authenticatedFetch(`${API}/treatmentplans/my`, {
+          method: 'GET'
+        });
+        const plansData = plansRes.data;
+        const todayPlans = plansData.treatmentplans?.filter(plan => {
+          const planDate = new Date(plan.createdAt);
+          return planDate >= todayStart && planDate <= todayEnd;
+        }) || [];
+        setPlansCount(todayPlans.length);
+        console.log('📊 Today\'s treatment plans:', todayPlans.length);
+      } catch (err) {
+        console.error('Error fetching treatment plans:', err);
+        setPlansCount(0);
+      }
 
-      // Prescriptions - temporarily disabled to fix infinite loop  
-      setRxCount(0);
+      // Get today's prescriptions count
+      try {
+        const rxRes = await authenticatedFetch(`${API}/prescriptions/my`, {
+          method: 'GET'
+        });
+        const rxData = rxRes.data;
+        const todayRx = rxData.items?.filter(rx => {
+          const rxDate = new Date(rx.createdAt);
+          return rxDate >= todayStart && rxDate <= todayEnd;
+        }) || [];
+        setRxCount(todayRx.length);
+        console.log('📊 Today\'s prescriptions:', todayRx.length);
+      } catch (err) {
+        console.error('Error fetching prescriptions:', err);
+        setRxCount(0);
+      }
 
       setLastUpdated(new Date());
 
