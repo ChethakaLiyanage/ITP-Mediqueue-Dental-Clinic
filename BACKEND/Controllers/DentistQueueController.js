@@ -25,6 +25,26 @@ async function getTodayQueueForDentist(req, res) {
       date: { $gte: start, $lte: end },
     }).lean();
 
+    // Get unique patient codes for bulk lookup
+    const patientCodes = [...new Set(queues.map(q => q.patientCode).filter(Boolean))];
+    
+    // Bulk fetch patient names for performance
+    const patientNameMap = new Map();
+    if (patientCodes.length > 0) {
+      try {
+        const patients = await Patient.find({ 
+          patientCode: { $in: patientCodes } 
+        }).populate('userId', 'name').lean();
+        
+        patients.forEach(patient => {
+          const name = patient.userId?.name || "Unknown";
+          patientNameMap.set(patient.patientCode, name);
+        });
+      } catch (error) {
+        console.error('Error bulk fetching patient names:', error.message);
+      }
+    }
+
     // join with appointment + patient + user details
     const withDetails = await Promise.all(
       queues.map(async (q) => {
@@ -54,23 +74,10 @@ async function getTodayQueueForDentist(req, res) {
             } catch {}
 
             if (!appt) {
-              // Final fallback: try schedule to extract reason and get patient info
-              let patientName = "Unknown";
+              // Final fallback: try schedule to extract reason
               let reason = "-";
               
               try {
-                // Try to get patient name from Patient/User models
-                const patient = await Patient.findOne({
-                  patientCode: q.patientCode,
-                }).lean();
-
-                if (patient?.userId) {
-                  const user = await User.findById(patient.userId).lean();
-                  if (user?.name) {
-                    patientName = user.name;
-                  }
-                }
-
                 // Try to get reason from schedule
                 const d = new Date(q.date);
                 const s = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
@@ -87,7 +94,7 @@ async function getTodayQueueForDentist(req, res) {
                   reason = sched.reason;
                 }
               } catch (error) {
-                console.error('Error in fallback patient lookup:', error.message);
+                console.error('Error in fallback schedule lookup:', error.message);
               }
 
               console.warn('⚠️ No appointment found for queue:', q.appointmentCode, 'Using fallback data');
@@ -95,7 +102,7 @@ async function getTodayQueueForDentist(req, res) {
                 ...q,
                 queueNo: q.queueCode,
                 patientCode: q.patientCode,
-                patientName: patientName,
+                patientName: patientNameMap.get(q.patientCode) || "Unknown",
                 reason: reason,
                 appointment_date: q.date,
                 isBookingForSomeoneElse: false,
@@ -131,22 +138,16 @@ async function getTodayQueueForDentist(req, res) {
           }
 
           // Regular appointment: Show normal patient details
-          const patient = await Patient.findOne({
-            patientCode: appt?.patient_code || q.patientCode,
-          }).lean();
-
-          let user = null;
-          if (patient?.userId) {
-            user = await User.findById(patient.userId).lean();
-          }
+          const patientCode = appt?.patient_code || q.patientCode;
+          const patientName = patientNameMap.get(patientCode) || "Unknown";
 
           return {
             ...q,
             queueNo: q.queueCode,
             reason: appt?.reason || "-",
             appointment_date: appt?.appointment_date || q.date,
-            patientCode: appt?.patient_code || q.patientCode,
-            patientName: user?.name || "-", // ✅ from user table
+            patientCode: patientCode,
+            patientName: patientName, // ✅ from bulk lookup
             isBookingForSomeoneElse: false,
           };
         } catch (itemError) {
@@ -156,7 +157,7 @@ async function getTodayQueueForDentist(req, res) {
             ...q,
             queueNo: q.queueCode,
             patientCode: q.patientCode,
-            patientName: "Error loading",
+            patientName: patientNameMap.get(q.patientCode) || "Unknown",
             reason: "-",
             appointment_date: q.date,
             isBookingForSomeoneElse: false,

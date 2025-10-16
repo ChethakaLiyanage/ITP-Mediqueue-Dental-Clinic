@@ -108,7 +108,7 @@ export default function PrescriptionsPage() {
       for (const row of rows) {
         const code = row?.patientCode;
         if (!code) continue;
-        const name = await getPatientName(code);
+        const name = row?.patientName || "Unknown"; // Use patient name from queue data
         const status = row?.status || row?.queueStatus || "";
         const timeRaw = row?.appointment_date || row?.date;
         const time = timeRaw ? new Date(timeRaw) : null;

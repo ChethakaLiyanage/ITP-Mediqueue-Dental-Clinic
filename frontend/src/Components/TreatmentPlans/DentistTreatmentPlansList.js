@@ -68,13 +68,13 @@ export default function TreatmentPlansList() {
       for (const row of rows) {
         const code = row?.patientCode;
         const status = row?.status || row?.queueStatus || "";
+        const name = row?.patientName || "Unknown"; // Use patient name from queue data
+        const timeRaw = row?.appointment_date || row?.date;
+        const time = timeRaw ? new Date(timeRaw) : null;
+        const queueNo = row?.queueCode || row?.queueNo || "";
         
         // Only include patients with "in_treatment" status
         if (code && status.toLowerCase() === "in_treatment") {
-          const name = await getPatientName(code);
-          const timeRaw = row?.appointment_date || row?.date;
-          const time = timeRaw ? new Date(timeRaw) : null;
-          const queueNo = row?.queueCode || row?.queueNo || "";
           opts.push({ 
             code, 
             name, 
@@ -85,10 +85,6 @@ export default function TreatmentPlansList() {
           });
         } else if (code) {
           // Include other patients but mark them as disabled
-          const name = await getPatientName(code);
-          const timeRaw = row?.appointment_date || row?.date;
-          const time = timeRaw ? new Date(timeRaw) : null;
-          const queueNo = row?.queueCode || row?.queueNo || "";
           opts.push({ 
             code, 
             name, 
@@ -246,7 +242,7 @@ export default function TreatmentPlansList() {
       for (const row of rows) {
         const code = row?.patientCode;
         if (!code) continue;
-        const name = await getPatientName(code);
+        const name = row?.patientName || "Unknown"; // Use patient name from queue data
         const status = row?.status || row?.queueStatus || "";
         const timeRaw = row?.appointment_date || row?.date;
         const time = timeRaw ? new Date(timeRaw) : null;
