@@ -54,8 +54,24 @@ async function getTodayQueueForDentist(req, res) {
             } catch {}
 
             if (!appt) {
-              // Final fallback: try schedule to extract reason
+              // Final fallback: try schedule to extract reason and get patient info
+              let patientName = "Unknown";
+              let reason = "-";
+              
               try {
+                // Try to get patient name from Patient/User models
+                const patient = await Patient.findOne({
+                  patientCode: q.patientCode,
+                }).lean();
+
+                if (patient?.userId) {
+                  const user = await User.findById(patient.userId).lean();
+                  if (user?.name) {
+                    patientName = user.name;
+                  }
+                }
+
+                // Try to get reason from schedule
                 const d = new Date(q.date);
                 const s = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
                 const e = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
@@ -67,26 +83,20 @@ async function getTodayQueueForDentist(req, res) {
                   .sort({ date: 1 })
                   .lean();
 
-                if (sched) {
-                  return {
-                    ...q,
-                    queueNo: q.queueCode,
-                    patientCode: q.patientCode,
-                    patientName: "Unknown",
-                    reason: sched.reason || "-",
-                    appointment_date: q.date,
-                    isBookingForSomeoneElse: false,
-                  };
+                if (sched?.reason) {
+                  reason = sched.reason;
                 }
-              } catch {}
+              } catch (error) {
+                console.error('Error in fallback patient lookup:', error.message);
+              }
 
-              console.warn('⚠️ No appointment found for queue:', q.appointmentCode);
+              console.warn('⚠️ No appointment found for queue:', q.appointmentCode, 'Using fallback data');
               return {
                 ...q,
                 queueNo: q.queueCode,
                 patientCode: q.patientCode,
-                patientName: "Unknown",
-                reason: "-",
+                patientName: patientName,
+                reason: reason,
                 appointment_date: q.date,
                 isBookingForSomeoneElse: false,
               };
