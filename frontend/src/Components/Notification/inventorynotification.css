@@ -1,0 +1,338 @@
+/* Inventory Notification Page */
+.inventory-notif-page {
+  padding: 20px;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+.inventory-notif-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.inventory-notif-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 24px;
+}
+
+.inventory-notif-header h2 {
+  margin: 0 0 16px 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.inventory-input {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 160px;
+  max-width: 160px;
+  background: white;
+  transition: border-color 0.2s ease;
+}
+
+.inventory-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.inventory-select {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  transition: border-color 0.2s ease;
+  width: 100px;
+  max-width: 100px;
+}
+
+.inventory-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.inventory-submit-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 90px;
+  max-width: 120px;
+}
+
+.inventory-submit-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Status Messages */
+.inventory-info {
+  color: #0ea5e9;
+  margin: 16px 24px;
+  padding: 12px 16px;
+  background: #e0f2fe;
+  border: 1px solid #0ea5e9;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.inventory-error {
+  color: #dc2626;
+  margin: 16px 24px;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #dc2626;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+/* Table Styling */
+.inventory-table-wrapper {
+  overflow-x: auto;
+  padding: 24px;
+}
+
+.prescription-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.prescription-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
+.prescription-table th {
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 13px;
+  color: #ffffff !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: none;
+  position: relative;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  background: transparent !important;
+}
+
+.prescription-table th:first-child {
+  border-top-left-radius: 8px;
+}
+
+.prescription-table th:last-child {
+  border-top-right-radius: 8px;
+}
+
+/* Override any potential gray/ash overlays */
+.prescription-table thead * {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+.prescription-table thead th {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+.prescription-table tbody tr {
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.prescription-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.prescription-table tbody tr:hover {
+  background: linear-gradient(90deg, #f0fdf4 0%, #dcfce7 100%);
+}
+
+.prescription-table td {
+  padding: 16px 12px;
+  font-size: 14px;
+  color: #374151;
+  vertical-align: top;
+}
+
+/* Medicine Items */
+.medicine-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border-left: 3px solid #3b82f6;
+}
+
+.medicine-item:last-child {
+  margin-bottom: 0;
+}
+
+.medicine-name {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 13px;
+}
+
+.medicine-dosage {
+  color: #6b7280;
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Colorful Status Badges */
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.status-badge--pending {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #ffffff;
+  border: 1px solid #d97706;
+}
+
+.status-badge--pending:hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+}
+
+.status-badge--active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: 1px solid #047857;
+}
+
+.status-badge--active:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.status-badge--inactive {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  border: 1px solid #b91c1c;
+}
+
+.status-badge--inactive:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+/* Empty State */
+.inventory-empty {
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  padding: 40px 20px;
+  background: #f9fafb;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .inventory-notif-header {
+    gap: 16px;
+  }
+  
+  .header-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .inventory-input {
+    width: 120px;
+    max-width: 120px;
+    flex: 0 0 auto;
+  }
+  
+  .inventory-select {
+    width: 80px;
+    max-width: 80px;
+    flex: 0 0 auto;
+  }
+  
+  .inventory-submit-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  
+  .prescription-table {
+    font-size: 12px;
+  }
+  
+  .prescription-table th,
+  .prescription-table td {
+    padding: 8px 6px;
+  }
+  
+  .status-badge {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .inventory-notif-page {
+    padding: 10px;
+  }
+  
+  .inventory-notif-card {
+    border-radius: 8px;
+  }
+  
+  .inventory-notif-header {
+    padding: 16px;
+  }
+  
+  .inventory-notif-header h2 {
+    font-size: 20px;
+  }
+  
+  .inventory-table-wrapper {
+    padding: 16px;
+  }
+}

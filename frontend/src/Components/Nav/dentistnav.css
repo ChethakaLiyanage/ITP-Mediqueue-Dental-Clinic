@@ -1,0 +1,312 @@
+:root {
+  --dentist-teal: #0d9488;
+  --dentist-teal-dark: #0f766e;
+  --dentist-teal-light: #14b8a6;
+  --white: #ffffff;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-700: #374151;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.dent-shell {
+  display: flex !important;
+  min-height: 100vh;
+  width: 100%;
+  background: var(--gray-50);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Sidebar */
+.dent-aside {
+  width: 280px;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--dentist-teal) 0%, var(--dentist-teal-dark) 100%);
+  color: var(--white);
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1000;
+  transition: transform 0.3s ease;
+}
+
+.dent-aside.collapsed {
+  transform: translateX(-280px);
+}
+
+/* Brand Section */
+.dent-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dent-logo {
+  width: 48px;
+  height: 48px;
+  background: var(--white);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.dent-brand-title {
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--white);
+}
+
+.dent-brand-sub {
+  font-size: 12px;
+  opacity: 0.8;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Navigation */
+.dent-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.dent-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.dent-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--white);
+}
+
+.dent-link.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--white);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.dent-ico {
+  font-size: 20px;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Profile Section */
+.dent-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dent-profile-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--white);
+  transition: all 0.2s ease;
+}
+
+.dent-profile-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dent-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--white);
+  flex-shrink: 0;
+}
+
+.dent-prof-text {
+  overflow: hidden;
+}
+
+.dent-prof-name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dent-prof-role {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.dent-logout {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: var(--white);
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dent-logout:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Main Content */
+.dent-main {
+  flex: 1;
+  min-width: 0;
+  background: var(--gray-50);
+  min-height: 100vh;
+  margin-left: 280px;
+}
+
+.dent-topbar {
+  background: var(--white);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.dent-toggle-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-700);
+  transition: all 0.2s ease;
+}
+
+.dent-toggle-btn:hover {
+  background: var(--gray-100);
+  border-color: var(--dentist-teal-light);
+}
+
+.dent-page-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.dent-content {
+  padding: 24px;
+}
+
+/* Mobile Overlay */
+.dent-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.dent-overlay.active {
+  display: block;
+  opacity: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dent-shell {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dent-aside {
+    transform: translateX(-280px);
+    position: fixed;
+  }
+
+  .dent-aside.mobile-open {
+    transform: translateX(0);
+  }
+
+  .dent-main {
+    margin-left: 0 !important;
+  }
+
+  .dent-topbar {
+    padding: 12px 16px;
+  }
+
+  .dent-content {
+    padding: 16px;
+  }
+}
+
+/* Scrollbar Styling */
+.dent-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dent-nav::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.dent-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.dent-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
