@@ -981,6 +981,42 @@ function CreatePlanModal({
               placeholder="Optional notes"
             />
           </div>
+
+          {/* Selected Patient Queue Information */}
+          {form.patientCode && (() => {
+            const selectedPatient = patientOptions.find(p => p.code === form.patientCode);
+            return selectedPatient ? (
+              <div className="selected-patient-info">
+                <div className="patient-info-card">
+                  <h4 className="patient-info-title">Selected Patient Information</h4>
+                  <div className="patient-info-grid">
+                    <div className="patient-info-item">
+                      <label>QUEUE NUMBER:</label>
+                      <span className="queue-number">{selectedPatient.queueNo || 'N/A'}</span>
+                    </div>
+                    <div className="patient-info-item">
+                      <label>APPOINTMENT TIME:</label>
+                      <span className="appointment-time">
+                        {selectedPatient.time ? 
+                          new Date(selectedPatient.time).toLocaleTimeString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true 
+                          }) : 'N/A'
+                        }
+                      </span>
+                    </div>
+                    <div className="patient-info-item">
+                      <label>STATUS:</label>
+                      <span className={`status-badge ${selectedPatient.status?.toLowerCase().replace('_', '-') || 'unknown'}`}>
+                        {selectedPatient.status?.toUpperCase() || 'UNKNOWN'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null;
+          })()}
         </div>
 
         <div className="tp-modal-footer">

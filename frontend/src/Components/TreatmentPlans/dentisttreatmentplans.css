@@ -737,3 +737,118 @@
   color: #374151;
   font-weight: 600;
 }
+
+/* Selected Patient Information Styles */
+.selected-patient-info {
+  margin-top: 1.5rem;
+}
+
+.patient-info-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.patient-info-title {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.patient-info-title::before {
+  content: "👤";
+  font-size: 1.125rem;
+}
+
+.patient-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.patient-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.patient-info-item label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.patient-info-item span {
+  font-size: 0.875rem;
+  color: #374151;
+  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+
+.queue-number {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+  color: #1e40af !important;
+}
+
+.appointment-time {
+  background: #fef3c7 !important;
+  border-color: #fde68a !important;
+  color: #92400e !important;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: none !important;
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+.status-badge.waiting {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.status-badge.called {
+  background: #dbeafe !important;
+  color: #1e40af !important;
+}
+
+.status-badge.in-treatment {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.status-badge.completed {
+  background: #e0e7ff !important;
+  color: #3730a3 !important;
+}
+
+.status-badge.no-show {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .patient-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
