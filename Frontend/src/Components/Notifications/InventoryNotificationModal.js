@@ -8,7 +8,7 @@ const InventoryNotificationModal = ({ isOpen, onClose, dentistCode, onNotificati
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch notifications
+  // Fetch inventory requests
   const fetchNotifications = async () => {
     if (!dentistCode) return;
     
@@ -17,7 +17,7 @@ const InventoryNotificationModal = ({ isOpen, onClose, dentistCode, onNotificati
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/api/inventory-notifications`, {
+      const response = await fetch(`${API_BASE}/inventory/requests?dentistCode=${encodeURIComponent(dentistCode)}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -25,61 +25,26 @@ const InventoryNotificationModal = ({ isOpen, onClose, dentistCode, onNotificati
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch notifications');
+        throw new Error('Failed to fetch inventory requests');
       }
 
       const data = await response.json();
-      const dentistNotifications = data.data?.filter(notification => 
-        notification.dentistCode === dentistCode
-      ) || [];
+      const requests = data.requests || [];
       
-      setNotifications(dentistNotifications);
+      setNotifications(requests);
       
-      // Update notification count
-      const unreadCount = dentistNotifications.filter(n => !n.read).length;
-      onNotificationCountChange(unreadCount);
+      // Update notification count - count pending requests as "unread"
+      const pendingCount = requests.filter(r => r.status === 'Pending').length;
+      onNotificationCountChange(pendingCount);
       
     } catch (err) {
-      console.error('Error fetching notifications:', err);
+      console.error('Error fetching inventory requests:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Mark notification as read
-  const markAsRead = async (notificationId) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/api/inventory-notifications/${notificationId}/read`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to mark notification as read');
-      }
-
-      // Update local state
-      setNotifications(prev => 
-        prev.map(notification => 
-          notification._id === notificationId 
-            ? { ...notification, read: true, readAt: new Date() }
-            : notification
-        )
-      );
-
-      // Update notification count
-      const unreadCount = notifications.filter(n => !n.read && n._id !== notificationId).length;
-      onNotificationCountChange(unreadCount);
-      
-    } catch (err) {
-      console.error('Error marking notification as read:', err);
-    }
-  };
 
   // Fetch notifications when modal opens
   useEffect(() => {
@@ -116,7 +81,7 @@ const InventoryNotificationModal = ({ isOpen, onClose, dentistCode, onNotificati
     <div className="inventory-notification-overlay" onClick={onClose}>
       <div className="inventory-notification-modal" onClick={(e) => e.stopPropagation()}>
         <div className="inventory-notification-header">
-          <h3>📦 Inventory Notifications</h3>
+          <h3>📦 Inventory Requests Status</h3>
           <button className="inventory-notification-close" onClick={onClose}>
             ×
           </button>
@@ -141,35 +106,50 @@ const InventoryNotificationModal = ({ isOpen, onClose, dentistCode, onNotificati
 
           {!loading && !error && notifications.length === 0 && (
             <div className="inventory-notification-empty">
-              <p>📭 No inventory notifications found</p>
+              <p>📭 No inventory requests found</p>
             </div>
           )}
 
           {!loading && !error && notifications.length > 0 && (
             <div className="inventory-notification-list">
-              {notifications.map((notification) => (
+              {notifications.map((request) => (
                 <div 
-                  key={notification._id} 
-                  className={`inventory-notification-item ${!notification.read ? 'unread' : ''}`}
-                  onClick={() => !notification.read && markAsRead(notification._id)}
+                  key={request._id} 
+                  className={`inventory-notification-item ${request.status === 'Pending' ? 'unread' : ''}`}
                 >
                   <div className="notification-header">
                     <div className="notification-status">
                       <span 
                         className="status-dot" 
-                        style={{ backgroundColor: getStatusColor(notification.status) }}
+                        style={{ backgroundColor: getStatusColor(request.status) }}
                       ></span>
-                      <span className="status-text">{notification.status}</span>
+                      <span className="status-text">{request.status}</span>
                     </div>
                     <div className="notification-date">
-                      {formatDate(notification.createdAt)}
+                      {formatDate(request.createdAt)}
                     </div>
+                  </div>
+
+                  <div className="notification-request-info">
+                    <div className="request-code">
+                      <strong>Request Code:</strong> {request.requestCode}
+                    </div>
+                    {request.approvedBy && (
+                      <div className="approved-by">
+                        <strong>Approved by:</strong> {request.approvedBy}
+                      </div>
+                    )}
+                    {request.approvedAt && (
+                      <div className="approved-at">
+                        <strong>Approved at:</strong> {formatDate(request.approvedAt)}
+                      </div>
+                    )}
                   </div>
 
                   <div className="notification-items">
                     <h4>Requested Items:</h4>
                     <ul>
-                      {notification.items.map((item, index) => (
+                      {request.items.map((item, index) => (
                         <li key={index}>
                           <strong>{item.itemName}</strong> 
                           {item.itemCode && <span className="item-code">({item.itemCode})</span>}
@@ -179,16 +159,16 @@ const InventoryNotificationModal = ({ isOpen, onClose, dentistCode, onNotificati
                     </ul>
                   </div>
 
-                  {notification.notes && (
+                  {request.notes && (
                     <div className="notification-notes">
-                      <strong>Notes:</strong> {notification.notes}
+                      <strong>Notes:</strong> {request.notes}
                     </div>
                   )}
 
-                  {!notification.read && (
+                  {request.status === 'Pending' && (
                     <div className="notification-unread-indicator">
                       <span className="unread-dot"></span>
-                      <span>Click to mark as read</span>
+                      <span>Awaiting manager approval</span>
                     </div>
                   )}
                 </div>
