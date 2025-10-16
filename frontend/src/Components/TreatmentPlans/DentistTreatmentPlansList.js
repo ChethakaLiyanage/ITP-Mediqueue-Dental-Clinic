@@ -72,19 +72,29 @@ export default function TreatmentPlansList() {
         // Only include patients with "in_treatment" status
         if (code && status.toLowerCase() === "in_treatment") {
           const name = await getPatientName(code);
+          const timeRaw = row?.appointment_date || row?.date;
+          const time = timeRaw ? new Date(timeRaw) : null;
+          const queueNo = row?.queueCode || row?.queueNo || "";
           opts.push({ 
             code, 
             name, 
             status,
+            time,
+            queueNo,
             disabled: false // All in_treatment patients are selectable
           });
         } else if (code) {
           // Include other patients but mark them as disabled
           const name = await getPatientName(code);
+          const timeRaw = row?.appointment_date || row?.date;
+          const time = timeRaw ? new Date(timeRaw) : null;
+          const queueNo = row?.queueCode || row?.queueNo || "";
           opts.push({ 
             code, 
             name, 
             status,
+            time,
+            queueNo,
             disabled: true // Other status patients are not selectable
           });
         }
@@ -238,7 +248,10 @@ export default function TreatmentPlansList() {
         if (!code) continue;
         const name = await getPatientName(code);
         const status = row?.status || row?.queueStatus || "";
-        opts.push({ code, name, status });
+        const timeRaw = row?.appointment_date || row?.date;
+        const time = timeRaw ? new Date(timeRaw) : null;
+        const queueNo = row?.queueCode || row?.queueNo || "";
+        opts.push({ code, name, status, time, queueNo });
       }
 
       // Sort by name
