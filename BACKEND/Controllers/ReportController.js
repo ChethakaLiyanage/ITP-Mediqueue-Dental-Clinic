@@ -1,9 +1,9 @@
 const PDFDocument = require("pdfkit");
-const Appointment = require("../Model/Appointment");
-const Dentist = require("../Model/Dentist");
-const Feedback = require("../Model/Feedback");
-const InventoryItem = require("../Model/InventoryItem");
-const InventoryMovement = require("../Model/InventoryMovement");
+const Appointment = require("../Model/AppointmentModel");
+const Dentist = require("../Model/DentistModel");
+const Feedback = require("../Model/FeedbackModel");
+const InventoryItem = require("../Model/Inventory");
+const InventoryMovement = require("../Model/InventoryRequest");
 
 // GET /api/manager/reports/overview
 const getOverview = async (req, res) => {
@@ -247,7 +247,7 @@ const exportInventoryPdf = async (req, res) => {
 // GET /api/manager/reports/stock-requests.csv
 const exportStockRequestsCsv = async (req, res) => {
 	try {
-		const StockRequest = require("../Model/StockRequest");
+		const StockRequest = require("../Model/InventoryRequest");
 		const requests = await StockRequest.find({}).populate('item').sort({ createdAt: -1 });
 		const currentDate = new Date().toLocaleDateString();
 		
@@ -296,7 +296,7 @@ const exportStockRequestsCsv = async (req, res) => {
 // GET /api/manager/reports/comprehensive.pdf
 const exportComprehensivePdf = async (req, res) => {
 	try {
-		const StockRequest = require("../Model/StockRequest");
+		const StockRequest = require("../Model/InventoryRequest");
 		const [items, requests, overview, workload] = await Promise.all([
 			InventoryItem.find({}).sort({ name: 1 }),
 			StockRequest.find({}).populate('item').sort({ createdAt: -1 }),

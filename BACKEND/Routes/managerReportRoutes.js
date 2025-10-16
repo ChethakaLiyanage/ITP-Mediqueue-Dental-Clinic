@@ -8,7 +8,7 @@ const {
 	exportInventoryPdf,
 	exportStockRequestsCsv,
 	exportComprehensivePdf
-} = require("../Controlers/ReportsController");
+} = require("../Controllers/ReportController");
 
 router.get("/overview", getOverview);
 router.get("/dentist-workload", dentistWorkload);

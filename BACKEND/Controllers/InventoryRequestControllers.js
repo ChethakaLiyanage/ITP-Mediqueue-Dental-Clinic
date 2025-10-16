@@ -1,6 +1,6 @@
 const InventoryRequest = require("../Model/InventoryRequest");
 const InventoryNotification = require("../Model/InventoryNotificationModel");
-const Inventory = require("../Model/InventoryModel");
+const Inventory = require("../Model/Inventory");
 
 // Get all inventory requests
 exports.getAllInventoryRequests = async (req, res) => {
