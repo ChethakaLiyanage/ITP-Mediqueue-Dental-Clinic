@@ -1,0 +1,195 @@
+/* Container */
+.inventory-requests-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Loading State */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #4a5568;
+}
+
+.loading-container .spinner {
+  animation: spin 1s linear infinite;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: #4299e1;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Table Styles */
+.requests-table-container {
+  overflow-x: auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+}
+
+.requests-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.requests-table th,
+.requests-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.requests-table th {
+  background-color: #f7fafc;
+  font-weight: 600;
+  color: #4a5568;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.requests-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-approved {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-rejected {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status-fulfilled {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+/* Action Buttons */
+.actions-cell {
+  white-space: nowrap;
+}
+
+.actions-cell button {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  margin: 2px;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.actions-cell button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.actions-cell button .spinner {
+  margin-right: 4px;
+  animation: spin 1s linear infinite;
+}
+
+.btn-approve {
+  background-color: #48bb78;
+  color: white;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background-color: #38a169;
+}
+
+.btn-reject {
+  background-color: #f56565;
+  color: white;
+}
+
+.btn-reject:hover:not(:disabled) {
+  background-color: #e53e3e;
+}
+
+.btn-fulfill {
+  background-color: #4299e1;
+  color: white;
+}
+
+.btn-fulfill:hover:not(:disabled) {
+  background-color: #3182ce;
+}
+
+/* Items List */
+.items-list {
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.item-row {
+  padding: 4px 0;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.item-row:last-child {
+  border-bottom: none;
+}
+
+/* No Requests Message */
+.no-requests {
+  text-align: center;
+  padding: 40px;
+  color: #718096;
+  font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .inventory-requests-container {
+    padding: 10px;
+  }
+  
+  .requests-table th,
+  .requests-table td {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+  }
+  
+  .actions-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .actions-cell button {
+    width: 100%;
+    justify-content: center;
+  }
+}
