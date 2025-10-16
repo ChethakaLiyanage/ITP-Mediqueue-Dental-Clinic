@@ -145,7 +145,7 @@ export default function DashboardMetrics() {
 
       // Get today's treatment plans count
       try {
-        const plansRes = await authenticatedFetch(`${API}/treatmentplans/my`, {
+        const plansRes = await authenticatedFetch(`${API}/treatmentplans`, {
           method: 'GET'
         });
         const plansData = plansRes.data;
