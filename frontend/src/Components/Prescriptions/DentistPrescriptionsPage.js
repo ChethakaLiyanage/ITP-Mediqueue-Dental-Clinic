@@ -376,15 +376,52 @@ export default function PrescriptionsPage() {
                       <strong>Treatment Plan:</strong> If the selected patient has an active treatment plan, it will be automatically linked to this prescription. 
                       You can create prescriptions with or without treatment plans.
                     </p>
+                    
                     {form.planCode && (
-                      <p className="linked-plan-info">
-                        ✅ Linked to treatment plan: <strong>{form.planCode}</strong>
-                      </p>
+                      <div className="linked-plan-details">
+                        <div className="linked-plan-header">
+                          <span className="linked-plan-icon">✅</span>
+                          <span className="linked-plan-text">
+                            <strong>Linked to Treatment Plan:</strong> {form.planCode}
+                          </span>
+                        </div>
+                        <div className="treatment-plan-card">
+                          <div className="plan-info-grid">
+                            <div className="plan-info-item">
+                              <label>Plan Code:</label>
+                              <span>{form.planCode}</span>
+                            </div>
+                            <div className="plan-info-item">
+                              <label>Patient:</label>
+                              <span>{form.patientCode}</span>
+                            </div>
+                            <div className="plan-info-item full-width">
+                              <label>Status:</label>
+                              <span className="plan-status active">Active Treatment Plan</span>
+                            </div>
+                          </div>
+                          <p className="plan-note">
+                            This prescription will be automatically linked to the treatment plan for proper tracking and documentation.
+                          </p>
+                        </div>
+                      </div>
                     )}
+                    
                     {!form.planCode && form.patientCode && (
-                      <p className="no-plan-info">
-                        ℹ️ No active treatment plan found for this patient. Prescription will be created without a treatment plan link.
-                      </p>
+                      <div className="no-plan-details">
+                        <div className="no-plan-header">
+                          <span className="no-plan-icon">ℹ️</span>
+                          <span className="no-plan-text">
+                            <strong>No Active Treatment Plan</strong>
+                          </span>
+                        </div>
+                        <div className="no-plan-card">
+                          <p>No active treatment plan found for this patient. Prescription will be created without a treatment plan link.</p>
+                          <p className="plan-note">
+                            You can still create the prescription. A treatment plan can be linked later if needed.
+                          </p>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
