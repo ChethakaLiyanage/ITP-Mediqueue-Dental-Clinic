@@ -140,7 +140,7 @@ export default function DentistNav() {
             <button 
               className="dent-notification-btn" 
               onClick={() => setShowNotificationModal(true)}
-              title="Inventory Notifications"
+              title="Inventory Requests Status"
             >
               <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12.828 7H4.828zM4.828 17h8l-2.586-2.586a2 2 0 00-2.828 0L4.828 17z"/>
