@@ -90,13 +90,20 @@ const getMyTreatmentplans = async (req, res) => {
 // POST /treatmentplans
 const addTreatmentplans = async (req, res) => {
   try {
+    console.log('=== TREATMENT PLAN CREATION DEBUG ===');
+    console.log('Request body:', req.body);
+    console.log('Request user:', req.user);
+    
     const { patientCode, diagnosis, treatment_notes, version } = req.body;
 
     // force dentistCode from login if Dentist, otherwise allow body (e.g., Admin)
     const dentistCode =
       req.user?.role === "Dentist" ? req.user.dentistCode : req.body.dentistCode;
 
+    console.log('Extracted values:', { patientCode, dentistCode, diagnosis, treatment_notes, version });
+
     if (!patientCode || !dentistCode || !diagnosis) {
+      console.log('Validation failed:', { patientCode: !!patientCode, dentistCode: !!dentistCode, diagnosis: !!diagnosis });
       return res.status(400).json({
         message: "patientCode, dentistCode, and diagnosis are required",
       });
@@ -112,8 +119,15 @@ const addTreatmentplans = async (req, res) => {
       updated_date: new Date(),
     });
 
+    console.log('Treatment plan document created:', doc);
+    console.log('Saving treatment plan...');
+    
     await doc.save();
+    console.log('Treatment plan saved successfully:', doc);
+    
     await writeHistory("create", doc.toObject());
+    console.log('History written successfully');
+    
     return res.status(201).json({ treatmentplans: doc });
   } catch (err) {
     console.error("addTreatmentplans error:", err);

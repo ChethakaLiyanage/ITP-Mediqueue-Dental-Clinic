@@ -557,30 +557,51 @@ export default function TreatmentPlansList() {
             onClose={() => setCreating(false)}
             onChange={(patch) => setCreateForm((prev) => ({ ...prev, ...patch }))}
             onCreate={async () => {
+              console.log('=== FRONTEND TREATMENT PLAN CREATION DEBUG ===');
+              console.log('Form data:', createForm);
+              console.log('Dentist code:', dentistCode);
+              
               if (!createForm.patientCode || !createForm.diagnosis) {
                 alert("Please select a patient and enter a diagnosis.");
                 return;
               }
               try {
                 setSaving(true);
+                
+                const requestBody = {
+                  patientCode: createForm.patientCode,
+                  dentistCode,
+                  diagnosis: createForm.diagnosis,
+                  treatment_notes: createForm.treatment_notes,
+                };
+                
+                console.log('Request body:', requestBody);
+                console.log('Making API call to:', `${API_BASE}/treatmentplans`);
+                
                 const res = await authenticatedFetch(`${API_BASE}/treatmentplans`, {
                   method: "POST",
-                  body: JSON.stringify({
-                    patientCode: createForm.patientCode,
-                    dentistCode,
-                    diagnosis: createForm.diagnosis,
-                    treatment_notes: createForm.treatment_notes,
-                  }),
+                  body: JSON.stringify(requestBody),
                 });
+                
+                console.log('API response status:', res.status);
+                console.log('API response ok:', res.ok);
+                
                 const data = await res.json().catch(() => ({}));
+                console.log('API response data:', data);
+                
                 if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
                 
                 const created = data.treatmentplans || data.treatmentplan || null;
+                console.log('Created treatment plan:', created);
+                
                 if (created) setPlans((prev) => [created, ...prev]);
                 setCreating(false);
                 // Refresh dropdown patients after creating a new plan
                 fetchQueuePatients();
+                
+                console.log('Treatment plan created successfully!');
               } catch (e) {
+                console.error('Treatment plan creation error:', e);
                 alert(e.message || "Failed to create plan");
               } finally {
                 setSaving(false);
