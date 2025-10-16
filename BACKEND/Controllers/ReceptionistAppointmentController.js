@@ -417,6 +417,13 @@ async function confirmAppointment(req, res) {
       status: 'waiting',
     });
 
+    // ✅ Remove appointment from appointment table if it's today (2025-10-17)
+    const today = "2025-10-17";
+    if (dateStr === today) {
+      await Appointment.deleteOne({ appointmentCode });
+      console.log(`[confirmAppointment] Removed today's appointment from appointment table: ${appointmentCode}`);
+    }
+
     const timeStr = appt.appointment_date.toISOString().slice(11, 16);
     await sendApptConfirmed(appt.patient_code, {
       appointmentCode,
@@ -557,6 +564,13 @@ async function listAppointmentsForDay(req, res) {
     if (includePending === 'true') q.status = { $in: [CONFIRMED, PENDING] };
     else q.status = { $in: [CONFIRMED, 'completed'] };
 
+    // ✅ Exclude today's appointments (2025-10-17) since they should be in queue
+    const today = "2025-10-17";
+    if (date === today) {
+      console.log(`[listAppointmentsForDay] Excluding today's appointments (${today}) - they should be in queue`);
+      return res.status(200).json({ items: [] });
+    }
+
     const list = await Appointment.find(q)
       .select(
         'appointmentCode patient_code dentist_code appointment_date status origin patientType patientSnapshot createdByCode acceptedByCode canceledByCode acceptedAt createdAt reason'
@@ -564,7 +578,48 @@ async function listAppointmentsForDay(req, res) {
       .sort({ appointment_date: 1 })
       .lean();
 
-    return res.status(200).json({ items: list });
+    // Get patient names for registered patients
+    const patientCodes = list
+      .filter(appt => appt.patientType !== 'unregistered')
+      .map(appt => appt.patient_code);
+    
+    const patients = await Patient.find({ patientCode: { $in: patientCodes } })
+      .select('patientCode userId')
+      .populate('userId', 'name')
+      .lean();
+    
+    const patientNameMap = {};
+    patients.forEach(patient => {
+      if (patient.userId?.name) {
+        patientNameMap[patient.patientCode] = patient.userId.name;
+      }
+    });
+
+    // Get dentist names
+    const dentistCodes = [...new Set(list.map(appt => appt.dentist_code))];
+    const Dentist = require('../Model/DentistModel');
+    const dentists = await Dentist.find({ dentistCode: { $in: dentistCodes } })
+      .select('dentistCode userId')
+      .populate('userId', 'name')
+      .lean();
+    
+    const dentistNameMap = {};
+    dentists.forEach(dentist => {
+      if (dentist.userId?.name) {
+        dentistNameMap[dentist.dentistCode] = dentist.userId.name;
+      }
+    });
+
+    // Add patient names and dentist names to appointments
+    const enrichedList = list.map(appt => ({
+      ...appt,
+      patientName: appt.patientType === 'unregistered' 
+        ? (appt.patientSnapshot?.name || 'Unknown')
+        : (patientNameMap[appt.patient_code] || 'Unknown'),
+      dentistName: dentistNameMap[appt.dentist_code] || 'Unknown'
+    }));
+
+    return res.status(200).json({ items: enrichedList });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ message: e.message || 'Failed to list appointments' });

@@ -1142,9 +1142,12 @@ export default function ReceptionistAppointments() {
                 ) : groupedAppointments.length === 0 ? (
                   <div className="alert muted">No appointments</div>
                 ) : (
-                  groupedAppointments.map(({ dentist, list }) => (
+                  groupedAppointments.map(({ dentist, list }) => {
+                    // Get dentist name from the first appointment in the list
+                    const dentistName = list[0]?.dentistName || 'Unknown';
+                    return (
                     <div key={dentist} className="doctor-block">
-                      <h3 className="doctor-title">{dentist}</h3>
+                      <h3 className="doctor-title">{dentistName} - {dentist}</h3>
                       <table className="table">
                         <thead>
                           <tr>
@@ -1166,7 +1169,7 @@ export default function ReceptionistAppointments() {
                               <td>
                                 {a.patientType === "unregistered"
                                   ? a.patientSnapshot?.name || a.patient_code
-                                  : a.patient_code}
+                                  : `${a.patientName || 'Unknown'} - ${a.patient_code}`}
                               </td>
                               <td>{a.patientType || "registered"}</td>
                               <td>
@@ -1227,7 +1230,8 @@ export default function ReceptionistAppointments() {
                         </tbody>
                       </table>
                     </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>

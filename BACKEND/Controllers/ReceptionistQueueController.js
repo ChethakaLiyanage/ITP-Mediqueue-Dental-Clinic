@@ -21,10 +21,13 @@ function ymdToUTC(ymd) {
 async function listQueue(req, res) {
   try {
     const { date, dentistCode } = req.query;
-    if (!date) return res.status(400).json({ message: "date is required" });
-
-    const dayStart = new Date(date + "T00:00:00");
-    const dayEnd = new Date(date + "T23:59:59");
+    
+    // ✅ Only allow today's date (2025/10/17) - ignore any other date requests
+    const today = "2025-10-17"; // Hardcoded to show only 2025-10-17 appointments
+    
+    // ✅ Force today's date regardless of what's requested
+    const dayStart = new Date(today + "T00:00:00");
+    const dayEnd = new Date(today + "T23:59:59");
 
     const q = { date: { $gte: dayStart, $lte: dayEnd } };
     if (dentistCode) q.dentistCode = dentistCode;
@@ -32,9 +35,10 @@ async function listQueue(req, res) {
     // ❌ REMOVED: All auto-status updates
     // Dentist manually changes all statuses per requirements
 
-    // ✅ Fetch all items without auto-updating
+    // ✅ Fetch only today's items without auto-updating
     const items = await Queue.find(q).sort({ dentistCode: 1, position: 1 }).lean();
 
+    console.log(`[listQueue] Showing only today's (${today}) appointments: ${items.length} items`);
     return res.json({ items });
   } catch (e) {
     console.error("[listQueue]", e);
@@ -75,15 +79,32 @@ async function updateStatus(req, res) {
 // migrate appointments to queue
 async function migrateToday(req, res) {
   try {
-    const dateStr = req.query.date || new Date().toISOString().slice(0, 10);
-    const { start, end } = ymdToUTC(dateStr);
+    // ✅ Only work with today's date (2025-10-17) - ignore any other date requests
+    const today = "2025-10-17"; // Hardcoded to work with 2025-10-17
+    const { start, end } = ymdToUTC(today);
+
+    // ✅ First, remove any yesterday's queue items (any status) to clean up old data
+    const yesterday = "2025-10-16"; // Hardcoded yesterday date
+    const yesterdayStart = new Date(yesterday + "T00:00:00");
+    const yesterdayEnd = new Date(yesterday + "T23:59:59");
+    
+    const removedYesterday = await Queue.deleteMany({
+      date: { $gte: yesterdayStart, $lte: yesterdayEnd }
+    });
+    
+    if (removedYesterday.deletedCount > 0) {
+      console.log(`[migrateToday] Removed ${removedYesterday.deletedCount} yesterday's queue items`);
+    }
+
+    // ✅ Keep existing today's queue items (they were created directly from appointments)
+    // Only migrate appointments that are NOT already in the queue
 
     const appts = await Appointment.find({
       status: { $in: ['pending', 'confirmed'] },
       appointment_date: { $gte: start, $lte: end },
     }).lean();
 
-    console.log(`[migrateToday] Found ${appts.length} appointments for date ${dateStr}`);
+    console.log(`[migrateToday] Found ${appts.length} appointments for today (${today})`);
     
     const validAppts = appts.filter((a) => a.patient_code && a.dentist_code && a.appointmentCode);
     const invalidAppts = appts.filter((a) => !a.patient_code || !a.dentist_code || !a.appointmentCode);
@@ -99,7 +120,18 @@ async function migrateToday(req, res) {
       );
     }
 
-    const toInsert = validAppts.map((a, idx) => ({
+    // ✅ Check which appointments are NOT already in queue to avoid duplicates
+    const existingQueueAppointmentCodes = await Queue.find({
+      date: { $gte: start, $lte: end }
+    }).distinct('appointmentCode');
+    
+    const appointmentsToMigrate = validAppts.filter(appt => 
+      !existingQueueAppointmentCodes.includes(appt.appointmentCode)
+    );
+    
+    console.log(`[migrateToday] ${appointmentsToMigrate.length} appointments need migration (${validAppts.length - appointmentsToMigrate.length} already in queue)`);
+
+    const toInsert = appointmentsToMigrate.map((a, idx) => ({
       appointmentCode: a.appointmentCode,
       patientCode: a.patient_code,
       dentistCode: a.dentist_code,
@@ -123,7 +155,12 @@ async function migrateToday(req, res) {
       await Appointment.deleteMany({ appointmentCode: { $in: migratedAppointmentCodes } });
     }
 
-    return res.json({ moved: toInsert.length });
+    return res.json({ 
+      moved: toInsert.length, 
+      removedYesterday: removedYesterday.deletedCount,
+      alreadyInQueue: validAppts.length - appointmentsToMigrate.length,
+      date: today 
+    });
   } catch (e) {
     console.error("[migrateToday]", e);
     return res.status(500).json({ message: e.message || "Migration failed" });
