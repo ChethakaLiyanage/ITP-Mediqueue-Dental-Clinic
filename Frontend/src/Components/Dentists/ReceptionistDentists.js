@@ -11,10 +11,83 @@ function formatSchedule(sch) {
     const entries = Object.entries(sch);
     if (entries.length === 0) return "Not available";
     
+    // Debug log to see what we're getting
+    console.log("Schedule data:", sch);
+    console.log("Schedule entries:", entries);
+    
     return entries
-      .map(([day, hours]) => `${day}: ${hours || "Not available"}`)
-      .join('\n'); // Changed from ' | ' to '\n' for line breaks
-  } catch {
+      .map(([day, hours]) => {
+        console.log(`Processing day: ${day}, hours:`, hours, `type: ${typeof hours}`);
+        
+        // Handle different schedule formats
+        if (typeof hours === 'string') {
+          return `${day}: ${hours}`;
+        } else if (typeof hours === 'object' && hours !== null) {
+          // If hours is an object, try multiple approaches to extract time information
+          
+          // Approach 1: Look for start/end time properties
+          const start = hours.start || hours.from || hours.startTime || hours.begin;
+          const end = hours.end || hours.to || hours.endTime || hours.finish;
+          
+          if (start && end) {
+            return `${day}: ${start}-${end}`;
+          }
+          
+          // Approach 2: Look for a time string property
+          if (hours.time && typeof hours.time === 'string') {
+            return `${day}: ${hours.time}`;
+          }
+          
+          // Approach 3: Look for hours property
+          if (hours.hours && typeof hours.hours === 'string') {
+            return `${day}: ${hours.hours}`;
+          }
+          
+          // Approach 4: Look for period property
+          if (hours.period && typeof hours.period === 'string') {
+            return `${day}: ${hours.period}`;
+          }
+          
+          // Approach 5: Try to extract any string value from the object
+          const stringValues = Object.values(hours).filter(val => 
+            typeof val === 'string' && val.trim() && 
+            val !== '09:00' && val !== '17:00' &&
+            !val.includes('object') && !val.includes('Object')
+          );
+          
+          if (stringValues.length > 0) {
+            return `${day}: ${stringValues[0]}`;
+          }
+          
+          // Approach 6: If it's an array, join the values
+          if (Array.isArray(hours) && hours.length > 0) {
+            const validValues = hours.filter(val => typeof val === 'string' && val.trim());
+            if (validValues.length > 0) {
+              return `${day}: ${validValues.join(', ')}`;
+            }
+          }
+          
+          // Approach 7: Try to stringify and extract meaningful parts
+          const objStr = JSON.stringify(hours);
+          console.log(`Object string for ${day}:`, objStr);
+          
+          // If the object contains time-like patterns, try to extract them
+          const timePattern = /(\d{1,2}:\d{2})/g;
+          const timeMatches = objStr.match(timePattern);
+          if (timeMatches && timeMatches.length >= 2) {
+            return `${day}: ${timeMatches[0]}-${timeMatches[1]}`;
+          } else if (timeMatches && timeMatches.length === 1) {
+            return `${day}: ${timeMatches[0]}`;
+          }
+          
+          return `${day}: Not available`;
+        } else {
+          return `${day}: Not available`;
+        }
+      })
+      .join('\n'); // Use line breaks for better readability
+  } catch (error) {
+    console.error('Error formatting schedule:', error, sch);
     return "Not available";
   }
 }
@@ -41,12 +114,12 @@ export default function ReceptionistDentists() {
     [token]
   );
 
-  // Build URL with both filters
+  // Build URL with both filters - use receptionist endpoint
   function buildListUrl({ code = "", spec = "" } = {}) {
     const qs = new URLSearchParams();
     if (code) qs.set("q", code.trim());                 // code (back-end matches code/specialization)
     if (spec) qs.set("specialization", spec);           // explicit specialization filter
-    return `${API_BASE}/dentists${qs.toString() ? `?${qs}` : ""}`;
+    return `${API_BASE}/receptionist/dentists${qs.toString() ? `?${qs}` : ""}`;
   }
 
   async function fetchDentists({ code = codeQuery, spec = specialization } = {}) {
@@ -62,189 +135,57 @@ export default function ReceptionistDentists() {
                    Array.isArray(data.items) ? data.items : 
                    Array.isArray(data.dentists) ? data.dentists : [];
         
-        // Debug log to see what data we're getting
         console.log("Raw dentist data:", data);
         console.log("Processed items:", items);
-        if (items.length > 0) {
-          console.log("First dentist item:", items[0]);
-          console.log("First dentist userId:", items[0].userId);
-          console.log("First dentist photo:", items[0].photo);
-          console.log("First dentist availability_schedule:", items[0].availability_schedule);
-          console.log("First dentist specialization:", items[0].specialization);
-        }
         
-        // Try to fetch additional user details and complete dentist data for each dentist
-        const enrichedItems = await Promise.all(
-          items.map(async (dentist) => {
-            try {
-              // Try to get complete dentist details first
-              let enrichedDentist = dentist;
-              if (dentist._id) {
-                try {
-                  console.log(`Fetching complete dentist data for ${dentist.dentistCode} with ID: ${dentist._id}`);
-                  
-                  // The regular dentist endpoint doesn't include photo field due to .select() limitation
-                  // Let's try to construct the photo URL directly from the database structure we saw
-                  // Based on the MongoDB data, the photo URL should be: http://localhost:5000/uploads/dentists/[filename]
-                  
-                  console.log(`Attempting to get complete data for ${dentist.dentistCode}...`);
-                  
-                  // Try multiple approaches to get complete dentist data including specialization
-                  let dentistRes = await fetch(`${API_BASE}/dentists/${dentist._id}`, { headers });
-                  console.log(`Regular dentist API response status: ${dentistRes.status}`);
-                  
-                  if (dentistRes.ok) {
-                    const dentistData = await dentistRes.json();
-                    console.log(`Complete dentist data for ${dentist.dentistCode}:`, dentistData);
-                    console.log(`Photo field in response:`, dentistData.photo);
-                    console.log(`Photo URL in response:`, dentistData.photo?.url);
-                    console.log(`Specialization field in response:`, dentistData.specialization);
-                    
-                    // The API doesn't return photo, but we know from MongoDB that the dentist has a photo
-                    // Let's try to construct the photo URL based on the pattern we saw in the database
-                    // The photo URL pattern was: http://localhost:5000/uploads/dentists/dentist_1758644441078-294824794.jpeg
-                    
-                    // Since we can't get the exact filename from the API, let's try a few approaches:
-                    // 1. Try to get the photo by making a direct request to the uploads directory
-                    // 2. Use the dentistCode to construct a potential photo filename
-                    
-                    // Based on the MongoDB data you showed, the exact photo URL was:
-                    // http://localhost:5000/uploads/dentists/dentist_1758644441078-294824794.jpeg
-                    // Let's try the exact URL first, then try variations
-                    
-                    const exactPhotoUrl = `${API_BASE}/uploads/dentists/dentist_1758644441078-294824794.jpeg`;
-                    const potentialPhotoUrl = `${API_BASE}/uploads/dentists/dentist_${dentist.dentistCode}.jpeg`;
-                    
-                    console.log(`Trying exact photo URL: ${exactPhotoUrl}`);
-                    console.log(`Trying potential photo URL: ${potentialPhotoUrl}`);
-                    
-                    // Test if the exact photo exists first
-                    let photoFound = false;
-                    let foundPhotoUrl = null;
-                    
-                    try {
-                      const exactPhotoRes = await fetch(exactPhotoUrl, { method: 'HEAD' });
-                      if (exactPhotoRes.ok) {
-                        console.log(`✅ Exact photo found at: ${exactPhotoUrl}`);
-                        photoFound = true;
-                        foundPhotoUrl = exactPhotoUrl;
+        // Process dentist data to ensure proper photo URLs
+        const processedItems = items.map(dentist => {
+          // Handle photo URL - use avatarUrl from receptionist endpoint or construct fallback
+          let photoUrl = null;
+          if (dentist.avatarUrl && typeof dentist.avatarUrl === 'string' && dentist.avatarUrl.trim()) {
+            // If avatarUrl is a full URL, use it directly
+            if (dentist.avatarUrl.startsWith('http')) {
+              photoUrl = dentist.avatarUrl;
                       } else {
-                        console.log(`❌ Exact photo not found at: ${exactPhotoUrl}`);
-                        
-                        // Try the potential URL
-                        const potentialPhotoRes = await fetch(potentialPhotoUrl, { method: 'HEAD' });
-                        if (potentialPhotoRes.ok) {
-                          console.log(`✅ Potential photo found at: ${potentialPhotoUrl}`);
-                          photoFound = true;
-                          foundPhotoUrl = potentialPhotoUrl;
-                        } else {
-                          console.log(`❌ Potential photo not found at: ${potentialPhotoUrl}`);
-                        }
-                      }
-                    } catch (photoErr) {
-                      console.log(`Photo test failed:`, photoErr);
-                    }
-                    
-                    if (photoFound && foundPhotoUrl) {
-                      enrichedDentist = { 
-                        ...dentist, 
-                        ...dentistData, 
-                        photo: { url: foundPhotoUrl }
-                      };
-                      console.log(`🎉 Using real photo: ${foundPhotoUrl}`);
-                    } else {
-                      enrichedDentist = { ...dentist, ...dentistData };
-                      console.log(`📷 No real photo found, will use fallback avatar`);
-                    }
-                    
-                    // Try to get specialization from the database directly
-                    // Since we know from MongoDB that this dentist has "Orthodontics" specialization
-                    // Let's try to construct the specialization based on the known data
-                    if (dentist.dentistCode === "Dr-0004") {
-                      console.log(`🔍 Adding known specialization for ${dentist.dentistCode}: Orthodontics`);
-                      enrichedDentist = {
-                        ...enrichedDentist,
-                        specialization: "Orthodontics"
-                      };
-                    }
-                  } else {
-                    console.error(`Failed to fetch dentist details for ${dentist.dentistCode}, status: ${dentistRes.status}`);
-                    const errorText = await dentistRes.text();
-                    console.error(`Error response:`, errorText);
-                  }
-                } catch (err) {
-                  console.error(`Failed to fetch dentist details for ${dentist.dentistCode}:`, err);
-                }
-              }
-
-              // Try to get user details if userId exists
-              if (enrichedDentist.userId && enrichedDentist.userId._id) {
-                const userRes = await fetch(`${API_BASE}/users/${enrichedDentist.userId._id}`, { headers });
-                if (userRes.ok) {
-                  const userData = await userRes.json();
-                  console.log(`User data for ${enrichedDentist.dentistCode}:`, userData);
-                  
-                  // Handle different user data response formats
-                  const actualUser = userData.users || userData.user || userData;
-                  console.log(`Actual user data:`, actualUser);
-                  console.log(`User contact_no:`, actualUser.contact_no);
-                  
-                  enrichedDentist = {
-                    ...enrichedDentist,
-                    userId: {
-                      ...enrichedDentist.userId,
-                      contact_no: actualUser.contact_no || enrichedDentist.userId.contact_no
-                    }
-                  };
-                }
-              }
-              
-              // Add mock data for missing fields (only if not provided by backend)
-              const mockEnrichedDentist = {
-                ...enrichedDentist,
-                // Only add mock specialization if backend doesn't provide it
-                specialization: enrichedDentist.specialization || "General Dentistry",
-                // Only add mock schedule if backend doesn't provide it
-                availability_schedule: enrichedDentist.availability_schedule || {
-                  "Monday": "09:00-17:00",
-                  "Tuesday": "09:00-17:00", 
-                  "Wednesday": "09:00-17:00",
-                  "Thursday": "09:00-17:00",
-                  "Friday": "09:00-17:00"
-                }
-              };
-              
-              console.log(`Final dentist data for ${enrichedDentist.dentistCode}:`, {
-                hasRealPhoto: !!enrichedDentist.photo?.url,
-                photoUrl: enrichedDentist.photo?.url,
-                specialization: mockEnrichedDentist.specialization,
-                hasRealSchedule: !!enrichedDentist.availability_schedule,
-                availability_schedule: mockEnrichedDentist.availability_schedule
-              });
-              
-              return mockEnrichedDentist;
-            } catch (err) {
-              console.error(`Failed to fetch details for ${dentist.dentistCode}:`, err);
-              return dentist;
+              // If avatarUrl is a path, make it a full URL
+              photoUrl = `${API_BASE}${dentist.avatarUrl.startsWith('/') ? '' : '/'}${dentist.avatarUrl}`;
             }
-          })
-        );
+          } else if (dentist.photo?.url && typeof dentist.photo.url === 'string' && dentist.photo.url.trim()) {
+            // Fallback to photo.url if available
+            if (dentist.photo.url.startsWith('http')) {
+              photoUrl = dentist.photo.url;
+                    } else {
+              photoUrl = `${API_BASE}${dentist.photo.url.startsWith('/') ? '' : '/'}${dentist.photo.url}`;
+            }
+          }
+          
+          return {
+            ...dentist,
+            photo: photoUrl ? { url: photoUrl } : null,
+            // Ensure userId structure is consistent
+            userId: dentist.userId ? {
+              ...dentist.userId,
+              name: dentist.userId.name || dentist.name,
+              contact_no: dentist.userId.contact_no || dentist.contact_no
+            } : {
+              name: dentist.name,
+              contact_no: dentist.contact_no
+            }
+          };
+        });
         
-        setItems(enrichedItems);
+        setItems(processedItems);
         
-        // Extract specializations from enriched data
-        const specializations = enrichedItems
+        // Extract specializations from processed data
+        const specializations = processedItems
           .map(d => d.specialization)
-          .filter(Boolean)
-          .filter(spec => spec !== "General Dentistry"); // Filter out mock data
+          .filter(Boolean);
         
         const uniqueSpecializations = Array.from(new Set(specializations)).sort();
-        console.log("Specializations found from enriched data:", uniqueSpecializations);
+        console.log("Specializations found:", uniqueSpecializations);
         
         // Update specialization options with real data
-        if (uniqueSpecializations.length > 0) {
           setSpecOptions(uniqueSpecializations);
-        }
       } else {
         const errorMsg = data?.message || `HTTP ${res.status}`;
         console.error("Failed to fetch dentists:", errorMsg);
@@ -260,60 +201,28 @@ export default function ReceptionistDentists() {
     }
   }
 
-  // NEW: fetch specializations from backend; fallback to deriving from list
+  // Fetch specializations from backend
   async function fetchSpecializations() {
     setLoadingSpecs(true);
     try {
-      // Try to get specializations from the main dentists list and derive them
-      await fallbackLoadSpecs();
-    } catch {
-      await fallbackLoadSpecs();
-    } finally {
-      setLoadingSpecs(false);
-    }
-  }
-
-  async function fallbackLoadSpecs() {
-    try {
-      console.log("🔍 Attempting to fetch specializations...");
-      
-      // Try to get specializations by fetching individual dentist records
-      // Since the main endpoint doesn't return specializations, we'll try to get them
-      // from the individual dentist data we're already fetching
-      
-      const res2 = await fetch(`${API_BASE}/dentists`, { headers });
-      const data2 = await res2.json();
-      const items = Array.isArray(data2) ? data2 : 
-                   Array.isArray(data2.items) ? data2.items : 
-                   Array.isArray(data2.dentists) ? data2.dentists : [];
-      
-      console.log("Specialization data from main endpoint:", data2);
-      console.log("Specialization items:", items);
-      
-      // Since the main endpoint doesn't return specializations, let's try to get them
-      // from individual dentist records or use known specializations
-      
-      // For now, let's use the known specializations from the database
-      // Based on the MongoDB data you showed, we know there's at least "Orthodontics"
-      const knownSpecializations = [
-        "Orthodontics",
-        "General Dentistry", 
-        "Oral Surgery",
-        "Periodontics",
-        "Endodontics",
-        "Prosthodontics",
-        "Pediatric Dentistry",
-        "Oral Pathology"
-      ];
-      
-      console.log("Using known specializations:", knownSpecializations);
-      setSpecOptions(knownSpecializations);
-      
+      const res = await fetch(`${API_BASE}/receptionist/dentists/specializations`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        const specializations = data.specializations || [];
+        console.log("Specializations from backend:", specializations);
+        setSpecOptions(specializations);
+      } else {
+        // Fallback to common specializations if endpoint fails
+        const fallbackSpecs = ["General Dentistry", "Orthodontics", "Oral Surgery"];
+        setSpecOptions(fallbackSpecs);
+      }
     } catch (e) {
-      console.error("Failed to derive specializations:", e);
+      console.error("Failed to fetch specializations:", e);
       // Fallback to common specializations
       const fallbackSpecs = ["General Dentistry", "Orthodontics", "Oral Surgery"];
       setSpecOptions(fallbackSpecs);
+    } finally {
+      setLoadingSpecs(false);
     }
   }
 
@@ -399,8 +308,6 @@ export default function ReceptionistDentists() {
                       src={
                         d.photo?.url && String(d.photo.url).trim()
                           ? d.photo.url
-                          : d.avatarUrl && String(d.avatarUrl).trim()
-                          ? d.avatarUrl
                           : "https://ui-avatars.com/api/?name=" +
                             encodeURIComponent(d.name || d.userId?.name || d.dentistCode || "Dr") +
                             "&background=4f46e5&color=ffffff&size=200"
@@ -412,11 +319,6 @@ export default function ReceptionistDentists() {
                         e.target.src = "https://ui-avatars.com/api/?name=" +
                           encodeURIComponent(d.name || d.userId?.name || d.dentistCode || "Dr") +
                           "&background=4f46e5&color=ffffff&size=200";
-                      }}
-                      onLoad={() => {
-                        console.log(`Image loaded for ${d.dentistCode}:`, d.photo?.url || d.avatarUrl);
-                        console.log(`Image src being used:`, d.photo?.url || d.avatarUrl || "fallback avatar");
-                        console.log(`Full dentist data for ${d.dentistCode}:`, d);
                       }}
                     />
                   </div>
@@ -441,7 +343,7 @@ export default function ReceptionistDentists() {
                     </p>
 
                     <p className="dentist-contact">
-                      <strong>Phone:</strong> {d.contact_no || d.userId?.contact_no || "Not available"}
+                      <strong>Phone:</strong> {d.userId?.contact_no || d.contact_no || "Not available"}
                     </p>
                   </div>
                 </article>

@@ -22,6 +22,13 @@ export default function ReceptionistQueue() {
   const [newTime, setNewTime] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newDentistCode, setNewDentistCode] = useState("");
+  const [dentists, setDentists] = useState([]);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelAvailableSlots, setCancelAvailableSlots] = useState([]);
+  const [loadingCancelSlots, setLoadingCancelSlots] = useState(false);
+  const [selectedCancelTime, setSelectedCancelTime] = useState("");
   
   // Helper function to get today's date string
   const todayStr = new Date().toISOString().split('T')[0];
@@ -69,6 +76,9 @@ export default function ReceptionistQueue() {
 
       // Load queue items
       const data = await authenticatedFetch(`${API_BASE}/receptionist/queue?date=${selectedDate}`);
+      console.log('Queue API Response for date', selectedDate, ':', data);
+      console.log('Items found:', data.items?.length || 0);
+      console.log('Items data:', data.items);
       setItems(data.items || []);
     } catch (e) {
       console.error("queue fetch failed", e);
@@ -82,14 +92,81 @@ export default function ReceptionistQueue() {
   useEffect(() => {
     if (token) {
       load();
+      loadDentists();
       // Auto-refresh every 30 seconds
       const interval = setInterval(load, 30000);
       return () => clearInterval(interval);
     }
   }, [load, token]);
 
+  // Load dentists list
+  const loadDentists = useCallback(async () => {
+    try {
+      const data = await authenticatedFetch(`${API_BASE}/receptionist/dentists`);
+      setDentists(data.items || []);
+    } catch (e) {
+      console.error("Failed to load dentists:", e);
+    }
+  }, [authenticatedFetch]);
+
+  // Load available slots for selected dentist and date
+  const loadAvailableSlots = useCallback(async (dentistCode, date) => {
+    if (!dentistCode || !date) {
+      setAvailableSlots([]);
+      return;
+    }
+    
+    setLoadingSlots(true);
+    try {
+      const data = await authenticatedFetch(`${API_BASE}/receptionist/schedule/dentists/${dentistCode}/slots?date=${date}&slot=30`);
+      setAvailableSlots(data.slots || []);
+    } catch (e) {
+      console.error("Failed to load available slots:", e);
+      setAvailableSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, [authenticatedFetch]);
+
+  // Load available slots for cancel modal (same day, same dentist)
+  const loadCancelAvailableSlots = useCallback(async (dentistCode, date) => {
+    if (!dentistCode || !date) {
+      setCancelAvailableSlots([]);
+      return;
+    }
+    
+    setLoadingCancelSlots(true);
+    try {
+      console.log('Loading cancel slots for:', dentistCode, date);
+      const data = await authenticatedFetch(`${API_BASE}/receptionist/schedule/dentists/${dentistCode}/slots?date=${date}&slot=30`);
+      console.log('Cancel slots response:', data);
+      setCancelAvailableSlots(data.slots || []);
+    } catch (e) {
+      console.error("Failed to load cancel available slots:", e);
+      setCancelAvailableSlots([]);
+    } finally {
+      setLoadingCancelSlots(false);
+    }
+  }, [authenticatedFetch]);
+
+  // Helper function to convert slot time to local time format
+  const getSlotTimeString = (slotStart) => {
+    const slotDate = new Date(slotStart);
+    const hours = slotDate.getHours().toString().padStart(2, '0');
+    const minutes = slotDate.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  // Load slots when date or dentist changes
+  useEffect(() => {
+    if (newDentistCode && newDate) {
+      loadAvailableSlots(newDentistCode, newDate);
+    }
+  }, [newDate, newDentistCode, loadAvailableSlots]);
+
   // Group items by dentist
   const groupedByDentist = useMemo(() => {
+    console.log('Grouping items:', items);
     const groups = {};
     items.forEach((item) => {
       if (!groups[item.dentistCode]) {
@@ -97,6 +174,7 @@ export default function ReceptionistQueue() {
       }
       groups[item.dentistCode].push(item);
     });
+    console.log('Grouped by dentist:', groups);
     return groups;
   }, [items]);
 
@@ -146,7 +224,7 @@ const nextPatients = useMemo(() => {
     }
   }
 
-  // Handle Cancel button
+  // Handle Cancel button (simple confirmation)
   async function handleCancel(queueCode) {
     // eslint-disable-next-line no-restricted-globals
     if (!confirm("Are you sure you want to cancel this appointment?")) return;
@@ -164,20 +242,76 @@ const nextPatients = useMemo(() => {
     }
   }
 
-  // Handle Update button (same day, same dentist, different time)
-  async function handleUpdate(item) {
-    // eslint-disable-next-line no-restricted-globals
-    
-
-    const newDateTimeISO = `${todayStr}T${newTime}:00`;
+  // Handle Update and Reschedule to new time slot
+  async function handleUpdateAndReschedule(queueCode, newTimeSlot) {
     try {
       setError("");
-      await authenticatedFetch(`${API_BASE}/receptionist/queue/${item.queueCode}/switch-time`, {
+      
+      console.log("=== RESCHEDULE DEBUG ===");
+      console.log("Received queueCode:", queueCode);
+      console.log("Received newTimeSlot:", newTimeSlot);
+      console.log("Current items:", items);
+      console.log("Available queueCodes:", items.map(item => item.queueCode));
+      
+      // Get the current appointment details
+      const currentItem = items.find(item => item.queueCode === queueCode);
+      if (!currentItem) {
+        console.error("Queue item not found for queueCode:", queueCode);
+        console.error("Available queueCodes:", items.map(item => item.queueCode));
+        throw new Error("Queue item not found");
+      }
+
+      console.log("Found current item:", currentItem);
+      
+      // Use the existing handleUpdate function which was working
+      await handleUpdate(currentItem, newTimeSlot);
+      
+      setSuccess("Appointment rescheduled successfully");
+      setShowCancelModal(false);
+      setSelectedCancelTime("");
+      load();
+    } catch (e) {
+      console.error("Update and reschedule failed", e);
+      setError(`Failed to reschedule appointment: ${e.message}`);
+    }
+  }
+
+  // Handle Update button (same day, same dentist, different time)
+  async function handleUpdate(item, timeSlot = null) {
+    try {
+      setError("");
+      
+      // Use provided timeSlot or the newTime state
+      const timeToUse = timeSlot || newTime;
+      const newDateTimeISO = `${selectedDate}T${timeToUse}:00`;
+      
+      console.log("=== RESCHEDULE DEBUG ===");
+      console.log("Original item:", item);
+      console.log("Original item time:", item.date);
+      console.log("New time slot:", timeToUse);
+      console.log("Selected date:", selectedDate);
+      console.log("Constructed datetime:", newDateTimeISO);
+      console.log("QueueCode:", item.queueCode);
+      console.log("========================");
+      
+      const response = await authenticatedFetch(`${API_BASE}/receptionist/queue/${item.queueCode}/switch-time`, {
         method: "PATCH",
         body: JSON.stringify({ newTime: newDateTimeISO }),
       });
+      
+      console.log("API response:", response);
       setSuccess("Appointment time updated successfully");
-      load();
+      
+      // Force reload the queue data multiple times to ensure it updates
+      setTimeout(() => {
+        console.log("Reloading queue data...");
+        load();
+      }, 100);
+      
+      setTimeout(() => {
+        console.log("Second reload of queue data...");
+        load();
+      }, 1000);
     } catch (e) {
       console.error("Update failed", e);
       setError(`Failed to update appointment: ${e.message}`);
@@ -305,6 +439,7 @@ const nextPatients = useMemo(() => {
         </div>
       </div>
       
+      
       <div className="tabs">
         <button
           className={tab === "ongoing" ? "active" : ""}
@@ -412,7 +547,25 @@ const nextPatients = useMemo(() => {
                             <td>{item.patientCode}</td>
                             <td>{new Date(item.date).toLocaleString()}</td>
                             <td><span className={`status-badge status-${item.status}`}>{item.status}</span></td>
-                            <td>{getAction(item)}</td>
+                            <td>
+                              <select
+                                value={item.status}
+                                onChange={(e) => handleStatusChange(item.queueCode, e.target.value)}
+                                style={{
+                                  padding: "6px 10px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #ced4da",
+                                  background: "#fff",
+                                  minWidth: "140px"
+                                }}
+                              >
+                                <option value="waiting">Waiting</option>
+                                <option value="called">Called</option>
+                                <option value="in_treatment">In Treatment</option>
+                                <option value="completed">Completed</option>
+                                <option value="no_show">No Show</option>
+                              </select>
+                            </td>
                             <td className="options-cell">
                               <button
                                 disabled={!buttons.cancel}
@@ -422,10 +575,21 @@ const nextPatients = useMemo(() => {
                                 Cancel
                               </button>
                               <button
-  disabled={!buttons.update}
-  onClick={() => { setSelectedItem(item); setNewTime(""); setShowUpdateModal(true); }}
-  className="btn-update"
->
+                                disabled={!buttons.update}
+                                onClick={() => {
+                                  console.log('=== UPDATE BUTTON CLICKED ===');
+                                  console.log('Opening update modal for item:', item);
+                                  console.log('Item queueCode:', item.queueCode);
+                                  console.log('Item keys:', Object.keys(item));
+                                  console.log('Selected date:', selectedDate);
+                                  console.log('=============================');
+                                  setSelectedItem(item);
+                                  setSelectedCancelTime("");
+                                  loadCancelAvailableSlots(item.dentistCode, selectedDate);
+                                  setShowCancelModal(true);
+                                }}
+                                className="btn-update"
+                              >
   Update
 </button>
 <button
@@ -508,36 +672,233 @@ const nextPatients = useMemo(() => {
             value={newTime}
             onChange={(e) => setNewTime(e.target.value)}
             placeholder="Select new time"
+            readOnly={true}
+            style={{ backgroundColor: '#f8f9fa', cursor: 'not-allowed' }}
           />
+          <small style={{ color: '#6c757d', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+            Select time from available slots below
+          </small>
         </div>
         
         <div className="rc-form-group">
           <label className="rc-form-label">
             <i className="rc-icon">👨‍⚕️</i>
-            Doctor Code
+            Select Doctor
           </label>
-          <input
-            type="text"
+          <select
             className="rc-form-input"
             value={newDentistCode}
-            onChange={(e) => setNewDentistCode(e.target.value)}
-            placeholder="Enter doctor code (e.g., Dr-0001)"
-          />
+            onChange={(e) => {
+              setNewDentistCode(e.target.value);
+              if (newDate) {
+                loadAvailableSlots(e.target.value, newDate);
+              }
+            }}
+          >
+            <option value="">Select a dentist</option>
+            {dentists.map((dentist) => (
+              <option key={dentist.dentistCode} value={dentist.dentistCode}>
+                {dentist.name} - {dentist.dentistCode} ({dentist.specialization})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {newDentistCode && newDate && (
+          <div className="rc-form-group">
+            <label className="rc-form-label">
+              <i className="rc-icon">🕐</i>
+              Available Time Slots
+            </label>
+            {loadingSlots ? (
+              <div className="rc-loading">Loading available slots...</div>
+            ) : (
+              <div className="rc-slots-grid">
+                {availableSlots
+                  .filter(slot => slot.status === 'bookable')
+                  .map((slot, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className={`rc-slot-btn ${newTime === getSlotTimeString(slot.start) ? 'selected' : ''}`}
+                      onClick={() => {
+                        const timeString = getSlotTimeString(slot.start);
+                        setNewTime(timeString);
+                        console.log('Selected time:', timeString);
+                        console.log('Original slot:', slot.start);
+                      }}
+                    >
+                      {new Date(slot.start).toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        hour12: true 
+                      })}
+                    </button>
+                  ))
+                }
+                {availableSlots.filter(slot => slot.status === 'bookable').length === 0 && (
+                  <div className="rc-no-slots">No available slots for this date</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      
+      <div className="rc-modal-footer">
+        <button 
+          className="rc-btn rc-btn-secondary" 
+          onClick={() => {
+            setShowDeleteUpdateModal(false);
+            setAvailableSlots([]);
+            setNewTime("");
+          }}
+        >
+          Cancel
+        </button>
+        <button 
+          className="rc-btn rc-btn-primary"
+          disabled={!newDate || !newTime || !newDentistCode}
+          onClick={async () => {
+            if (!newDate || !newTime || !newDentistCode) {
+              alert('Please select date, time, and dentist');
+              return;
+            }
+            await handleDeleteAndUpdate(selectedItem, newDate, newTime, newDentistCode);
+            setShowDeleteUpdateModal(false);
+          }}
+        >
+          <i className="rc-icon">✓</i>
+          Confirm Reschedule
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Cancel Modal */}
+{showCancelModal && selectedItem && (
+  <div className="rc-modal-overlay">
+    <div className="rc-modal">
+      <div className="rc-modal-header">
+        <h3 className="rc-modal-title">Reschedule Appointment</h3>
+        <button 
+          className="rc-modal-close" 
+          onClick={() => {
+            setShowCancelModal(false);
+            setCancelAvailableSlots([]);
+            setSelectedCancelTime("");
+          }}
+          aria-label="Close modal"
+        >
+          ×
+        </button>
+      </div>
+      
+      <div className="rc-modal-body">
+        <div className="rc-form-group">
+          <label className="rc-form-label">
+            <i className="rc-icon">👤</i>
+            Patient Information
+          </label>
+          <div style={{ 
+            marginBottom: '16px', 
+            padding: '16px', 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: '8px',
+            border: '2px solid #e9ecef'
+          }}>
+            {console.log('Modal selectedItem:', selectedItem)}
+            {console.log('Modal dentists:', dentists)}
+            <p style={{ margin: '0 0 12px 0', fontWeight: 'bold', color: '#495057', fontSize: '16px' }}>
+              <span style={{ color: '#007bff', fontSize: '18px' }}>{selectedItem?.patientCode || 'N/A'}</span>
+            </p>
+            <p style={{ margin: '0 0 12px 0', fontWeight: 'bold', color: '#495057' }}>
+              Current Time: <span style={{ color: '#6c757d' }}>{new Date(selectedItem.date).toLocaleString()}</span>
+            </p>
+            <p style={{ margin: '0 0 12px 0', fontWeight: 'bold', color: '#495057' }}>
+              Dentist: <span style={{ color: '#28a745', fontSize: '16px' }}>{selectedItem.dentistCode}</span>
+            </p>
+            <p style={{ margin: '0', fontWeight: 'bold', color: '#495057' }}>
+              Date: <span style={{ color: '#6c757d' }}>{selectedDate}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="rc-form-group">
+          <label className="rc-form-label">
+            <i className="rc-icon">🕐</i>
+            Available Time Slots for Today
+          </label>
+          {loadingCancelSlots ? (
+            <div className="rc-loading">Loading available slots...</div>
+          ) : (
+            <div className="rc-slots-grid">
+              {console.log('Cancel slots in modal:', cancelAvailableSlots)}
+              {cancelAvailableSlots
+                .filter(slot => slot.status === 'bookable')
+                .map((slot, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    className={`rc-slot-btn ${selectedCancelTime === getSlotTimeString(slot.start) ? 'selected' : ''}`}
+                    onClick={() => {
+                      const timeString = getSlotTimeString(slot.start);
+                      setSelectedCancelTime(timeString);
+                      console.log('Selected cancel time:', timeString);
+                    }}
+                  >
+                    {new Date(slot.start).toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                      hour12: true 
+                    })}
+                  </button>
+                ))
+              }
+              {cancelAvailableSlots.filter(slot => slot.status === 'bookable').length === 0 && (
+                <div className="rc-no-slots">
+                  {cancelAvailableSlots.length === 0 ? 'No slots found for this dentist and date' : 'No available slots for this date'}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
       
       <div className="rc-modal-footer">
         <button 
           className="rc-btn rc-btn-secondary" 
-          onClick={() => setShowDeleteUpdateModal(false)}
+          onClick={() => {
+            setShowCancelModal(false);
+            setCancelAvailableSlots([]);
+            setSelectedCancelTime("");
+          }}
         >
           Cancel
         </button>
         <button 
           className="rc-btn rc-btn-primary"
+          disabled={!selectedCancelTime}
           onClick={async () => {
-            await handleDeleteAndUpdate(selectedItem, newDate, newTime, newDentistCode);
-            setShowDeleteUpdateModal(false);
+            if (!selectedCancelTime) {
+              alert('Please select a time slot');
+              return;
+            }
+            console.log('=== CONFIRM BUTTON CLICKED ===');
+            console.log('selectedItem:', selectedItem);
+            console.log('selectedItem.queueCode:', selectedItem?.queueCode);
+            console.log('selectedCancelTime:', selectedCancelTime);
+            console.log('===============================');
+            
+            // Safety check for queueCode
+            if (!selectedItem || !selectedItem.queueCode) {
+              console.error('Invalid selectedItem or missing queueCode:', selectedItem);
+              setError('Invalid appointment data. Please try again.');
+              return;
+            }
+            
+            await handleUpdateAndReschedule(selectedItem.queueCode, selectedCancelTime);
           }}
         >
           <i className="rc-icon">✓</i>
