@@ -45,21 +45,34 @@ export default function DashboardMetrics() {
     setLoading(true);
     setError(null);
     const today = formatDateOnly(new Date());
+    
+    // Add a small delay to ensure backend is ready
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Create authenticated axios instance inline
-    const authenticatedFetch = async (url, options = {}) => {
+    // Create authenticated axios instance inline with retry logic
+    const authenticatedFetch = async (url, options = {}, retries = 3) => {
       const headers = {
         'Authorization': `Bearer ${currentToken}`,
         'Content-Type': 'application/json',
         ...options.headers
       };
       
-      try {
-        const response = await axios({ ...options, url, headers });
-        return response;
-      } catch (error) {
-        console.error('API Error:', error);
-        throw error;
+      for (let i = 0; i < retries; i++) {
+        try {
+          const response = await axios({ ...options, url, headers });
+          return response;
+        } catch (error) {
+          console.error(`API Error (attempt ${i + 1}/${retries}):`, error);
+          
+          // If it's a connection error and we have retries left, wait and try again
+          if (error.code === 'ERR_CONNECTION_REFUSED' && i < retries - 1) {
+            console.log(`Retrying in ${(i + 1) * 1000}ms...`);
+            await new Promise(resolve => setTimeout(resolve, (i + 1) * 1000));
+            continue;
+          }
+          
+          throw error;
+        }
       }
     };
 
