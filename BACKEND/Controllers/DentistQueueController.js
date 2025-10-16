@@ -28,21 +28,42 @@ async function getTodayQueueForDentist(req, res) {
     const withDetails = await Promise.all(
       queues.map(async (q) => {
         try {
-          const appt = await Appointment.findOne({
+          let appt = await Appointment.findOne({
             appointmentCode: q.appointmentCode,
           }).lean();
 
           if (!appt) {
-            console.warn('⚠️ No appointment found for queue:', q.appointmentCode);
-            return {
-              ...q,
-              queueNo: q.queueCode,
-              patientCode: q.patientCode,
-              patientName: "Unknown",
-              reason: "-",
-              appointment_date: q.date,
-              isBookingForSomeoneElse: false,
-            };
+            // Fallback: try to infer appointment by date/dentist/patient
+            try {
+              const day = new Date(q.date);
+              const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
+              const end = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999);
+
+              appt = await Appointment.findOne({
+                dentist_code: q.dentistCode,
+                appointment_date: { $gte: start, $lte: end },
+                $or: [
+                  { patient_code: q.patientCode },
+                  { bookerPatientCode: q.patientCode },
+                  { appointmentForPatientCode: q.patientCode },
+                ],
+              })
+                .sort({ appointment_date: 1 })
+                .lean();
+            } catch {}
+
+            if (!appt) {
+              console.warn('⚠️ No appointment found for queue:', q.appointmentCode);
+              return {
+                ...q,
+                queueNo: q.queueCode,
+                patientCode: q.patientCode,
+                patientName: "Unknown",
+                reason: "-",
+                appointment_date: q.date,
+                isBookingForSomeoneElse: false,
+              };
+            }
           }
 
           console.log('🔍 Queue item:', q.appointmentCode, 'isBookingForSomeoneElse:', appt?.isBookingForSomeoneElse);
