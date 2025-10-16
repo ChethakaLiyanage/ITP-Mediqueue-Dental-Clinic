@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { NavLink, useNavigate, useLocation, Outlet } from "react-router-dom";
 import "./dentistnav.css";
-import InventoryNotificationModal from "../Notifications/InventoryNotificationModal";
 
 function useAuthUser() {
   const read = () => {
@@ -34,9 +33,37 @@ export default function DentistNav() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   
-  // Notification states
-  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  // Notification count state
   const [notificationCount, setNotificationCount] = useState(0);
+
+  // Fetch notification count
+  const fetchNotificationCount = async () => {
+    if (!userData?.dentistCode) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/inventory/requests?dentistCode=${encodeURIComponent(userData.dentistCode)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const requests = data.requests || [];
+        const pendingCount = requests.filter(r => r.status === 'Pending').length;
+        setNotificationCount(pendingCount);
+      }
+    } catch (err) {
+      console.error('Error fetching notification count:', err);
+    }
+  };
+
+  // Fetch notification count on mount
+  useEffect(() => {
+    fetchNotificationCount();
+  }, [userData?.dentistCode]);
 
   const sidebarClasses = useMemo(() => {
     const classes = ["dent-aside"];
@@ -92,6 +119,10 @@ export default function DentistNav() {
             <span className="dent-ico">📦</span>
             <span>Inventory</span>
           </NavLink>
+          <NavLink to="/dentist/inventory/requests" className="dent-link">
+            <span className="dent-ico">📋</span>
+            <span>My Requests</span>
+          </NavLink>
           <NavLink to="/dentist/events" className="dent-link">
             <span className="dent-ico">📅</span>
             <span>Events</span>
@@ -139,7 +170,7 @@ export default function DentistNav() {
           <div className="dent-topbar-actions">
             <button 
               className="dent-notification-btn" 
-              onClick={() => setShowNotificationModal(true)}
+              onClick={() => navigate('/dentist/inventory/requests')}
               title="Inventory Requests Status"
             >
               <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,14 +189,6 @@ export default function DentistNav() {
 
       {/* Mobile overlay */}
       <div className={`dent-overlay ${mobileOpen ? "active" : ""}`} onClick={() => setMobileOpen(false)} />
-      
-      {/* Inventory Notification Modal */}
-      <InventoryNotificationModal
-        isOpen={showNotificationModal}
-        onClose={() => setShowNotificationModal(false)}
-        dentistCode={userData?.dentistCode}
-        onNotificationCountChange={setNotificationCount}
-      />
     </div>
   );
 }
