@@ -73,13 +73,13 @@ TreatmentplanSchema.pre("save", async function (next) {
     // Only generate when creating a new doc and planCode not set
     if (this.isNew && !this.planCode) {
       console.log('Generating new plan code...');
-      // Use dentistCode for global counter instead of per-patient
-      const scope = `tplan:${this.dentistCode}`; // Global counter per dentist
+      // Use patientCode for per-patient counter to avoid duplicate key errors
+      const scope = `tplan:${this.patientCode}`; // Per-patient counter
       console.log('Counter scope:', scope);
 
-      // If all plans were deleted for this dentist, reset counter so we start at TP-001 again
-      const existingCount = await this.constructor.countDocuments({ dentistCode: this.dentistCode });
-      console.log('Existing count for dentist:', existingCount);
+      // If all plans were deleted for this patient, reset counter so we start at TP-001 again
+      const existingCount = await this.constructor.countDocuments({ patientCode: this.patientCode });
+      console.log('Existing count for patient:', existingCount);
       
       if (existingCount === 0) {
         console.log('Resetting counter to 0...');

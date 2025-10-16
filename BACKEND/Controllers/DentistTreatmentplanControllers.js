@@ -428,7 +428,7 @@ const restoreByCode = async (req, res) => {
 const getCounterForPatient = async (req, res) => {
   try {
     const patientCode = String(req.params.patientCode || "").trim();
-    const scope = `tplan:${patientCode}`;
+    const scope = `tplan:${patientCode}`; // Per-patient counter
     const counter = await Counter.findOne({ scope }).lean();
     const seq = counter?.seq || 0;
     const maxInDb = await getMaxPlanNumberInDb(patientCode);
@@ -440,7 +440,7 @@ const getCounterForPatient = async (req, res) => {
       maxPlanNumberInDb: maxInDb,
       nextGeneratedWouldBe: `TP-${String(seq + 1).padStart(3, "0")}`,
       explanation:
-        "Counters are monotonic for auditability. Hard-deleting documents in MongoDB UI does not rewind the counter.",
+        "Counters are per-patient for unique plan codes. Hard-deleting documents in MongoDB UI does not rewind the counter.",
     });
   } catch (err) {
     console.error("getCounterForPatient error:", err);
@@ -452,7 +452,7 @@ const getCounterForPatient = async (req, res) => {
 const resyncCounterForPatient = async (req, res) => {
   try {
     const patientCode = String(req.params.patientCode || "").trim();
-    const scope = `tplan:${patientCode}`;
+    const scope = `tplan:${patientCode}`; // Per-patient counter
 
     const old = await Counter.findOne({ scope }).lean();
     const oldSeq = old?.seq || 0;
