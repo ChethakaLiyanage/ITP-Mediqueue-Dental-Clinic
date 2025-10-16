@@ -152,9 +152,21 @@ export default function PrescriptionsPage() {
 
   // CREATE prescription
   const onCreate = async () => {
-    const meds = Array.isArray(form.medicines) ? form.medicines.filter(m => m.name && m.dosage) : [];
+    const meds = Array.isArray(form.medicines) ? form.medicines.filter(m => m.name && m.name.trim() && m.dosage && m.dosage.trim()) : [];
+    
+    // Debug logging
+    console.log('Form data:', form);
+    console.log('Filtered medicines:', meds);
+    console.log('Patient code:', form.patientCode);
+    console.log('Plan code:', form.planCode);
+    
     if (!form.patientCode || !form.planCode || meds.length === 0) {
-      alert("Please select patient/plan and add at least one medicine with name and dosage");
+      let errorMsg = "Please ";
+      if (!form.patientCode) errorMsg += "select a patient, ";
+      if (!form.planCode) errorMsg += "select a treatment plan, ";
+      if (meds.length === 0) errorMsg += "add at least one medicine with name and dosage";
+      errorMsg = errorMsg.replace(/,\s*$/, ""); // Remove trailing comma
+      alert(errorMsg);
       return;
     }
     
