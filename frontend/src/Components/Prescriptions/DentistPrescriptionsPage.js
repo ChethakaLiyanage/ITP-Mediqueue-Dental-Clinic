@@ -95,13 +95,18 @@ export default function PrescriptionsPage() {
     setModalOpen(true);
     setForm({ patientCode: "", planCode: "", medicines: [{ name: "", dosage: "", instructions: "" }] });
     
-    if (!dentistCode || !token) return;
+    if (!dentistCode || !token) {
+      setLoadingPatients(false);
+      return;
+    }
     
     setLoadingPatients(true);
     try {
+      console.log('🔍 Loading patients for dentist:', dentistCode);
       // Only include today's queue patients for this dentist
       const qRes = await authenticatedFetch(`${API_BASE}/api/dentist-queue/today?dentistCode=${encodeURIComponent(dentistCode)}`);
       const qData = await qRes.json().catch(() => []);
+      console.log('📊 Queue data received:', qData);
       const rows = Array.isArray(qData) ? qData : [];
 
       const opts = [];
@@ -116,8 +121,12 @@ export default function PrescriptionsPage() {
         opts.push({ code, name, status, time, queueNo });
       }
       opts.sort((a, b) => a.name.localeCompare(b.name));
+      console.log('✅ Patient options created:', opts);
       setPatientOptions(opts);
+    } catch (error) {
+      console.error('❌ Error loading patients:', error);
     } finally {
+      console.log('🏁 Setting loading to false');
       setLoadingPatients(false);
     }
   };

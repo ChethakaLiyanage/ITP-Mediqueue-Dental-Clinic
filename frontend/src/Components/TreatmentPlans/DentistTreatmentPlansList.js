@@ -57,10 +57,12 @@ export default function TreatmentPlansList() {
     
     setLoadingDropdown(true);
     try {
+      console.log('🔍 Treatment Plans: Loading patients for dentist:', dentistCode);
       const qRes = await authenticatedFetch(
         `${API_BASE}/api/dentist-queue/today?dentistCode=${encodeURIComponent(dentistCode)}`
       );
       const qData = await qRes.json().catch(() => []);
+      console.log('📊 Treatment Plans: Queue data received:', qData);
       const rows = Array.isArray(qData) ? qData : [];
 
       // Build dropdown options - only include patients with "in_treatment" status
@@ -104,14 +106,16 @@ export default function TreatmentPlansList() {
         return a.name.localeCompare(b.name);
       });
       
+      console.log('✅ Treatment Plans: Patient options created:', opts);
       setDropdownPatients(opts);
     } catch (e) {
-      console.error("Error loading queue patients:", e);
+      console.error("❌ Treatment Plans: Error loading queue patients:", e);
       setDropdownPatients([]);
     } finally {
+      console.log('🏁 Treatment Plans: Setting loading to false');
       setLoadingDropdown(false);
     }
-  }, [dentistCode, token, authenticatedFetch, getPatientName]);
+  }, [dentistCode, token, authenticatedFetch]);
 
   // edit modal state
   const [editPlan, setEditPlan] = useState(null);
