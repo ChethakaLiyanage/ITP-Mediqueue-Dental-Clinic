@@ -160,10 +160,9 @@ export default function PrescriptionsPage() {
     console.log('Patient code:', form.patientCode);
     console.log('Plan code:', form.planCode);
     
-    if (!form.patientCode || !form.planCode || meds.length === 0) {
+    if (!form.patientCode || meds.length === 0) {
       let errorMsg = "Please ";
       if (!form.patientCode) errorMsg += "select a patient, ";
-      if (!form.planCode) errorMsg += "select a treatment plan, ";
       if (meds.length === 0) errorMsg += "add at least one medicine with name and dosage";
       errorMsg = errorMsg.replace(/,\s*$/, ""); // Remove trailing comma
       alert(errorMsg);
@@ -175,7 +174,7 @@ export default function PrescriptionsPage() {
         method: "POST",
         body: JSON.stringify({
           patientCode: form.patientCode,
-          planCode: form.planCode,
+          ...(form.planCode && { planCode: form.planCode }), // Only include planCode if it exists
           dentistCode,
           medicines: meds.map(m => ({ name: m.name, dosage: m.dosage, instructions: m.instructions || "" })),
         }),
@@ -367,6 +366,26 @@ export default function PrescriptionsPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+                </div>
+
+                {/* Treatment Plan Information */}
+                <div className="prescription-field">
+                  <div className="treatment-plan-info">
+                    <p className="info-text">
+                      <strong>Treatment Plan:</strong> If the selected patient has an active treatment plan, it will be automatically linked to this prescription. 
+                      You can create prescriptions with or without treatment plans.
+                    </p>
+                    {form.planCode && (
+                      <p className="linked-plan-info">
+                        ✅ Linked to treatment plan: <strong>{form.planCode}</strong>
+                      </p>
+                    )}
+                    {!form.planCode && form.patientCode && (
+                      <p className="no-plan-info">
+                        ℹ️ No active treatment plan found for this patient. Prescription will be created without a treatment plan link.
+                      </p>
+                    )}
                   </div>
                 </div>
 
