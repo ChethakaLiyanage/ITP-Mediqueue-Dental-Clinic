@@ -1,0 +1,735 @@
+/* Test style - should make the dashboard title red if CSS is loading */
+.rc-top-title {
+  color: red !important;
+  font-size: 2rem !important;
+}
+
+:root {
+  /* Primary brand colors matching the dentist dashboard */
+  --primary-blue: #4f46e5;
+  --primary-blue-hover: #4338ca;
+  --primary-blue-light: #eef2ff;
+  
+  /* Accent colors */
+  --success-green: #10b981;
+  --success-green-light: #d1fae5;
+  --warning-orange: #f59e0b;
+  --warning-orange-light: #fef3c7;
+  --danger-red: #ef4444;
+  --danger-red-light: #fecaca;
+  --info-blue: #3b82f6;
+  --info-blue-light: #dbeafe;
+  
+  /* Neutral colors */
+  --white: #ffffff;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  
+  /* Text colors */
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  
+  /* Background */
+  --bg-primary: #f9fafb;
+  --bg-secondary: #ffffff;
+  
+  /* Border */
+  --border-light: #e5e7eb;
+  --border-medium: #d1d5db;
+  
+  /* Shadow */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+/* ===== Global Reset & Base Styles ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* ===== Shell / Main Container ===== */
+.rc-main {
+  padding: 24px 32px;
+  min-width: 0;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: var(--bg-primary);
+}
+
+/* ===== Top Bar ===== */
+.rc-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.rc-top-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+}
+
+.rc-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rc-date {
+  border: 1px solid var(--border-medium);
+  background: var(--white);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.rc-date:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px var(--primary-blue-light);
+}
+
+.rc-btn {
+  background: var(--primary-blue);
+  color: var(--white);
+  border: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.rc-btn:hover:not(:disabled) {
+  background: var(--primary-blue-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.rc-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.rc-ghost {
+  position: relative;
+  border: 1px solid var(--border-medium);
+  background: var(--white);
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+  font-size: 18px;
+}
+
+.rc-ghost:hover {
+  background: var(--gray-50);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.rc-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: var(--danger-red);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 4px 8px;
+  min-width: 20px;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+
+/* ===== Welcome Hero Banner ===== */
+.rc-hero {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-hover) 100%);
+  border: none;
+  border-radius: 20px;
+  padding: 32px;
+  text-align: center;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.rc-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.rc-hero h2 {
+  margin: 0 0 8px 0;
+  color: var(--white) !important;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.rc-hero p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+/* ===== Error Message ===== */
+.rc-error {
+  background: var(--danger-red-light);
+  border: 1px solid var(--danger-red);
+  color: var(--danger-red);
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ===== Stats Grid ===== */
+.rc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 1200px) {
+  .rc-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .rc-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rc-card {
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.rc-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+}
+
+.rc-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-primary) !important;
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.rc-stat {
+  font-size: 36px;
+  font-weight: 800;
+  margin: 8px 0 16px 0;
+  color: var(--primary-blue);
+  letter-spacing: -0.025em;
+}
+
+.rc-sub {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--text-secondary) !important;
+  font-size: 14px;
+}
+
+/* ===== Pills/Badges ===== */
+.rc-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.rc-pill.ok {
+  background: var(--success-green-light);
+  color: var(--success-green);
+}
+
+.rc-pill.warn {
+  background: var(--warning-orange-light);
+  color: var(--warning-orange);
+}
+
+.rc-pill.bad {
+  background: var(--danger-red-light);
+  color: var(--danger-red);
+}
+
+.rc-pill.info {
+  background: var(--info-blue-light);
+  color: var(--info-blue);
+}
+
+.rc-pill.muted {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.rc-pill:not(.ok):not(.warn):not(.bad):not(.info):not(.muted) {
+  background: var(--primary-blue-light);
+  color: var(--primary-blue);
+}
+
+/* ===== Sections ===== */
+.rc-section {
+  margin: 32px 0;
+}
+
+.rc-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.rc-sec-head h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary) !important;
+  letter-spacing: -0.025em;
+}
+
+.rc-hint {
+  color: var(--text-secondary) !important;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ===== COMPLETELY REDESIGNED TABLES ===== */
+.rc-table {
+  background: var(--white);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-light);
+  width: 100%;
+  margin: 20px 0;
+}
+
+/* Table Header */
+.rc-thead {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 2px solid var(--border-medium);
+  padding: 0;
+  display: block;
+  width: 100%;
+}
+
+.rc-thead > div {
+  display: flex;
+  align-items: center;
+  padding: 20px 24px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--gray-700);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-height: 60px;
+}
+
+/* Table Body */
+.rc-tbody {
+  display: block;
+  width: 100%;
+}
+
+.rc-row {
+  display: block;
+  width: 100%;
+  border-bottom: 1px solid var(--border-light);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.rc-row:hover {
+  background: linear-gradient(135deg, #fafbff 0%, #f0f4ff 100%);
+  transform: translateX(4px);
+}
+
+.rc-row:last-child {
+  border-bottom: none;
+}
+
+/* Regular row styling */
+.rc-tbody .rc-row:not(.rc-empty) > div {
+  display: flex;
+  align-items: center;
+  padding: 20px 24px;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-primary);
+  min-height: 70px;
+  gap: 8px;
+}
+
+/* Empty state */
+.rc-row.rc-empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 24px;
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 16px;
+  background: var(--gray-50);
+}
+
+/* ===== SPECIFIC TABLE LAYOUTS ===== */
+
+/* Next Appointments Table (5 columns) */
+.rc-table.appointments-table .rc-thead,
+.rc-table.appointments-table .rc-row:not(.rc-empty) {
+  display: grid;
+  grid-template-columns: 120px 200px 180px 140px 1fr;
+  gap: 20px;
+  align-items: center;
+}
+
+/* Queue by Dentist Table (7 columns) */
+.rc-table.queue-table .rc-thead,
+.rc-table.queue-table .rc-row:not(.rc-empty) {
+  display: grid;
+  grid-template-columns: 200px 100px 100px 100px 100px 120px 100px;
+  gap: 16px;
+  align-items: center;
+}
+
+/* Dentist Availability Table (6 columns) */
+.rc-table.availability-table .rc-thead,
+.rc-table.availability-table .rc-row:not(.rc-empty) {
+  display: grid;
+  grid-template-columns: 200px 150px 80px 80px 80px 1fr;
+  gap: 16px;
+  align-items: center;
+}
+
+/* Fallback for generic tables */
+.rc-table:not(.appointments-table):not(.queue-table):not(.availability-table) .rc-thead,
+.rc-table:not(.appointments-table):not(.queue-table):not(.availability-table) .rc-row:not(.rc-empty) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+  align-items: center;
+}
+
+/* ===== Live Queue Grid ===== */
+.rc-live-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 32px;
+}
+
+/* Full-width Live Queue Container */
+.rc-live-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.rc-live-container .rc-card {
+  width: 100%;
+}
+
+@media (max-width: 1100px) {
+  .rc-live-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rc-live {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-md);
+}
+
+.rc-live > div {
+  background: var(--white);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.rc-live-h {
+  font-size: 12px;
+  color: var(--text-secondary) !important;
+  margin-bottom: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-light);
+}
+
+.rc-live ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.rc-live li {
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rc-live li:last-child {
+  border-bottom: none;
+}
+
+.rc-dim {
+  color: var(--text-muted);
+  font-style: italic;
+  justify-content: center;
+}
+
+/* ===== Two Column Layout ===== */
+.rc-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin: 32px 0;
+}
+
+@media (max-width: 1100px) {
+  .rc-two {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== Lists ===== */
+.rc-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.rc-list-item {
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--white);
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.rc-list-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.rc-list-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.rc-list-sub {
+  color: var(--text-secondary) !important;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rc-dot {
+  width: 4px;
+  height: 4px;
+  background: var(--gray-400);
+  border-radius: 999px;
+  display: inline-block;
+}
+
+/* ===== Footer ===== */
+.rc-footer {
+  color: var(--text-muted) !important;
+  font-size: 14px;
+  text-align: center;
+  margin: 48px 0 24px 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-light);
+}
+
+/* ===== Loading States ===== */
+.rc-skel .rc-card,
+.rc-skel .rc-table,
+.rc-skel .rc-list-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.rc-skel .rc-card::after,
+.rc-skel .rc-table::after,
+.rc-skel .rc-list-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: rc-shimmer 1.5s infinite;
+}
+
+@keyframes rc-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ===== Mobile Responsive Tables ===== */
+@media (max-width: 1200px) {
+  .rc-table {
+    overflow-x: auto;
+  }
+  
+  .rc-table.appointments-table .rc-thead,
+  .rc-table.appointments-table .rc-row:not(.rc-empty),
+  .rc-table.queue-table .rc-thead,
+  .rc-table.queue-table .rc-row:not(.rc-empty),
+  .rc-table.availability-table .rc-thead,
+  .rc-table.availability-table .rc-row:not(.rc-empty) {
+    min-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
+  .rc-main {
+    padding: 16px 20px;
+  }
+  
+  .rc-top-title {
+    font-size: 24px;
+  }
+  
+  .rc-top-actions {
+    gap: 12px;
+  }
+  
+  .rc-hero {
+    padding: 24px;
+  }
+  
+  .rc-hero h2 {
+    font-size: 24px;
+  }
+  
+  .rc-card {
+    padding: 20px;
+  }
+  
+  .rc-stat {
+    font-size: 28px;
+  }
+  
+  .rc-table .rc-thead > div,
+  .rc-table .rc-tbody .rc-row > div {
+    padding: 16px 20px;
+    min-height: 50px;
+  }
+}
+
+@media (max-width: 480px) {
+  .rc-topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .rc-top-actions {
+    justify-content: space-between;
+  }
+  
+  .rc-grid {
+    gap: 16px;
+  }
+  
+  .rc-live {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
