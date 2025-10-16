@@ -1,0 +1,313 @@
+/* ===== Dentist Navigation Sidebar ===== */
+.dentist-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100vh;
+  background: #283593;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+/* ===== Header/Logo Section ===== */
+.dentist-nav-header {
+  padding: 24px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dentist-nav-logo {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.dentist-nav-logo-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.dentist-nav-logo-icon {
+  width: 40px;
+  height: 40px;
+  background: #ffffff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.dentist-nav-logo-icon::before {
+  content: "🦷";
+  font-size: 20px;
+  color: #E0BBE4;
+}
+
+.dentist-nav-clinic-name {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  line-height: 1.2;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.dentist-nav-slogan {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 4px 0 0 0;
+}
+
+/* ===== Navigation Items ===== */
+.dentist-nav-menu {
+  flex: 1;
+  padding: 20px 0;
+}
+
+.dentist-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+}
+
+.dentist-nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-left-color: #4CAF50;
+  transform: translateX(4px);
+}
+
+.dentist-nav-item.active {
+  background: rgba(255, 255, 255, 0.15);
+  border-left-color: #4CAF50;
+}
+
+.dentist-nav-item-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+/* Dashboard Icon */
+.dentist-nav-item[data-item="dashboard"] .dentist-nav-item-icon::before {
+  content: "💼";
+}
+
+/* Events Icon */
+.dentist-nav-item[data-item="events"] .dentist-nav-item-icon::before {
+  content: "📅";
+}
+
+/* Schedules Icon */
+.dentist-nav-item[data-item="schedules"] .dentist-nav-item-icon::before {
+  content: "🕐";
+}
+
+/* Treatment Plans Icon */
+.dentist-nav-item[data-item="treatment-plans"] .dentist-nav-item-icon::before {
+  content: "📋";
+}
+
+/* Prescriptions Icon */
+.dentist-nav-item[data-item="prescriptions"] .dentist-nav-item-icon::before {
+  content: "🧪";
+}
+
+/* Feedback Icon */
+.dentist-nav-item[data-item="feedback"] .dentist-nav-item-icon::before {
+  content: "💬";
+}
+
+/* Inventory Icon */
+.dentist-nav-item[data-item="inventory"] .dentist-nav-item-icon::before {
+  content: "📦";
+}
+
+/* Leave Icon */
+.dentist-nav-item[data-item="leave"] .dentist-nav-item-icon::before {
+  content: "🚪";
+}
+
+/* ===== User Profile/Footer Section ===== */
+.dentist-nav-footer {
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dentist-nav-user-profile {
+  background: #3F51B5;
+  border: 2px solid #4CAF50;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+}
+
+.dentist-nav-user-profile:hover {
+  background: #3949AB;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.dentist-nav-user-icon {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #ffffff;
+}
+
+.dentist-nav-user-icon::before {
+  content: "👤";
+}
+
+.dentist-nav-user-name {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+  .dentist-nav {
+    width: 100%;
+    height: auto;
+    position: relative;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  
+  .dentist-nav-header {
+    padding: 16px;
+    border-bottom: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .dentist-nav-logo {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+  
+  .dentist-nav-clinic-name {
+    font-size: 16px;
+  }
+  
+  .dentist-nav-slogan {
+    margin-left: 0;
+    font-size: 10px;
+  }
+  
+  .dentist-nav-menu {
+    display: flex;
+    flex-direction: row;
+    padding: 0;
+    overflow-x: auto;
+  }
+  
+  .dentist-nav-item {
+    white-space: nowrap;
+    padding: 12px 16px;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+  }
+  
+  .dentist-nav-item:hover {
+    border-left-color: transparent;
+    border-bottom-color: #4CAF50;
+    transform: translateY(-2px);
+  }
+  
+  .dentist-nav-item.active {
+    border-left-color: transparent;
+    border-bottom-color: #4CAF50;
+  }
+  
+  .dentist-nav-footer {
+    padding: 12px 16px;
+    border-top: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .dentist-nav-user-profile {
+    padding: 12px;
+  }
+  
+  .dentist-nav-user-name {
+    font-size: 14px;
+  }
+}
+
+/* ===== Scrollbar Styling ===== */
+.dentist-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dentist-nav::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dentist-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.dentist-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* ===== Animation Enhancements ===== */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.dentist-nav {
+  animation: slideInLeft 0.5s ease-out;
+}
+
+.dentist-nav-item {
+  animation: slideInLeft 0.3s ease-out;
+  animation-fill-mode: both;
+}
+
+.dentist-nav-item:nth-child(1) { animation-delay: 0.1s; }
+.dentist-nav-item:nth-child(2) { animation-delay: 0.2s; }
+.dentist-nav-item:nth-child(3) { animation-delay: 0.3s; }
+.dentist-nav-item:nth-child(4) { animation-delay: 0.4s; }
+.dentist-nav-item:nth-child(5) { animation-delay: 0.5s; }
+.dentist-nav-item:nth-child(6) { animation-delay: 0.6s; }
+.dentist-nav-item:nth-child(7) { animation-delay: 0.7s; }
+.dentist-nav-item:nth-child(8) { animation-delay: 0.8s; }

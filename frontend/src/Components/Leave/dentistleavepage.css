@@ -1,0 +1,671 @@
+/* Leave Page Container */
+.leave-container {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.leave-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #7c3aed 0%, #8b5cf6 50%, #a855f7 100%);
+  border-radius: 16px 16px 0 0;
+}
+
+/* Leave Header */
+.leave-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f3f4f6;
+  /* Remove shimmer animation to prevent layout shifts */
+  background: transparent;
+  /* Ensure stable positioning */
+  position: relative;
+  z-index: 1;
+}
+
+.leave-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.025em;
+  position: relative;
+}
+
+.leave-title::after {
+  content: '📅';
+  margin-left: 12px;
+  font-size: 20px;
+  opacity: 0.7;
+}
+
+/* History Toggle Button */
+.leave-history-btn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  color: #ffffff;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  outline: none;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.2);
+  /* Prevent movement by removing transform */
+  transform: none;
+  /* Ensure stable positioning */
+  display: inline-block;
+  vertical-align: top;
+  white-space: nowrap;
+  min-width: 140px;
+  text-align: center;
+}
+
+.leave-history-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.leave-history-btn:hover::before {
+  left: 100%;
+}
+
+.leave-history-btn:hover {
+  /* Remove transform to prevent movement */
+  transform: none;
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.3);
+  background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+}
+
+.leave-history-btn:active {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.4);
+}
+
+/* Leave Form */
+.leave-form {
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 28px;
+  margin-top: 16px;
+  position: relative;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.leave-form:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 8px 25px -5px rgba(124, 58, 237, 0.1);
+}
+
+.leave-form::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #7c3aed 0%, #8b5cf6 50%, #a855f7 100%);
+  border-radius: 16px 16px 0 0;
+}
+
+.leave-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: end;
+}
+
+.leave-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leave-form-field.full-width {
+  grid-column: 1 / -2;
+}
+
+.leave-form-field.button-field {
+  grid-column: -1;
+  display: flex;
+  align-items: end;
+  margin-top: 0;
+}
+
+.leave-form-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Form Inputs */
+.leave-date-input {
+  padding: 14px 18px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #374151;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.leave-date-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1), inset 0 1px 3px rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.leave-date-input:hover {
+  border-color: #c7d2fe;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.leave-text-input {
+  padding: 14px 18px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #374151;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.leave-text-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1), inset 0 1px 3px rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.leave-text-input:hover {
+  border-color: #c7d2fe;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.leave-text-input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+  transition: color 0.3s ease;
+}
+
+.leave-text-input:focus::placeholder {
+  color: #d1d5db;
+}
+
+/* Submit Button */
+.leave-submit-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  color: #ffffff;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  margin-top: 0;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 120px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.leave-submit-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transition: left 0.4s;
+}
+
+.leave-submit-btn::after {
+  content: '📅';
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.leave-submit-btn:hover::before {
+  left: 100%;
+}
+
+.leave-submit-btn:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.leave-submit-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(124, 58, 237, 0.4);
+}
+
+.leave-submit-btn:disabled {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.6;
+}
+
+.leave-submit-btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.leave-submit-btn:disabled::after {
+  content: '⏳';
+}
+
+/* History Section */
+.leave-history {
+  margin-top: 24px;
+  animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.leave-history-loading {
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* History Table */
+.leave-history-table-wrapper {
+  border: 3px solid #7c3aed;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.leave-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.leave-history-table thead {
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #a855f7 100%);
+  box-shadow: 0 2px 4px rgba(124, 58, 237, 0.2);
+}
+
+.leave-history-table thead th {
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 13px;
+  color: #ffffff;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: none;
+  position: relative;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  background: transparent !important;
+}
+
+.leave-history-table thead th:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 20%;
+  height: 60%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+/* Override any potential gray/ash overlays */
+.leave-history-table thead * {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+.leave-history-table thead th {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+.leave-history-table tbody tr {
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.leave-history-table tbody tr:hover {
+  background: linear-gradient(90deg, #faf5ff 0%, #f3e8ff 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.1);
+}
+
+.leave-history-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.leave-history-table tbody td {
+  padding: 16px 12px;
+  color: #374151;
+  font-size: 14px;
+  vertical-align: middle;
+  border: none;
+}
+
+/* Table Cell Styling */
+.dentist-code-cell {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: #f3f4f6;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  display: inline-block;
+}
+
+.dentist-name-cell {
+  font-weight: 600;
+  color: #111827;
+}
+
+.date-cell {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.datetime-cell {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.reason-cell {
+  font-style: italic;
+  color: #6b7280;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .leave-container {
+    margin: 0 16px;
+    padding: 20px;
+  }
+  
+  .leave-history-table-wrapper {
+    overflow-x: auto;
+  }
+  
+  .leave-history-table {
+    min-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
+  .leave-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .leave-history-btn {
+    width: 100%;
+  }
+  
+  .leave-form-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .leave-form-field.full-width {
+    grid-column: 1;
+  }
+  
+  .leave-form-field.button-field {
+    grid-column: 1;
+    justify-self: start;
+  }
+  
+  .leave-history-table thead th {
+    padding: 12px 8px;
+    font-size: 12px;
+  }
+  
+  .leave-history-table tbody td {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .leave-container {
+    margin: 0 8px;
+    padding: 16px;
+  }
+  
+  .leave-title {
+    font-size: 20px;
+  }
+  
+  .leave-form {
+    padding: 16px;
+  }
+  
+  .leave-history-table {
+    min-width: 700px;
+  }
+}
+
+/* Loading Spinner */
+.leave-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  gap: 16px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #7c3aed;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.leave-loading p {
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes slideInUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(30px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Form Field Focus States */
+.leave-form-field:focus-within .leave-form-label {
+  color: #7c3aed;
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+.leave-form-field:focus-within {
+  transform: translateY(-1px);
+  transition: all 0.3s ease;
+}
+
+/* Success/Error States */
+.leave-success {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+  color: #065f46;
+  font-weight: 500;
+  animation: slideInUp 0.4s ease;
+}
+
+.leave-error {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #ef4444;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+  color: #991b1b;
+  font-weight: 500;
+  animation: slideInUp 0.4s ease;
+}
+
+/* Custom scrollbar for table wrapper */
+.leave-history-table-wrapper::-webkit-scrollbar {
+  height: 10px;
+}
+
+.leave-history-table-wrapper::-webkit-scrollbar-track {
+  background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 100%);
+  border-radius: 5px;
+}
+
+.leave-history-table-wrapper::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  border-radius: 5px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.leave-history-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Accessibility Improvements */
+.leave-date-input:focus,
+.leave-text-input:focus,
+.leave-submit-btn:focus,
+.leave-history-btn:focus {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .leave-container {
+    border: 2px solid #000000;
+  }
+  
+  .leave-form {
+    border: 2px solid #000000;
+  }
+  
+  .leave-date-input,
+  .leave-text-input {
+    border: 2px solid #000000;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .leave-container,
+  .leave-form,
+  .leave-date-input,
+  .leave-text-input,
+  .leave-submit-btn,
+  .leave-history-btn,
+  .leave-history {
+    animation: none;
+    transition: none;
+  }
+  
+  .leave-submit-btn:hover,
+  .leave-history-btn:hover {
+    transform: none;
+  }
+  
+  .leave-history-btn::before {
+    display: none;
+  }
+}
+
+/* Ensure button stability across all states */
+.leave-history-btn,
+.leave-history-btn:hover,
+.leave-history-btn:active,
+.leave-history-btn:focus {
+  transform: none !important;
+  position: relative !important;
+}
