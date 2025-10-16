@@ -1,0 +1,580 @@
+/* ReceptionistSchedule.css - Professional Schedule Page Styling */
+
+:root {
+  /* Professional color palette matching dentist dashboard */
+  --primary-blue: #4f46e5;
+  --primary-blue-hover: #4338ca;
+  --primary-blue-light: #eef2ff;
+  
+  /* Accent colors */
+  --success-green: #10b981;
+  --success-green-light: #d1fae5;
+  --warning-orange: #f59e0b;
+  --warning-orange-light: #fef3c7;
+  --danger-red: #ef4444;
+  --danger-red-light: #fecaca;
+  --info-blue: #3b82f6;
+  --info-blue-light: #dbeafe;
+  
+  /* Neutral colors */
+  --white: #ffffff;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  
+  /* Text colors */
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  
+  /* Background */
+  --bg-primary: #f9fafb;
+  --bg-secondary: #ffffff;
+  
+  /* Border */
+  --border-light: #e5e7eb;
+  --border-medium: #d1d5db;
+  
+  /* Shadow */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+/* ===== Schedule Page Specific Styling ===== */
+.schedule-container {
+  background: var(--bg-primary);
+  min-height: 100vh;
+}
+
+/* ===== Enhanced Top Bar for Schedule ===== */
+.rc-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding: 24px 32px;
+  border-bottom: 2px solid var(--border-light);
+  background: linear-gradient(135deg, var(--white) 0%, var(--gray-50) 100%);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+}
+
+.rc-top-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-hover) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.rc-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* ===== Enhanced Form Controls ===== */
+.rc-date,
+.rc-date input,
+.rc-date select {
+  border: 2px solid var(--border-medium);
+  background: var(--white);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+  min-width: 120px;
+}
+
+.rc-date:focus,
+.rc-date input:focus,
+.rc-date select:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px var(--primary-blue-light);
+  transform: translateY(-1px);
+}
+
+.rc-date:hover {
+  border-color: var(--primary-blue);
+  box-shadow: var(--shadow-md);
+}
+
+/* Specific width for dentist input */
+.rc-dentist-input {
+  width: 200px;
+}
+
+/* ===== Enhanced Button Styling ===== */
+.rc-btn {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-hover) 100%);
+  color: var(--white);
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-md);
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.rc-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.rc-btn:active {
+  transform: translateY(0);
+}
+
+.rc-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ===== Enhanced Cards ===== */
+.rc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 1200px) {
+  .rc-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .rc-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rc-card {
+  background: var(--white);
+  border: 2px solid var(--border-light);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: var(--shadow-lg);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.rc-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-hover) 100%);
+}
+
+.rc-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+}
+
+.rc-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.rc-stat {
+  font-size: 36px;
+  font-weight: 800;
+  margin: 8px 0 16px 0;
+  color: var(--primary-blue);
+  letter-spacing: -0.025em;
+}
+
+.rc-stat.smaller {
+  font-size: 22px;
+}
+
+/* Specific styling for dentist name */
+.rc-card:first-child .rc-stat {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Specific styling for working window */
+.rc-card:nth-child(2) .rc-stat {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Specific styling for slots count */
+.rc-card:nth-child(3) .rc-stat {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rc-sub {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* ===== Enhanced Pills/Badges ===== */
+.rc-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  transition: all 0.2s ease;
+}
+
+.rc-pill.ok {
+  background: var(--success-green-light);
+  color: var(--success-green);
+}
+
+.rc-pill.warn {
+  background: var(--warning-orange-light);
+  color: var(--warning-orange);
+}
+
+.rc-pill.bad {
+  background: var(--danger-red-light);
+  color: var(--danger-red);
+}
+
+.rc-pill.info {
+  background: var(--info-blue-light);
+  color: var(--info-blue);
+}
+
+.rc-pill.muted {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.rc-pill:not(.ok):not(.warn):not(.bad):not(.info):not(.muted) {
+  background: var(--primary-blue-light);
+  color: var(--primary-blue);
+}
+
+/* ===== Error Message ===== */
+.rc-error {
+  background: var(--danger-red-light);
+  border: 2px solid var(--danger-red);
+  color: var(--danger-red);
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+}
+
+/* ===== Sections ===== */
+.rc-section {
+  margin: 32px 0;
+}
+
+.rc-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.rc-sec-head h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+}
+
+.rc-hint {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ===== Enhanced Tables ===== */
+.rc-table {
+  background: var(--white);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  border: 2px solid var(--border-light);
+  width: 100%;
+  margin: 20px 0;
+}
+
+.rc-thead {
+  background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+  border-bottom: 2px solid var(--border-medium);
+  display: grid;
+  grid-template-columns: 120px 120px 140px 120px 1fr;
+  gap: 16px;
+  align-items: center;
+}
+
+.rc-thead > div {
+  padding: 20px 16px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--gray-700);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rc-tbody {
+  display: block;
+  width: 100%;
+}
+
+.rc-row {
+  display: grid;
+  grid-template-columns: 120px 120px 140px 120px 1fr;
+  gap: 16px;
+  align-items: center;
+  border-bottom: 1px solid var(--border-light);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.rc-row:hover {
+  background: linear-gradient(135deg, #fafbff 0%, #f0f4ff 100%);
+  transform: translateX(4px);
+}
+
+.rc-row:last-child {
+  border-bottom: none;
+}
+
+.rc-row > div {
+  padding: 16px;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rc-row.rc-empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 24px;
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 16px;
+  background: var(--gray-50);
+  grid-column: 1 / -1;
+}
+
+.rc-dim {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* ===== Modal Overlay ===== */
+.schedule-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.schedule-modal {
+  background: var(--white);
+  border: 2px solid var(--border-light);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+
+.schedule-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 2px solid var(--border-light);
+  background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+}
+
+.schedule-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.schedule-modal-content {
+  padding: 24px;
+  display: grid;
+  gap: 20px;
+}
+
+.schedule-appointment-info {
+  background: var(--gray-50);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+}
+
+.schedule-appointment-info div {
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.schedule-appointment-info div:last-child {
+  margin-bottom: 0;
+}
+
+.schedule-form-group {
+  display: grid;
+  gap: 8px;
+}
+
+.schedule-form-group label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.schedule-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+}
+
+/* ===== Footer ===== */
+.rc-footer {
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+  margin: 48px 0 24px 0;
+  padding-top: 24px;
+  border-top: 2px solid var(--border-light);
+  font-weight: 500;
+}
+
+/* ===== Loading States ===== */
+.rc-skel .rc-card,
+.rc-skel .rc-table {
+  position: relative;
+  overflow: hidden;
+}
+
+.rc-skel .rc-card::after,
+.rc-skel .rc-table::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: rc-shimmer 1.5s infinite;
+}
+
+@keyframes rc-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+  .rc-topbar {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  
+  .rc-top-actions {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  
+  .rc-dentist-input {
+    width: 100%;
+  }
+  
+  .rc-table {
+    overflow-x: auto;
+  }
+  
+  .rc-thead,
+  .rc-row {
+    min-width: 600px;
+  }
+  
+  .schedule-modal {
+    margin: 16px;
+  }
+  
+  .schedule-modal-header,
+  .schedule-modal-content {
+    padding: 16px 20px;
+  }
+  
+  .schedule-modal-actions {
+    flex-direction: column;
+  }
+}
