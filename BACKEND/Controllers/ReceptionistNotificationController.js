@@ -35,9 +35,14 @@ async function listAppointmentNotifications(req, res) {
       status: 'cancelled',
     }).sort({ updatedAt: -1 }).limit(20).lean();
 
+    const autoConfirmed = await Appointment.find({
+      status: 'confirmed',
+      autoConfirmedAt: { $exists: true },
+    }).sort({ autoConfirmedAt: -1 }).limit(20).lean();
+
     const patientCodes = new Set();
     const dentistCodes = new Set();
-    [...pending, ...autoCancelled].forEach(a => {
+    [...pending, ...autoCancelled, ...autoConfirmed].forEach(a => {
       if (a?.patient_code) patientCodes.add(a.patient_code);
       if (a?.dentist_code) dentistCodes.add(a.dentist_code);
     });
@@ -101,7 +106,26 @@ async function listAppointmentNotifications(req, res) {
       origin: 'online', // Default to online for all appointments
     }));
 
-    return res.status(200).json({ pending: fmtPending, autoCancelled: fmtAuto });
+    const fmtAutoConfirmed = autoConfirmed.map(a => ({
+      appointmentCode: a.appointmentCode,
+      patient_code: a.patient_code,
+      patient: patientMap.get(a.patient_code) || null,
+      dentist_code: a.dentist_code,
+      dentist: dentistMap.get(a.dentist_code) || null,
+      appointment_date: a.appointment_date,
+      appointmentReason: a.reason || 'No reason provided',
+      requestedAt: a.createdAt,
+      autoConfirmedAt: a.autoConfirmedAt,
+      confirmedByCode: a.acceptedByCode || 'SYSTEM',
+      status: a.status,
+      origin: a.origin || 'online',
+    }));
+
+    return res.status(200).json({ 
+      pending: fmtPending, 
+      autoCancelled: fmtAuto,
+      autoConfirmed: fmtAutoConfirmed 
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ message: e.message || 'Failed to list appointment notifications' });
