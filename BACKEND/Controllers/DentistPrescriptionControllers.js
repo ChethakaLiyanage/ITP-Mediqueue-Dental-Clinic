@@ -80,10 +80,10 @@ const addPrescriptions = async (req, res) => {
     const dentistCode =
       req.user?.role === "Dentist" ? req.user.dentistCode : req.body.dentistCode;
 
-    if (!patientCode || !planCode || !dentistCode) {
+    if (!patientCode || !dentistCode) {
       return res
         .status(400)
-        .json({ message: "patientCode, planCode, dentistCode are required" });
+        .json({ message: "patientCode and dentistCode are required" });
     }
     if (!Array.isArray(medicines) || medicines.length === 0) {
       return res
@@ -98,19 +98,22 @@ const addPrescriptions = async (req, res) => {
       }
     }
 
-    const tp = await Treatmentplan.findOne({
-      patientCode,
-      planCode,
-      isDeleted: false,
-      ...(req.user?.role === "Dentist" && req.user?.dentistCode
-        ? { dentistCode: req.user.dentistCode }
-        : {}),
-    }).lean();
-    if (!tp) return res.status(404).json({ message: "Active treatment plan not found" });
+    let tp = null;
+    if (planCode) {
+      tp = await Treatmentplan.findOne({
+        patientCode,
+        planCode,
+        isDeleted: false,
+        ...(req.user?.role === "Dentist" && req.user?.dentistCode
+          ? { dentistCode: req.user.dentistCode }
+          : {}),
+      }).lean();
+      if (!tp) return res.status(404).json({ message: "Active treatment plan not found" });
+    }
 
     const existingActive = await Prescription.findOne({
       patientCode,
-      planCode,
+      ...(planCode && { planCode }),
       isActive: true,
       ...(req.user?.role === "Dentist" && req.user?.dentistCode
         ? { dentistCode: req.user.dentistCode }
@@ -119,14 +122,16 @@ const addPrescriptions = async (req, res) => {
     if (existingActive) {
       return res.status(409).json({
         message:
-          "Active prescription already exists for this plan. Use revise endpoint.",
+          planCode 
+            ? "Active prescription already exists for this treatment plan. Use revise endpoint."
+            : "Active prescription already exists for this patient. Use revise endpoint.",
       });
     }
 
     const doc = new Prescription({
       patientCode,
-      planCode,
-      plan_id: tp._id,
+      ...(planCode && { planCode }),
+      ...(tp && { plan_id: tp._id }),
       dentistCode,
       medicines,
       issuedAt: new Date(),

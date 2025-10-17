@@ -91,7 +91,12 @@ app.post("/reset-password", resetPassword);
 
 // API routes
 app.use("/dentists", router);
-app.use("/treatmentplans", treatmentplan_router);
+app.use("/treatmentplans", (req, res, next) => {
+  console.log('=== APP.JS ROUTE DEBUG ===');
+  console.log('Route hit:', req.method, req.path);
+  console.log('Request body:', req.body);
+  next();
+}, treatmentplan_router);
 app.use("/api/treatmentplans", patientTreatmentplan_router);
 app.use("/api/prescriptions", patientPrescription_router);
 app.use("/patients", Patient_router);

@@ -45,21 +45,34 @@ export default function DashboardMetrics() {
     setLoading(true);
     setError(null);
     const today = formatDateOnly(new Date());
+    
+    // Add a small delay to ensure backend is ready
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Create authenticated axios instance inline
-    const authenticatedFetch = async (url, options = {}) => {
+    // Create authenticated axios instance inline with retry logic
+    const authenticatedFetch = async (url, options = {}, retries = 3) => {
       const headers = {
         'Authorization': `Bearer ${currentToken}`,
         'Content-Type': 'application/json',
         ...options.headers
       };
       
-      try {
-        const response = await axios({ ...options, url, headers });
-        return response;
-      } catch (error) {
-        console.error('API Error:', error);
-        throw error;
+      for (let i = 0; i < retries; i++) {
+        try {
+          const response = await axios({ ...options, url, headers });
+          return response;
+        } catch (error) {
+          console.error(`API Error (attempt ${i + 1}/${retries}):`, error);
+          
+          // If it's a connection error and we have retries left, wait and try again
+          if (error.code === 'ERR_CONNECTION_REFUSED' && i < retries - 1) {
+            console.log(`Retrying in ${(i + 1) * 1000}ms...`);
+            await new Promise(resolve => setTimeout(resolve, (i + 1) * 1000));
+            continue;
+          }
+          
+          throw error;
+        }
       }
     };
 
@@ -130,11 +143,47 @@ export default function DashboardMetrics() {
       setTodayCount(uniqueQueue.length);
       setQueue(uniqueQueue);
 
-      // Treatment plans - temporarily disabled to fix infinite loop
-      setPlansCount(0);
+      // Get today's treatment plans count
+      try {
+        const plansRes = await authenticatedFetch(`${API}/treatmentplans`, {
+          method: 'GET'
+        });
+        const plansData = plansRes.data;
+        console.log('📊 Treatment plans API response:', plansData);
+        
+        // Handle different response structures
+        const plans = plansData.treatmentplans || plansData || [];
+        const todayPlans = plans.filter(plan => {
+          const planDate = new Date(plan.createdAt || plan.created_date);
+          return planDate >= todayStart && planDate <= todayEnd;
+        });
+        setPlansCount(todayPlans.length);
+        console.log('📊 Today\'s treatment plans:', todayPlans.length, 'out of', plans.length, 'total');
+      } catch (err) {
+        console.error('Error fetching treatment plans:', err);
+        setPlansCount(0);
+      }
 
-      // Prescriptions - temporarily disabled to fix infinite loop  
-      setRxCount(0);
+      // Get today's prescriptions count
+      try {
+        const rxRes = await authenticatedFetch(`${API}/prescriptions/my`, {
+          method: 'GET'
+        });
+        const rxData = rxRes.data;
+        console.log('📊 Prescriptions API response:', rxData);
+        
+        // Handle different response structures
+        const prescriptions = rxData.items || rxData || [];
+        const todayRx = prescriptions.filter(rx => {
+          const rxDate = new Date(rx.createdAt);
+          return rxDate >= todayStart && rxDate <= todayEnd;
+        });
+        setRxCount(todayRx.length);
+        console.log('📊 Today\'s prescriptions:', todayRx.length, 'out of', prescriptions.length, 'total');
+      } catch (err) {
+        console.error('Error fetching prescriptions:', err);
+        setRxCount(0);
+      }
 
       setLastUpdated(new Date());
 

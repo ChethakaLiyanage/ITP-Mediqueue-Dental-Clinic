@@ -1,6 +1,7 @@
 // Controllers/DentistQueueController.js
 const Queue = require("../Model/QueueModel");
 const Appointment = require("../Model/AppointmentModel");
+const Schedule = require("../Model/ScheduleModel");
 const Patient = require("../Model/PatientModel");
 const User = require("../Model/User");
 
@@ -24,25 +25,89 @@ async function getTodayQueueForDentist(req, res) {
       date: { $gte: start, $lte: end },
     }).lean();
 
+    // Get unique patient codes for bulk lookup
+    const patientCodes = [...new Set(queues.map(q => q.patientCode).filter(Boolean))];
+    
+    // Bulk fetch patient names for performance
+    const patientNameMap = new Map();
+    if (patientCodes.length > 0) {
+      try {
+        const patients = await Patient.find({ 
+          patientCode: { $in: patientCodes } 
+        }).populate('userId', 'name').lean();
+        
+        patients.forEach(patient => {
+          const name = patient.userId?.name || "Unknown";
+          patientNameMap.set(patient.patientCode, name);
+        });
+      } catch (error) {
+        console.error('Error bulk fetching patient names:', error.message);
+      }
+    }
+
     // join with appointment + patient + user details
     const withDetails = await Promise.all(
       queues.map(async (q) => {
         try {
-          const appt = await Appointment.findOne({
+          let appt = await Appointment.findOne({
             appointmentCode: q.appointmentCode,
           }).lean();
 
           if (!appt) {
-            console.warn('⚠️ No appointment found for queue:', q.appointmentCode);
-            return {
-              ...q,
-              queueNo: q.queueCode,
-              patientCode: q.patientCode,
-              patientName: "Unknown",
-              reason: "-",
-              appointment_date: q.date,
-              isBookingForSomeoneElse: false,
-            };
+            // Fallback: try to infer appointment by date/dentist/patient
+            try {
+              const day = new Date(q.date);
+              const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
+              const end = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999);
+
+              appt = await Appointment.findOne({
+                dentist_code: q.dentistCode,
+                appointment_date: { $gte: start, $lte: end },
+                $or: [
+                  { patient_code: q.patientCode },
+                  { bookerPatientCode: q.patientCode },
+                  { appointmentForPatientCode: q.patientCode },
+                ],
+              })
+                .sort({ appointment_date: 1 })
+                .lean();
+            } catch {}
+
+            if (!appt) {
+              // Final fallback: try schedule to extract reason
+              let reason = "-";
+              
+              try {
+                // Try to get reason from schedule
+                const d = new Date(q.date);
+                const s = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+                const e = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                const sched = await Schedule.findOne({
+                  dentistCode: q.dentistCode,
+                  date: { $gte: s, $lte: e },
+                  patientCode: q.patientCode,
+                })
+                  .sort({ date: 1 })
+                  .lean();
+
+                if (sched?.reason) {
+                  reason = sched.reason;
+                }
+              } catch (error) {
+                console.error('Error in fallback schedule lookup:', error.message);
+              }
+
+              console.warn('⚠️ No appointment found for queue:', q.appointmentCode, 'Using fallback data');
+              return {
+                ...q,
+                queueNo: q.queueCode,
+                patientCode: q.patientCode,
+                patientName: patientNameMap.get(q.patientCode) || "Unknown",
+                reason: reason,
+                appointment_date: q.date,
+                isBookingForSomeoneElse: false,
+              };
+            }
           }
 
           console.log('🔍 Queue item:', q.appointmentCode, 'isBookingForSomeoneElse:', appt?.isBookingForSomeoneElse);
@@ -73,22 +138,16 @@ async function getTodayQueueForDentist(req, res) {
           }
 
           // Regular appointment: Show normal patient details
-          const patient = await Patient.findOne({
-            patientCode: appt?.patient_code || q.patientCode,
-          }).lean();
-
-          let user = null;
-          if (patient?.userId) {
-            user = await User.findById(patient.userId).lean();
-          }
+          const patientCode = appt?.patient_code || q.patientCode;
+          const patientName = patientNameMap.get(patientCode) || "Unknown";
 
           return {
             ...q,
             queueNo: q.queueCode,
             reason: appt?.reason || "-",
             appointment_date: appt?.appointment_date || q.date,
-            patientCode: appt?.patient_code || q.patientCode,
-            patientName: user?.name || "-", // ✅ from user table
+            patientCode: patientCode,
+            patientName: patientName, // ✅ from bulk lookup
             isBookingForSomeoneElse: false,
           };
         } catch (itemError) {
@@ -98,7 +157,7 @@ async function getTodayQueueForDentist(req, res) {
             ...q,
             queueNo: q.queueCode,
             patientCode: q.patientCode,
-            patientName: "Error loading",
+            patientName: patientNameMap.get(q.patientCode) || "Unknown",
             reason: "-",
             appointment_date: q.date,
             isBookingForSomeoneElse: false,

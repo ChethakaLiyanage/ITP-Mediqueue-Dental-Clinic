@@ -95,20 +95,25 @@ export default function PrescriptionsPage() {
     setModalOpen(true);
     setForm({ patientCode: "", planCode: "", medicines: [{ name: "", dosage: "", instructions: "" }] });
     
-    if (!dentistCode || !token) return;
+    if (!dentistCode || !token) {
+      setLoadingPatients(false);
+      return;
+    }
     
     setLoadingPatients(true);
     try {
+      console.log('🔍 Loading patients for dentist:', dentistCode);
       // Only include today's queue patients for this dentist
       const qRes = await authenticatedFetch(`${API_BASE}/api/dentist-queue/today?dentistCode=${encodeURIComponent(dentistCode)}`);
       const qData = await qRes.json().catch(() => []);
+      console.log('📊 Queue data received:', qData);
       const rows = Array.isArray(qData) ? qData : [];
 
       const opts = [];
       for (const row of rows) {
         const code = row?.patientCode;
         if (!code) continue;
-        const name = await getPatientName(code);
+        const name = row?.patientName || "Unknown"; // Use patient name from queue data
         const status = row?.status || row?.queueStatus || "";
         const timeRaw = row?.appointment_date || row?.date;
         const time = timeRaw ? new Date(timeRaw) : null;
@@ -116,8 +121,12 @@ export default function PrescriptionsPage() {
         opts.push({ code, name, status, time, queueNo });
       }
       opts.sort((a, b) => a.name.localeCompare(b.name));
+      console.log('✅ Patient options created:', opts);
       setPatientOptions(opts);
+    } catch (error) {
+      console.error('❌ Error loading patients:', error);
     } finally {
+      console.log('🏁 Setting loading to false');
       setLoadingPatients(false);
     }
   };
@@ -152,9 +161,20 @@ export default function PrescriptionsPage() {
 
   // CREATE prescription
   const onCreate = async () => {
-    const meds = Array.isArray(form.medicines) ? form.medicines.filter(m => m.name && m.dosage) : [];
-    if (!form.patientCode || !form.planCode || meds.length === 0) {
-      alert("Please select patient/plan and add at least one medicine with name and dosage");
+    const meds = Array.isArray(form.medicines) ? form.medicines.filter(m => m.name && m.name.trim() && m.dosage && m.dosage.trim()) : [];
+    
+    // Debug logging
+    console.log('Form data:', form);
+    console.log('Filtered medicines:', meds);
+    console.log('Patient code:', form.patientCode);
+    console.log('Plan code:', form.planCode);
+    
+    if (!form.patientCode || meds.length === 0) {
+      let errorMsg = "Please ";
+      if (!form.patientCode) errorMsg += "select a patient, ";
+      if (meds.length === 0) errorMsg += "add at least one medicine with name and dosage";
+      errorMsg = errorMsg.replace(/,\s*$/, ""); // Remove trailing comma
+      alert(errorMsg);
       return;
     }
     
@@ -163,7 +183,7 @@ export default function PrescriptionsPage() {
         method: "POST",
         body: JSON.stringify({
           patientCode: form.patientCode,
-          planCode: form.planCode,
+          ...(form.planCode && { planCode: form.planCode }), // Only include planCode if it exists
           dentistCode,
           medicines: meds.map(m => ({ name: m.name, dosage: m.dosage, instructions: m.instructions || "" })),
         }),
@@ -355,6 +375,63 @@ export default function PrescriptionsPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+                </div>
+
+                {/* Treatment Plan Information */}
+                <div className="prescription-field">
+                  <div className="treatment-plan-info">
+                    <p className="info-text">
+                      <strong>Treatment Plan:</strong> If the selected patient has an active treatment plan, it will be automatically linked to this prescription. 
+                      You can create prescriptions with or without treatment plans.
+                    </p>
+                    
+                    {form.planCode && (
+                      <div className="linked-plan-details">
+                        <div className="linked-plan-header">
+                          <span className="linked-plan-icon">✅</span>
+                          <span className="linked-plan-text">
+                            <strong>Linked to Treatment Plan:</strong> {form.planCode}
+                          </span>
+                        </div>
+                        <div className="treatment-plan-card">
+                          <div className="plan-info-grid">
+                            <div className="plan-info-item">
+                              <label>Plan Code:</label>
+                              <span>{form.planCode}</span>
+                            </div>
+                            <div className="plan-info-item">
+                              <label>Patient:</label>
+                              <span>{form.patientCode}</span>
+                            </div>
+                            <div className="plan-info-item full-width">
+                              <label>Status:</label>
+                              <span className="plan-status active">Active Treatment Plan</span>
+                            </div>
+                          </div>
+                          <p className="plan-note">
+                            This prescription will be automatically linked to the treatment plan for proper tracking and documentation.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!form.planCode && form.patientCode && (
+                      <div className="no-plan-details">
+                        <div className="no-plan-header">
+                          <span className="no-plan-icon">ℹ️</span>
+                          <span className="no-plan-text">
+                            <strong>No Active Treatment Plan</strong>
+                          </span>
+                        </div>
+                        <div className="no-plan-card">
+                          <p>No active treatment plan found for this patient. Prescription will be created without a treatment plan link.</p>
+                          <p className="plan-note">
+                            You can still create the prescription. A treatment plan can be linked later if needed.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

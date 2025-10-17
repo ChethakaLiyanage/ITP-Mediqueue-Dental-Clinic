@@ -568,3 +568,171 @@
     height: 2.5rem;
   }
 }
+
+/* Treatment Plan Info Styles */
+.treatment-plan-info {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.treatment-plan-info .info-text {
+  margin: 0 0 0.75rem 0;
+  color: #475569;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Linked Plan Details */
+.linked-plan-details {
+  margin-top: 0.75rem;
+}
+
+.linked-plan-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.linked-plan-icon {
+  font-size: 1.125rem;
+}
+
+.linked-plan-text {
+  color: #166534;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.treatment-plan-card {
+  background: #ffffff;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.plan-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.plan-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.plan-info-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.plan-info-item label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.plan-info-item span {
+  font-size: 0.875rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.plan-status {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.plan-status.active {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.plan-note {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  color: #0c4a6e;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+/* No Plan Details */
+.no-plan-details {
+  margin-top: 0.75rem;
+}
+
+.no-plan-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.no-plan-icon {
+  font-size: 1.125rem;
+}
+
+.no-plan-text {
+  color: #92400e;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.no-plan-card {
+  background: #ffffff;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.no-plan-card p {
+  margin: 0 0 0.5rem 0;
+  color: #374151;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.no-plan-card p:last-child {
+  margin-bottom: 0;
+}
+
+/* Legacy styles for backward compatibility */
+.linked-plan-info {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  color: #166534;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.no-plan-info {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  color: #92400e;
+  font-size: 0.875rem;
+  font-weight: 500;
+}

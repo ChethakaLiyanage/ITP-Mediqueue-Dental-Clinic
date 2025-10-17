@@ -211,12 +211,70 @@
   padding: 16px 24px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
   border-bottom: 1px solid var(--gray-200);
   box-shadow: var(--shadow-sm);
   position: sticky;
   top: 0;
   z-index: 100;
+}
+
+.dent-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dent-page-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dent-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dent-notification-btn {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--gray-700);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dent-notification-btn:hover {
+  background: var(--gray-100);
+  color: var(--dentist-teal);
+}
+
+.dent-notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .dent-toggle-btn {

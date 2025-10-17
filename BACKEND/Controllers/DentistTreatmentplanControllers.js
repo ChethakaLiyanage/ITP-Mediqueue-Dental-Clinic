@@ -13,8 +13,12 @@ try {
 
 /* --------------------------------- helpers -------------------------------- */
 async function writeHistory(event, afterDoc, extra = {}) {
-  if (!TreatmentplanHistory || !afterDoc) return;
+  if (!TreatmentplanHistory || !afterDoc) {
+    console.log('History write skipped - TreatmentplanHistory:', !!TreatmentplanHistory, 'afterDoc:', !!afterDoc);
+    return;
+  }
   try {
+    console.log('Writing history for event:', event, 'planCode:', afterDoc.planCode);
     await TreatmentplanHistory.create({
       event, // "create" | "update" | "archive" | "restore"
       patientCode: afterDoc.patientCode,
@@ -24,7 +28,9 @@ async function writeHistory(event, afterDoc, extra = {}) {
       snapshot: afterDoc,
       ...extra,
     });
+    console.log('History written successfully for:', afterDoc.planCode);
   } catch (e) {
+    console.error("History write failed:", e?.message, e?.stack);
     console.warn("history write skipped:", e?.message);
   }
 }
@@ -90,13 +96,20 @@ const getMyTreatmentplans = async (req, res) => {
 // POST /treatmentplans
 const addTreatmentplans = async (req, res) => {
   try {
+    console.log('=== TREATMENT PLAN CREATION DEBUG ===');
+    console.log('Request body:', req.body);
+    console.log('Request user:', req.user);
+    
     const { patientCode, diagnosis, treatment_notes, version } = req.body;
 
     // force dentistCode from login if Dentist, otherwise allow body (e.g., Admin)
     const dentistCode =
       req.user?.role === "Dentist" ? req.user.dentistCode : req.body.dentistCode;
 
+    console.log('Extracted values:', { patientCode, dentistCode, diagnosis, treatment_notes, version });
+
     if (!patientCode || !dentistCode || !diagnosis) {
+      console.log('Validation failed:', { patientCode: !!patientCode, dentistCode: !!dentistCode, diagnosis: !!diagnosis });
       return res.status(400).json({
         message: "patientCode, dentistCode, and diagnosis are required",
       });
@@ -112,12 +125,27 @@ const addTreatmentplans = async (req, res) => {
       updated_date: new Date(),
     });
 
+    console.log('Treatment plan document created:', doc);
+    console.log('Saving treatment plan...');
+    
     await doc.save();
+    console.log('Treatment plan saved successfully:', doc);
+    
     await writeHistory("create", doc.toObject());
+    console.log('History written successfully');
+    
     return res.status(201).json({ treatmentplans: doc });
   } catch (err) {
     console.error("addTreatmentplans error:", err);
-    return res.status(500).json({ message: "Unable to add treatment plan" });
+    console.error("Error details:", {
+      message: err.message,
+      stack: err.stack,
+      name: err.name
+    });
+    return res.status(500).json({ 
+      message: "Unable to add treatment plan",
+      error: err.message 
+    });
   }
 };
 
@@ -400,7 +428,7 @@ const restoreByCode = async (req, res) => {
 const getCounterForPatient = async (req, res) => {
   try {
     const patientCode = String(req.params.patientCode || "").trim();
-    const scope = `tplan:${patientCode}`;
+    const scope = `tplan:${patientCode}`; // Per-patient counter
     const counter = await Counter.findOne({ scope }).lean();
     const seq = counter?.seq || 0;
     const maxInDb = await getMaxPlanNumberInDb(patientCode);
@@ -412,7 +440,7 @@ const getCounterForPatient = async (req, res) => {
       maxPlanNumberInDb: maxInDb,
       nextGeneratedWouldBe: `TP-${String(seq + 1).padStart(3, "0")}`,
       explanation:
-        "Counters are monotonic for auditability. Hard-deleting documents in MongoDB UI does not rewind the counter.",
+        "Counters are per-patient for unique plan codes. Hard-deleting documents in MongoDB UI does not rewind the counter.",
     });
   } catch (err) {
     console.error("getCounterForPatient error:", err);
@@ -424,7 +452,7 @@ const getCounterForPatient = async (req, res) => {
 const resyncCounterForPatient = async (req, res) => {
   try {
     const patientCode = String(req.params.patientCode || "").trim();
-    const scope = `tplan:${patientCode}`;
+    const scope = `tplan:${patientCode}`; // Per-patient counter
 
     const old = await Counter.findOne({ scope }).lean();
     const oldSeq = old?.seq || 0;

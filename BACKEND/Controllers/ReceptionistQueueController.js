@@ -83,7 +83,23 @@ async function migrateToday(req, res) {
       appointment_date: { $gte: start, $lte: end },
     }).lean();
 
-    const toInsert = appts.map((a, idx) => ({
+    console.log(`[migrateToday] Found ${appts.length} appointments for date ${dateStr}`);
+    
+    const validAppts = appts.filter((a) => a.patient_code && a.dentist_code && a.appointmentCode);
+    const invalidAppts = appts.filter((a) => !a.patient_code || !a.dentist_code || !a.appointmentCode);
+    
+    if (invalidAppts.length > 0) {
+      console.log(`[migrateToday] Skipping ${invalidAppts.length} invalid appointments:`, 
+        invalidAppts.map(a => ({ 
+          id: a._id, 
+          patient_code: a.patient_code, 
+          dentist_code: a.dentist_code, 
+          appointmentCode: a.appointmentCode 
+        }))
+      );
+    }
+
+    const toInsert = validAppts.map((a, idx) => ({
       appointmentCode: a.appointmentCode,
       patientCode: a.patient_code,
       dentistCode: a.dentist_code,
@@ -93,10 +109,18 @@ async function migrateToday(req, res) {
     }));
 
     if (toInsert.length) {
-      await Queue.insertMany(toInsert);
-      // Remove migrated appointments
-      const ids = appts.map(a => a._id);
-      await Appointment.deleteMany({ _id: { $in: ids } });
+      // Create queue items individually to trigger pre('save') middleware for queueCode generation
+      const queueItems = [];
+      for (const itemData of toInsert) {
+        const queueItem = new Queue(itemData);
+        await queueItem.save(); // This will trigger pre('save') and generate queueCode
+        console.log(`[migrateToday] Created queue item with queueCode: ${queueItem.queueCode}`);
+        queueItems.push(queueItem);
+      }
+      
+      // Remove only the appointments that were successfully migrated
+      const migratedAppointmentCodes = toInsert.map(item => item.appointmentCode);
+      await Appointment.deleteMany({ appointmentCode: { $in: migratedAppointmentCodes } });
     }
 
     return res.json({ moved: toInsert.length });
@@ -117,8 +141,22 @@ async function switchTime(req, res) {
   try {
     const { queueCode } = req.params;
     const { newTime } = req.body;
+    
+    console.log(`[switchTime] Request for queueCode: ${queueCode}`);
+    console.log(`[switchTime] New time: ${newTime}`);
+    
     const item = await Queue.findOne({ queueCode });
-    if (!item) return res.status(404).json({ message: "Queue item not found" });
+    if (!item) {
+      console.log(`[switchTime] Queue item not found for code: ${queueCode}`);
+      return res.status(404).json({ message: "Queue item not found" });
+    }
+
+    console.log(`[switchTime] Found item:`, {
+      queueCode: item.queueCode,
+      patientCode: item.patientCode,
+      oldDate: item.date,
+      newTime: newTime
+    });
 
     const oldTime = item.date;
 
@@ -126,7 +164,14 @@ async function switchTime(req, res) {
     item.previousTime = oldTime;
     item.date = new Date(newTime);
     // Status remains 'waiting' - Action column shows "Time switched"
-    await item.save();
+    
+    console.log(`[switchTime] Before save - item.date:`, item.date);
+    const savedItem = await item.save();
+    console.log(`[switchTime] After save - savedItem.date:`, savedItem.date);
+    
+    // Verify the update by querying the database again
+    const verifyItem = await Queue.findOne({ queueCode });
+    console.log(`[switchTime] Verification query - verifyItem.date:`, verifyItem.date);
 
     // ✅ Send WhatsApp notification (per queue_part4.txt)
     try {

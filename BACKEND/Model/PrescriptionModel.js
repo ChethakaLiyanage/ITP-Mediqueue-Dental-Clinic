@@ -35,7 +35,7 @@ const PrescriptionSchema = new Schema(
     },
     planCode: { 
       type: String, 
-      required: true, 
+      required: false, 
       index: true 
     },
     plan_id: { 

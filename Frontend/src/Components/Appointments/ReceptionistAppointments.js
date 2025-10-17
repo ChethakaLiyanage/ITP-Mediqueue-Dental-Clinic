@@ -94,6 +94,10 @@ export default function ReceptionistAppointments() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const [dentists, setDentists] = useState([]);
+  const [loadingDentists, setLoadingDentists] = useState(false);
+  const [patients, setPatients] = useState([]);
+  const [loadingPatients, setLoadingPatients] = useState(false);
 
   const [patientType, setPatientType] = useState("registered");
   const [unregisteredMode, setUnregisteredMode] = useState("account");
@@ -141,6 +145,63 @@ export default function ReceptionistAppointments() {
   useEffect(() => {
     load();
   }, [date, dentistCodeFilter]);
+
+  // Fetch dentists list
+  const fetchDentists = async () => {
+    try {
+      setLoadingDentists(true);
+      const response = await fetch(`${API_BASE}/dentists`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const dentistsList = data.dentists || data || [];
+        setDentists(dentistsList);
+      } else {
+        console.warn('Failed to fetch dentists, status:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching dentists:', error);
+    } finally {
+      setLoadingDentists(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchDentists();
+      fetchPatients();
+    }
+  }, [token]);
+
+  // Fetch patients list
+  const fetchPatients = async () => {
+    try {
+      setLoadingPatients(true);
+      const response = await fetch(`${API_BASE}/receptionist/patients?limit=200`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const patientsList = data.items || data || [];
+        setPatients(patientsList);
+      } else {
+        console.warn('Failed to fetch patients, status:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+    } finally {
+      setLoadingPatients(false);
+    }
+  };
 
   function resetForms() {
     setRegisteredPatientCode("");
@@ -543,7 +604,7 @@ export default function ReceptionistAppointments() {
     <>
       <div className="field">
         <label>Dentist Code</label>
-        <input
+        <select
           value={appointmentFields.dentistCode}
           onChange={(e) =>
             setAppointmentFields((prev) => ({
@@ -551,9 +612,22 @@ export default function ReceptionistAppointments() {
               dentistCode: e.target.value,
             }))
           }
-          placeholder="Dr-0001"
+          disabled={loadingDentists}
           required
-        />
+        >
+          <option value="">Select a dentist</option>
+          {loadingDentists && <option disabled>Loading dentists...</option>}
+          {!loadingDentists && dentists.map((dentist) => {
+            const dentistName = dentist.userId?.name || dentist.name || 'Unknown';
+            const dentistCode = dentist.dentistCode || dentist.code || dentist._id;
+            const specialization = dentist.specialization || 'General';
+            return (
+              <option key={dentistCode} value={dentistCode}>
+                {dentistName} - {dentistCode} ({specialization})
+              </option>
+            );
+          })}
+        </select>
       </div>
 
       {/* Appointment number now auto-generated and read-only */}
@@ -759,11 +833,24 @@ export default function ReceptionistAppointments() {
               </div>
               <div className="field">
                 <label>Dentist Filter</label>
-                <input
-                  placeholder="Dr-0001"
+                <select
                   value={dentistCodeFilter}
                   onChange={(e) => setDentistCodeFilter(e.target.value)}
-                />
+                  disabled={loadingDentists}
+                >
+                  <option value="">Select a dentist</option>
+                  {loadingDentists && <option disabled>Loading dentists...</option>}
+                  {!loadingDentists && dentists.map((dentist) => {
+                    const dentistName = dentist.userId?.name || dentist.name || 'Unknown';
+                    const dentistCode = dentist.dentistCode || dentist.code || dentist._id;
+                    const specialization = dentist.specialization || 'General';
+                    return (
+                      <option key={dentistCode} value={dentistCode}>
+                        {dentistName} - {dentistCode} ({specialization})
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
               <button className="btn ghost" onClick={load}>
                 Refresh
@@ -827,13 +914,23 @@ export default function ReceptionistAppointments() {
                   <form className="form" onSubmit={submitRegistered}>
                     <div className="field">
                       <label>Patient Code</label>
-                      <input
+                      <select
                         value={registeredPatientCode}
-                        onChange={(e) =>
-                          setRegisteredPatientCode(e.target.value)
-                        }
-                        placeholder="P-0001"
-                      />
+                        onChange={(e) => setRegisteredPatientCode(e.target.value)}
+                        disabled={loadingPatients}
+                      >
+                        <option value="">Select a patient</option>
+                        {loadingPatients && <option disabled>Loading patients...</option>}
+                        {!loadingPatients && patients.map((patient) => {
+                          const patientName = patient.name || patient.userId?.name || 'Unknown';
+                          const patientCode = patient.patientCode || patient.code || patient._id;
+                          return (
+                            <option key={patientCode} value={patientCode}>
+                              {patientName} - {patientCode}
+                            </option>
+                          );
+                        })}
+                      </select>
                     </div>
                     {appointmentForm}
                     <button type="submit" className="btn">

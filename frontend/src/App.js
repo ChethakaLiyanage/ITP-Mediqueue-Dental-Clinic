@@ -6,6 +6,7 @@ import DentistNav from "./Components/Nav/DentistNav";
 import DashboardMetrics from "./Components/Dashboard/DashboardMetrics";
 import FeedbackPage from "./Components/Feedback/DentistFeedbackPage";
 import InventoryRequestForm from "./Components/Inventory/InventoryRequestForm";
+import DentistInventoryRequestsPage from "./Components/Inventory/DentistInventoryRequestsPage";
 import TreatmentPlansList from "./Components/TreatmentPlans/DentistTreatmentPlansList";
 import DentistTreatmentPlanHistoryPage from "./Components/TreatmentPlans/DentistTreatmentPlanHistoryPage";
 import PrescriptionsView from "./Components/Prescriptions/DentistPrescriptionsPage";
@@ -74,6 +75,7 @@ export default function App() {
         <Route path="feedback" element={<FeedbackPage />} />
         <Route path="inventory" element={<InventoryRequestForm />} />
         <Route path="inventory/request" element={<InventoryRequestForm />} />
+        <Route path="inventory/requests" element={<DentistInventoryRequestsPage />} />
         <Route path="inventory/notifications" element={<InventoryNotification />} />
         <Route path="treatmentplans" element={<TreatmentPlansList />} />
         <Route path="treatmentplans/history" element={<DentistTreatmentPlanHistoryPage />} />

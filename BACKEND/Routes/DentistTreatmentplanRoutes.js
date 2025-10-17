@@ -12,7 +12,13 @@ const TreatmentplanController = require("../Controllers/DentistTreatmentplanCont
 treatmentplan_router.use(requireAuth);
 
 treatmentplan_router.get("/",TreatmentplanController.getAllTreatmentplans);
-treatmentplan_router.post("/",TreatmentplanController.addTreatmentplans);
+treatmentplan_router.post("/", (req, res, next) => {
+  console.log('=== TREATMENT PLAN ROUTE DEBUG ===');
+  console.log('POST /treatmentplans route hit');
+  console.log('Request body:', req.body);
+  console.log('Request user:', req.user);
+  next();
+}, TreatmentplanController.addTreatmentplans);
 treatmentplan_router.get("/code/:planCode",TreatmentplanController.getByCode);  
 treatmentplan_router.get("/:id",TreatmentplanController.getById);
 treatmentplan_router.put("/code/:patientCode/:planCode",TreatmentplanController.updateTreatmentplanByCode);

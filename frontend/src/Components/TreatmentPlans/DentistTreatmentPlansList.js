@@ -57,10 +57,12 @@ export default function TreatmentPlansList() {
     
     setLoadingDropdown(true);
     try {
+      console.log('🔍 Treatment Plans: Loading patients for dentist:', dentistCode);
       const qRes = await authenticatedFetch(
         `${API_BASE}/api/dentist-queue/today?dentistCode=${encodeURIComponent(dentistCode)}`
       );
       const qData = await qRes.json().catch(() => []);
+      console.log('📊 Treatment Plans: Queue data received:', qData);
       const rows = Array.isArray(qData) ? qData : [];
 
       // Build dropdown options - only include patients with "in_treatment" status
@@ -68,23 +70,29 @@ export default function TreatmentPlansList() {
       for (const row of rows) {
         const code = row?.patientCode;
         const status = row?.status || row?.queueStatus || "";
+        const name = row?.patientName || "Unknown"; // Use patient name from queue data
+        const timeRaw = row?.appointment_date || row?.date;
+        const time = timeRaw ? new Date(timeRaw) : null;
+        const queueNo = row?.queueCode || row?.queueNo || "";
         
         // Only include patients with "in_treatment" status
         if (code && status.toLowerCase() === "in_treatment") {
-          const name = await getPatientName(code);
           opts.push({ 
             code, 
             name, 
             status,
+            time,
+            queueNo,
             disabled: false // All in_treatment patients are selectable
           });
         } else if (code) {
           // Include other patients but mark them as disabled
-          const name = await getPatientName(code);
           opts.push({ 
             code, 
             name, 
             status,
+            time,
+            queueNo,
             disabled: true // Other status patients are not selectable
           });
         }
@@ -98,14 +106,16 @@ export default function TreatmentPlansList() {
         return a.name.localeCompare(b.name);
       });
       
+      console.log('✅ Treatment Plans: Patient options created:', opts);
       setDropdownPatients(opts);
     } catch (e) {
-      console.error("Error loading queue patients:", e);
+      console.error("❌ Treatment Plans: Error loading queue patients:", e);
       setDropdownPatients([]);
     } finally {
+      console.log('🏁 Treatment Plans: Setting loading to false');
       setLoadingDropdown(false);
     }
-  }, [dentistCode, token, authenticatedFetch, getPatientName]);
+  }, [dentistCode, token, authenticatedFetch]);
 
   // edit modal state
   const [editPlan, setEditPlan] = useState(null);
@@ -236,9 +246,12 @@ export default function TreatmentPlansList() {
       for (const row of rows) {
         const code = row?.patientCode;
         if (!code) continue;
-        const name = await getPatientName(code);
+        const name = row?.patientName || "Unknown"; // Use patient name from queue data
         const status = row?.status || row?.queueStatus || "";
-        opts.push({ code, name, status });
+        const timeRaw = row?.appointment_date || row?.date;
+        const time = timeRaw ? new Date(timeRaw) : null;
+        const queueNo = row?.queueCode || row?.queueNo || "";
+        opts.push({ code, name, status, time, queueNo });
       }
 
       // Sort by name
@@ -544,30 +557,51 @@ export default function TreatmentPlansList() {
             onClose={() => setCreating(false)}
             onChange={(patch) => setCreateForm((prev) => ({ ...prev, ...patch }))}
             onCreate={async () => {
+              console.log('=== FRONTEND TREATMENT PLAN CREATION DEBUG ===');
+              console.log('Form data:', createForm);
+              console.log('Dentist code:', dentistCode);
+              
               if (!createForm.patientCode || !createForm.diagnosis) {
                 alert("Please select a patient and enter a diagnosis.");
                 return;
               }
               try {
                 setSaving(true);
+                
+                const requestBody = {
+                  patientCode: createForm.patientCode,
+                  dentistCode,
+                  diagnosis: createForm.diagnosis,
+                  treatment_notes: createForm.treatment_notes,
+                };
+                
+                console.log('Request body:', requestBody);
+                console.log('Making API call to:', `${API_BASE}/treatmentplans`);
+                
                 const res = await authenticatedFetch(`${API_BASE}/treatmentplans`, {
                   method: "POST",
-                  body: JSON.stringify({
-                    patientCode: createForm.patientCode,
-                    dentistCode,
-                    diagnosis: createForm.diagnosis,
-                    treatment_notes: createForm.treatment_notes,
-                  }),
+                  body: JSON.stringify(requestBody),
                 });
+                
+                console.log('API response status:', res.status);
+                console.log('API response ok:', res.ok);
+                
                 const data = await res.json().catch(() => ({}));
+                console.log('API response data:', data);
+                
                 if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
                 
                 const created = data.treatmentplans || data.treatmentplan || null;
+                console.log('Created treatment plan:', created);
+                
                 if (created) setPlans((prev) => [created, ...prev]);
                 setCreating(false);
                 // Refresh dropdown patients after creating a new plan
                 fetchQueuePatients();
+                
+                console.log('Treatment plan created successfully!');
               } catch (e) {
+                console.error('Treatment plan creation error:', e);
                 alert(e.message || "Failed to create plan");
               } finally {
                 setSaving(false);
@@ -637,15 +671,36 @@ export default function TreatmentPlansList() {
               }
               
               // Check if patient is "In Treatment" before allowing prescription creation
+              // Use the same data source as the UI to avoid inconsistencies
               try {
-                const queueRes = await authenticatedFetch(`${API_BASE}/api/queue/status/${encodeURIComponent(rxPlan.patientCode)}`);
+                console.log('🔍 Checking patient status from today\'s queue for:', rxPlan.patientCode);
+                
+                // Get today's queue data (same as UI) instead of individual status API
+                const queueRes = await authenticatedFetch(`${API_BASE}/api/dentist-queue/today?dentistCode=${encodeURIComponent(dentistCode)}`);
                 const queueData = await queueRes.json();
                 
-                if (!queueRes.ok || queueData.status !== "in_treatment") {
-                  alert("Prescriptions can only be created when the patient status is 'In Treatment' in the queue.");
+                console.log('📊 Today\'s queue data:', queueData);
+                
+                // Find the patient in today's queue
+                const patientInQueue = queueData.find(item => item.patientCode === rxPlan.patientCode);
+                
+                if (!patientInQueue) {
+                  alert(`Patient ${rxPlan.patientCode} not found in today's queue.`);
                   return;
                 }
+                
+                const patientStatus = patientInQueue.status || patientInQueue.queueStatus || "";
+                console.log('📊 Patient status from queue:', patientStatus);
+                console.log('📊 Status comparison:', patientStatus?.toLowerCase(), '===', 'in_treatment');
+                
+                if (patientStatus?.toLowerCase() !== "in_treatment") {
+                  alert(`Prescriptions can only be created when the patient status is 'In Treatment' in the queue. Current status: "${patientStatus || 'Unknown'}"`);
+                  return;
+                }
+                
+                console.log('✅ Patient status verified as "in_treatment"');
               } catch (e) {
+                console.error('❌ Error checking queue status:', e);
                 alert("Could not verify patient queue status. Please ensure patient is 'In Treatment'.");
                 return;
               }
@@ -981,6 +1036,42 @@ function CreatePlanModal({
               placeholder="Optional notes"
             />
           </div>
+
+          {/* Selected Patient Queue Information */}
+          {form.patientCode && (() => {
+            const selectedPatient = patientOptions.find(p => p.code === form.patientCode);
+            return selectedPatient ? (
+              <div className="selected-patient-info">
+                <div className="patient-info-card">
+                  <h4 className="patient-info-title">Selected Patient Information</h4>
+                  <div className="patient-info-grid">
+                    <div className="patient-info-item">
+                      <label>QUEUE NUMBER:</label>
+                      <span className="queue-number">{selectedPatient.queueNo || 'N/A'}</span>
+                    </div>
+                    <div className="patient-info-item">
+                      <label>APPOINTMENT TIME:</label>
+                      <span className="appointment-time">
+                        {selectedPatient.time ? 
+                          new Date(selectedPatient.time).toLocaleTimeString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true 
+                          }) : 'N/A'
+                        }
+                      </span>
+                    </div>
+                    <div className="patient-info-item">
+                      <label>STATUS:</label>
+                      <span className={`status-badge ${selectedPatient.status?.toLowerCase().replace('_', '-') || 'unknown'}`}>
+                        {selectedPatient.status?.toUpperCase() || 'UNKNOWN'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null;
+          })()}
         </div>
 
         <div className="tp-modal-footer">
