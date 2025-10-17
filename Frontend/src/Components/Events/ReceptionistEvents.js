@@ -382,6 +382,40 @@ export default function ReceptionistEvents() {
     payload.startDate = startIso;
     payload.endDate = endIso;
 
+    // Check for existing appointments on the event date(s)
+    try {
+      const startDate = new Date(startIso);
+      const endDate = new Date(endIso);
+      
+      // Get all dates between start and end (inclusive)
+      const datesToCheck = [];
+      const currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        const dateStr = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+        datesToCheck.push(dateStr);
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // Check each date for existing appointments
+      for (const dateToCheck of datesToCheck) {
+        const appointmentsUrl = `${API_BASE}/receptionist/appointments?date=${dateToCheck}&includePending=true`;
+        const appointmentsResponse = await fetch(appointmentsUrl, {
+          headers: authHeaders
+        });
+        
+        if (appointmentsResponse.ok) {
+          const appointmentsData = await appointmentsResponse.json();
+          if (appointmentsData.items && appointmentsData.items.length > 0) {
+            setError(`Cannot create clinic event on ${dateToCheck}. There are ${appointmentsData.items.length} existing appointment(s) on this date. Please choose a different date.`);
+            return;
+          }
+        }
+      }
+    } catch (appointmentsCheckError) {
+      console.warn('Error checking appointments:', appointmentsCheckError);
+      // Don't block event creation if appointment check fails, just log the warning
+    }
+
     setSaving(true);
     setError("");
 
