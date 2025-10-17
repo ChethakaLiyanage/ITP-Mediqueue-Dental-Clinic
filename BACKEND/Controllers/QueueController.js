@@ -4,7 +4,7 @@ const QueueHistory = require("../Model/QueueHistoryModel");
 // 🔹 Add to Queue
 const addQueue = async (req, res) => {
   try {
-    const { appointmentCode, patientCode, dentist_code } = req.body;
+    const { appointmentCode, patientCode, dentist_code, reason } = req.body;
 
     if (!appointmentCode || !patientCode || !dentist_code) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -26,7 +26,8 @@ const addQueue = async (req, res) => {
       dentist_code,
       position: nextPosition,
       status: 'waiting',
-      date: new Date()
+      date: new Date(),
+      reason: reason || 'General consultation'
     });
 
     await newQueue.save();

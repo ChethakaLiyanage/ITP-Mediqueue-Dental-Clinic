@@ -332,7 +332,8 @@ const bookAppointment = async (req, res) => {
           dentistCode: doc.dentist_code,
           date: doc.appointment_date,
           position: nextPosition,
-          status: 'waiting'
+          status: 'waiting',
+          reason: doc.reason || 'General consultation'
         });
         
         // ✅ Remove appointment from appointment table since it's now in queue
