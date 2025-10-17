@@ -26,15 +26,31 @@ function toTime(d) {
 async function autoConfirmExpiredPending() {
   const now = new Date();
 
+
+  // Find appointments with pendingExpiresAt field
   const expired = await Appointment.find({
     status: 'pending',
     isActive: true,
     pendingExpiresAt: { $lte: now },
   }).limit(200).lean();
 
-  if (!expired.length) return;
+  // Find appointments without pendingExpiresAt but created more than 4 hours ago
+  const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000);
+  const expiredByTime = await Appointment.find({
+    status: 'pending',
+    isActive: true,
+    $or: [
+      { pendingExpiresAt: { $exists: false } },
+      { pendingExpiresAt: null }
+    ],
+    createdAt: { $lte: fourHoursAgo }
+  }).limit(200).lean();
 
-  for (const appt of expired) {
+  const allExpired = [...expired, ...expiredByTime];
+
+  if (!allExpired.length) return;
+
+  for (const appt of allExpired) {
     try {
       // Auto-confirm the appointment instead of cancelling
       await Appointment.updateOne(

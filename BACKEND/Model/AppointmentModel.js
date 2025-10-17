@@ -52,6 +52,21 @@ const AppointmentSchema = new Schema(
     acceptedByCode: { type: String, trim: true },
     acceptedAt: { type: Date },
     autoConfirmedAt: { type: Date },
+    
+    // Auto-confirmation fields
+    pendingExpiresAt: { type: Date },
+    isActive: { type: Boolean, default: true },
+    
+    // Origin tracking
+    origin: { type: String, enum: ['patient', 'receptionist', 'guest'], default: 'patient' },
+    
+    // Patient type and snapshot
+    patientType: { type: String, enum: ['registered', 'unregistered'], default: 'registered' },
+    patientSnapshot: {
+      name: { type: String, trim: true },
+      phone: { type: String, trim: true },
+      email: { type: String, trim: true },
+    },
 
     reminders: {
       dayBeforeSentAt: { type: Date },
