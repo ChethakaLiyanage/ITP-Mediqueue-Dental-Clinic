@@ -15,12 +15,13 @@ const BookAppointment = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [availableSlots, setAvailableSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState('');
+  const [selectedDuration, setSelectedDuration] = useState(30);
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
   
   // UI state
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1: Select dentist, 2: Select date, 3: Select time, 4: Confirm
+  const [step, setStep] = useState(1); // 1: Select dentist, 2: Select date, 3: Select duration, 4: Select time, 5: Confirm
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -51,11 +52,11 @@ const BookAppointment = () => {
     }
   };
 
-  const fetchAvailableSlots = async (dentistCode, date) => {
+  const fetchAvailableSlots = async (dentistCode, date, duration = 30) => {
     try {
       setLoading(true);
       const response = await api.get('/appointments/available-slots', {
-        params: { dentistCode, date }
+        params: { dentistCode, date, duration }
       });
       setAvailableSlots(response.data.slots || []);
     } catch (error) {
@@ -75,16 +76,22 @@ const BookAppointment = () => {
 
   const handleDateSelect = (date) => {
     setSelectedDate(date);
-    if (selectedDentist) {
-      fetchAvailableSlots(selectedDentist, date);
-    }
     setStep(3);
+    setError('');
+  };
+
+  const handleDurationSelect = (duration) => {
+    setSelectedDuration(duration);
+    if (selectedDentist && selectedDate) {
+      fetchAvailableSlots(selectedDentist, selectedDate, duration);
+    }
+    setStep(4);
     setError('');
   };
 
   const handleSlotSelect = (slotTime) => {
     setSelectedSlot(slotTime);
-    setStep(4);
+    setStep(5);
     setError('');
   };
 
@@ -103,6 +110,7 @@ const BookAppointment = () => {
       const appointmentData = {
         dentistCode: selectedDentist,
         appointmentDate: selectedSlot,
+        duration: selectedDuration,
         reason: reason.trim(),
         notes: notes.trim()
       };
@@ -252,6 +260,30 @@ const BookAppointment = () => {
 
         {step === 3 && (
           <div className="step-content">
+            <h2>Select Appointment Duration</h2>
+            <div className="duration-options">
+              <div className={`duration-card ${selectedDuration === 30 ? 'selected' : ''}`} onClick={() => handleDurationSelect(30)}>
+                <div className="duration-time">30 min</div>
+                <div className="duration-label">Quick Checkup</div>
+              </div>
+              <div className={`duration-card ${selectedDuration === 60 ? 'selected' : ''}`} onClick={() => handleDurationSelect(60)}>
+                <div className="duration-time">60 min</div>
+                <div className="duration-label">Standard Treatment</div>
+              </div>
+              <div className={`duration-card ${selectedDuration === 90 ? 'selected' : ''}`} onClick={() => handleDurationSelect(90)}>
+                <div className="duration-time">90 min</div>
+                <div className="duration-label">Complex Procedure</div>
+              </div>
+              <div className={`duration-card ${selectedDuration === 120 ? 'selected' : ''}`} onClick={() => handleDurationSelect(120)}>
+                <div className="duration-time">120 min</div>
+                <div className="duration-label">Major Treatment</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="step-content">
             <h2>Select a Time Slot</h2>
             {loading ? (
               <div className="loading">
@@ -283,7 +315,7 @@ const BookAppointment = () => {
           </div>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <div className="step-content">
             <h2>Confirm Your Appointment</h2>
             <div className="appointment-summary">
@@ -306,6 +338,13 @@ const BookAppointment = () => {
                 <div>
                   <label>Time:</label>
                   <span>{formatTime(selectedSlot)}</span>
+                </div>
+              </div>
+              <div className="summary-item">
+                <Clock className="summary-icon" />
+                <div>
+                  <label>Duration:</label>
+                  <span>{selectedDuration} minutes</span>
                 </div>
               </div>
             </div>
