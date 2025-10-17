@@ -109,6 +109,15 @@ async function listAppointmentNotifications(req, res) {
       confirmedByCode: a.acceptedByCode || 'SYSTEM',
       status: a.status,
       origin: a.origin || 'online',
+      confirmationStatus: a.confirmationStatus || {
+        whatsappSent: false,
+        whatsappSentAt: null,
+        whatsappError: null,
+        pdfSent: false,
+        pdfSentAt: null,
+        pdfError: null,
+        confirmationMessage: null
+      }
     }));
 
     const fmtCancelled = cancelled.map(a => ({

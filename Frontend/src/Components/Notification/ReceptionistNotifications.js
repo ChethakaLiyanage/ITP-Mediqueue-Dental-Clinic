@@ -109,6 +109,27 @@ export default function ReceptionistNotifications() {
 
   // Manual acceptance function removed - appointments now auto-confirm after 4 hours
 
+  // Download PDF function
+  const downloadPdf = async (appointmentCode) => {
+    try {
+      const response = await authenticatedFetch(`${API_BASE}/appointments/${appointmentCode}/pdf`);
+      
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `appointment-${appointmentCode}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('PDF download error:', err);
+      setError(`Failed to download PDF: ${err.message}`);
+    }
+  };
+
   async function cancel(code) {
     const reason = window.prompt(`Cancel ${code}? Optional reason:`) || "";
     if (reason === null) return; // User cancelled the prompt
@@ -381,6 +402,96 @@ export default function ReceptionistNotifications() {
                       <div className="notif-card-value">
                         {item.origin === 'receptionist' ? '👨‍💼 Receptionist' : '🌐 Online'}
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Confirmation Status Section */}
+                  <div className="notif-card-confirmation">
+                    <div className="notif-confirmation-header">
+                      <span className="notif-confirmation-title">📬 Confirmation Status</span>
+                    </div>
+                    
+                    <div className="notif-confirmation-details">
+                      {/* WhatsApp Status */}
+                      <div className="notif-confirmation-row">
+                        <div className="notif-confirmation-label">
+                          <span className="notif-confirmation-icon">📱</span>
+                          WhatsApp:
+                        </div>
+                        <div className="notif-confirmation-value">
+                          {item.confirmationStatus?.whatsappSent ? (
+                            <div className="notif-confirmation-success">
+                              <span className="notif-confirmation-status">✅ Sent</span>
+                              <span className="notif-confirmation-time">
+                                {fmtDateTime(item.confirmationStatus.whatsappSentAt)}
+                              </span>
+                            </div>
+                          ) : item.confirmationStatus?.whatsappError ? (
+                            <div className="notif-confirmation-error">
+                              <span className="notif-confirmation-status">❌ Failed</span>
+                              <span className="notif-confirmation-error-detail">
+                                {item.confirmationStatus.whatsappError}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="notif-confirmation-pending">⏳ Pending</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* PDF Status */}
+                      <div className="notif-confirmation-row">
+                        <div className="notif-confirmation-label">
+                          <span className="notif-confirmation-icon">📄</span>
+                          PDF:
+                        </div>
+                        <div className="notif-confirmation-value">
+                          {item.confirmationStatus?.pdfSent ? (
+                            <div className="notif-confirmation-success">
+                              <span className="notif-confirmation-status">✅ Sent</span>
+                              <span className="notif-confirmation-time">
+                                {fmtDateTime(item.confirmationStatus.pdfSentAt)}
+                              </span>
+                            </div>
+                          ) : item.confirmationStatus?.pdfError ? (
+                            <div className="notif-confirmation-error">
+                              <span className="notif-confirmation-status">❌ Failed</span>
+                              <span className="notif-confirmation-error-detail">
+                                {item.confirmationStatus.pdfError}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="notif-confirmation-pending">⏳ Pending</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* WhatsApp Message Preview */}
+                      {item.confirmationStatus?.confirmationMessage && (
+                        <div className="notif-confirmation-message">
+                          <div className="notif-confirmation-message-header">
+                            <span className="notif-confirmation-icon">💬</span>
+                            Message Sent:
+                          </div>
+                          <div className="notif-confirmation-message-content">
+                            {item.confirmationStatus.confirmationMessage.substring(0, 100)}
+                            {item.confirmationStatus.confirmationMessage.length > 100 && '...'}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* PDF Download Link */}
+                      {item.confirmationStatus?.pdfSent && (
+                        <div className="notif-confirmation-actions">
+                          <button 
+                            className="notif-confirmation-btn"
+                            onClick={() => downloadPdf(item.appointmentCode)}
+                            title="Download appointment confirmation PDF"
+                          >
+                            📄 Download PDF
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

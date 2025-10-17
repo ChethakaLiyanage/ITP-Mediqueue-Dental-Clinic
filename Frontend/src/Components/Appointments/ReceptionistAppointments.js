@@ -1155,8 +1155,6 @@ export default function ReceptionistAppointments() {
                             <th>Status</th>
                             <th>Created By</th>
                             <th>Accepted By</th>
-                            <th>WhatsApp</th>
-                            <th>PDF</th>
                             <th>Actions</th>
                           </tr>
                         </thead>
@@ -1188,32 +1186,6 @@ export default function ReceptionistAppointments() {
                               </td>
                               <td>{a.createdByCode || "-"}</td>
                               <td>{a.acceptedByCode || "-"}</td>
-                              <td>
-                                {a.confirmationStatus?.whatsappSent ? (
-                                  <span className="pill success" title={`Sent at ${new Date(a.confirmationStatus.whatsappSentAt).toLocaleString()}`}>
-                                    ✓ Sent
-                                  </span>
-                                ) : a.confirmationStatus?.whatsappError ? (
-                                  <span className="pill danger" title={`Error: ${a.confirmationStatus.whatsappError}`}>
-                                    ✗ Failed
-                                  </span>
-                                ) : (
-                                  <span className="pill muted">-</span>
-                                )}
-                              </td>
-                              <td>
-                                {a.confirmationStatus?.pdfSent ? (
-                                  <span className="pill success" title={`Sent at ${new Date(a.confirmationStatus.pdfSentAt).toLocaleString()}`}>
-                                    ✓ Sent
-                                  </span>
-                                ) : a.confirmationStatus?.pdfError ? (
-                                  <span className="pill danger" title={`Error: ${a.confirmationStatus.pdfError}`}>
-                                    ✗ Failed
-                                  </span>
-                                ) : (
-                                  <span className="pill muted">-</span>
-                                )}
-                              </td>
                               <td className="actions">
                                 {a.status === "pending" && (
                                   <button
