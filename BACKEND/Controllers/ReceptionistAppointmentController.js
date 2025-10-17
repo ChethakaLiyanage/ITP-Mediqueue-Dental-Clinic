@@ -195,6 +195,7 @@ async function createByReceptionist(req, res) {
         date: when, // FIX: use actual datetime
         position,
         status: 'waiting',
+        reason: reason || 'General consultation',
       });
 
       await sendApptConfirmed(patientCode, {

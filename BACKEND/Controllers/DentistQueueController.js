@@ -103,7 +103,7 @@ async function getTodayQueueForDentist(req, res) {
                 queueNo: q.queueCode,
                 patientCode: q.patientCode,
                 patientName: patientNameMap.get(q.patientCode) || "Unknown",
-                reason: reason,
+                reason: q.reason || reason || "General consultation",
                 appointment_date: q.date,
                 isBookingForSomeoneElse: false,
               };
@@ -118,23 +118,23 @@ async function getTodayQueueForDentist(req, res) {
           // Check if this is a "booking for someone else" appointment
           if (appt?.isBookingForSomeoneElse) {
             // For "booking for someone else": Show other person's details with booker's ID for identification
-            return {
-              ...q,
-              queueNo: q.queueCode,
-              reason: appt?.reason || "-",
-              appointment_date: appt?.appointment_date || q.date,
-              patientCode: appt.bookerPatientCode || "N/A", // ✅ BOOKER'S PATIENT ID (for identification)
-              patientName: appt.otherPersonDetails?.name || "-", // ✅ OTHER PERSON'S NAME (who needs treatment)
-              patientContact: appt.otherPersonDetails?.contact || "-",
-              patientAge: appt.otherPersonDetails?.age || null,
-              patientGender: appt.otherPersonDetails?.gender || null,
-              patientRelation: appt.otherPersonDetails?.relation || null,
-              patientNotes: appt.otherPersonDetails?.notes || null,
-              // Booker information (who made the booking) - same as patientCode for clarity
-              bookerPatientCode: appt.bookerPatientCode, // ✅ YOUR PATIENT ID
-              appointmentForPatientCode: appt.appointmentForPatientCode || null, // If other person is registered
-              isBookingForSomeoneElse: true,
-            };
+          return {
+            ...q,
+            queueNo: q.queueCode,
+            reason: q.reason || appt?.reason || "General consultation",
+            appointment_date: appt?.appointment_date || q.date,
+            patientCode: appt.bookerPatientCode || "N/A", // ✅ BOOKER'S PATIENT ID (for identification)
+            patientName: appt.otherPersonDetails?.name || "-", // ✅ OTHER PERSON'S NAME (who needs treatment)
+            patientContact: appt.otherPersonDetails?.contact || "-",
+            patientAge: appt.otherPersonDetails?.age || null,
+            patientGender: appt.otherPersonDetails?.gender || null,
+            patientRelation: appt.otherPersonDetails?.relation || null,
+            patientNotes: appt.otherPersonDetails?.notes || null,
+            // Booker information (who made the booking) - same as patientCode for clarity
+            bookerPatientCode: appt.bookerPatientCode, // ✅ YOUR PATIENT ID
+            appointmentForPatientCode: appt.appointmentForPatientCode || null, // If other person is registered
+            isBookingForSomeoneElse: true,
+          };
           }
 
           // Regular appointment: Show normal patient details
@@ -144,7 +144,7 @@ async function getTodayQueueForDentist(req, res) {
           return {
             ...q,
             queueNo: q.queueCode,
-            reason: appt?.reason || "-",
+            reason: q.reason || appt?.reason || "General consultation",
             appointment_date: appt?.appointment_date || q.date,
             patientCode: patientCode,
             patientName: patientName, // ✅ from bulk lookup
@@ -158,7 +158,7 @@ async function getTodayQueueForDentist(req, res) {
             queueNo: q.queueCode,
             patientCode: q.patientCode,
             patientName: patientNameMap.get(q.patientCode) || "Unknown",
-            reason: "-",
+            reason: q.reason || "General consultation",
             appointment_date: q.date,
             isBookingForSomeoneElse: false,
           };

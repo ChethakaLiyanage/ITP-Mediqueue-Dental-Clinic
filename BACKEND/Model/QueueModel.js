@@ -12,6 +12,7 @@ const QueueSchema = new Schema({
   date: { type: Date, required: true, index: true }, // day bucket (UTC)
   position: { type: Number, required: true },
   status: { type: String, enum: ['waiting','called','in_treatment','completed','no_show'], default: 'waiting', index: true },
+  reason: { type: String, trim: true, default: 'General consultation' },
   calledAt: Date,
   startedAt: Date,
   completedAt: Date,

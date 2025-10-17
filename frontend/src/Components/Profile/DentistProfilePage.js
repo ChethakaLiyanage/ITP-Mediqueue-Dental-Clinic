@@ -384,16 +384,39 @@ export default function DentistProfilePage() {
               (() => {
                 const order = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]; 
                 const avail = profile?.availability_schedule || {}; 
+                
+                // Map database day names to display day names
+                const dayMapping = {
+                  'monday': 'Mon',
+                  'tuesday': 'Tue', 
+                  'wednesday': 'Wed',
+                  'thursday': 'Thu',
+                  'friday': 'Fri',
+                  'saturday': 'Sat',
+                  'sunday': 'Sun'
+                };
+                
                 const rows = order
-                  .filter((d) => typeof avail[d] !== 'undefined' && avail[d] && String(avail[d]).trim())
+                  .filter((d) => {
+                    // Check both abbreviated and full day names
+                    const dbDayName = Object.keys(dayMapping).find(key => dayMapping[key] === d);
+                    const timeValue = avail[d] || (dbDayName ? avail[dbDayName] : null);
+                    return typeof timeValue !== 'undefined' && timeValue && String(timeValue).trim();
+                  })
                   .map((d) => {
-                    const timeValue = avail[d];
+                    // Check both abbreviated and full day names
+                    const dbDayName = Object.keys(dayMapping).find(key => dayMapping[key] === d);
+                    const timeValue = avail[d] || (dbDayName ? avail[dbDayName] : null);
                     let times = [];
+                    
                     if (Array.isArray(timeValue)) {
                       times = timeValue;
                     } else if (typeof timeValue === 'string' && timeValue.trim()) {
                       // Split comma-separated time slots
                       times = timeValue.split(',').map(t => t.trim()).filter(Boolean);
+                    } else if (typeof timeValue === 'object' && timeValue.start && timeValue.end && timeValue.available) {
+                      // Handle new object format: { start: '09:00', end: '17:00', available: true }
+                      times = [`${timeValue.start}-${timeValue.end}`];
                     }
                     return { day: d, times };
                   });

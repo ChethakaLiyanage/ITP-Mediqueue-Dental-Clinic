@@ -48,18 +48,34 @@ class ScheduleService {
       const dateObj = new Date(date + 'T00:00:00.000Z');
       const dayName = getDayNameUTC(dateObj);
       
+      // Map abbreviated day names to lowercase full day names (database format)
+      const dayNameMapping = {
+        'Mon': 'monday',
+        'Tue': 'tuesday', 
+        'Wed': 'wednesday',
+        'Thu': 'thursday',
+        'Fri': 'friday',
+        'Sat': 'saturday',
+        'Sun': 'sunday'
+      };
+      const dbDayName = dayNameMapping[dayName];
+      
       // Get working hours from dentist's availability_schedule
-      if (dentist.availability_schedule && dentist.availability_schedule[dayName]) {
-        const daySchedule = dentist.availability_schedule[dayName];
+      if (dentist.availability_schedule && dentist.availability_schedule[dbDayName]) {
+        const daySchedule = dentist.availability_schedule[dbDayName];
         
         // Check if it's the new object format: { start: '09:00', end: '17:00', available: true }
-        if (typeof daySchedule === 'object' && daySchedule.startTime && daySchedule.endTime) {
-          if (daySchedule.isWorking) {
+        if (typeof daySchedule === 'object' && (daySchedule.startTime || daySchedule.start) && (daySchedule.endTime || daySchedule.end)) {
+          const startTime = daySchedule.startTime || daySchedule.start;
+          const endTime = daySchedule.endTime || daySchedule.end;
+          const isWorking = daySchedule.isWorking !== undefined ? daySchedule.isWorking : daySchedule.available;
+          
+          if (isWorking) {
             workingHours = {
-              start: parseInt(daySchedule.startTime.split(':')[0]),
-              end: parseInt(daySchedule.endTime.split(':')[0])
+              start: parseInt(startTime.split(':')[0]),
+              end: parseInt(endTime.split(':')[0])
             };
-            console.log(`✅ Using dentist's working hours for ${dayName}: ${daySchedule.startTime}-${daySchedule.endTime}`);
+            console.log(`✅ Using dentist's working hours for ${dayName}: ${startTime}-${endTime}`);
           } else {
             console.log(`⚠️ Dentist not working on ${dayName}, skipping slot creation`);
             return; // Don't create slots if dentist doesn't work on this day
