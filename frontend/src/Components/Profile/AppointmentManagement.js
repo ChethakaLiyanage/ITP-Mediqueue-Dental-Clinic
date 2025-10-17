@@ -580,8 +580,8 @@ export default function AppointmentManagement() {
                   ) : (
                     availableSlots.map((slot, index) => {
                       // Extract time from start ISO string
-                      const slotTime = slot.start ? new Date(slot.start).toTimeString().slice(0, 5) : 
-                                      slot.time || slot.startTime || slot.slotTime || 'Unknown Time';
+                      const slotTime = slot.displayTime || (slot.start ? new Date(slot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) :
+                                      slot.time || slot.startTime || slot.slotTime || 'Unknown Time');
                       
                       const isCurrentTime = slotTime === updateForm.time;
                       const isBooked = slot.status === 'booked';
