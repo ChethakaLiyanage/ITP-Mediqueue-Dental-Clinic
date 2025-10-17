@@ -113,7 +113,7 @@ async function createByReceptionist(req, res) {
       date,
       time,
       reason = '',
-      confirmNow = true,
+      confirmNow,
       patientType: incomingPatientType,
       patientSnapshot: incomingSnapshot,
     } = req.body || {};
@@ -136,6 +136,11 @@ async function createByReceptionist(req, res) {
 
     const when = fromDateTimeYMD_HM(date, time);
     if (!when) return res.status(400).json({ message: 'Invalid time HH:mm' });
+
+    // Determine if appointment should be confirmed immediately or pending
+    // - Today's upcoming appointments: confirm immediately (direct to queue)
+    // - Future appointments: create as pending (auto-confirm after 4 hours)
+    const shouldConfirmNow = confirmNow !== undefined ? confirmNow : (isToday(when) && when >= new Date());
 
     const patientType =
       incomingPatientType === 'unregistered' ? 'unregistered' : 'registered';
@@ -186,7 +191,7 @@ async function createByReceptionist(req, res) {
     }
 
     //  Direct to Queue if today and upcoming
-    if (confirmNow && isToday(when) && when >= new Date()) {
+    if (shouldConfirmNow && isToday(when) && when >= new Date()) {
       const position = await nextQueuePosition(dentistCode, date);
       const queue = await Queue.create({
         appointmentCode: `TMP-${Date.now()}`,
@@ -217,7 +222,7 @@ async function createByReceptionist(req, res) {
 
     // Normal Appointment flow
     const total = await countDentistDay(dentistCode, date);
-    if (confirmNow && total >= DAILY_CAP) {
+    if (shouldConfirmNow && total >= DAILY_CAP) {
       return res
         .status(409)
         .json({ message: `Daily cap ${DAILY_CAP} reached for ${dentistCode}` });
@@ -234,14 +239,14 @@ async function createByReceptionist(req, res) {
       dentist_code: dentistCode,
       appointment_date: when,
       reason,
-      status: confirmNow ? CONFIRMED : PENDING,
+      status: shouldConfirmNow ? CONFIRMED : PENDING,
       origin: 'receptionist',
       patientType,
       patientSnapshot,
       createdByCode: receptionistCode,
-      acceptedByCode: confirmNow ? receptionistCode : null,
-      acceptedAt: confirmNow ? new Date() : null,
-      pendingExpiresAt: confirmNow ? null : new Date(Date.now() + 4 * 60 * 60 * 1000),
+      acceptedByCode: shouldConfirmNow ? receptionistCode : null,
+      acceptedAt: shouldConfirmNow ? new Date() : null,
+      pendingExpiresAt: shouldConfirmNow ? null : new Date(Date.now() + 4 * 60 * 60 * 1000),
       isActive: true,
     });
 
@@ -256,10 +261,10 @@ async function createByReceptionist(req, res) {
     appointment.createdByCode =
       appointment.createdByCode || receptionistCode2 || receptionistCode || null;
     appointment.acceptedBy =
-      appointment.acceptedBy || (confirmNow ? receptionistUserId : null);
+      appointment.acceptedBy || (shouldConfirmNow ? receptionistUserId : null);
     appointment.acceptedByCode =
       appointment.acceptedByCode ||
-      (confirmNow
+      (shouldConfirmNow
         ? receptionistCode2 || receptionistCode || null
         : appointment.acceptedByCode);
     await appointment.save();
@@ -283,7 +288,7 @@ async function createByReceptionist(req, res) {
     }
 
     let queue = null;
-    if (confirmNow) {
+    if (shouldConfirmNow) {
       const position = await nextQueuePosition(dentistCode, date);
       queue = await Queue.create({
         appointmentCode: appointment.appointmentCode,

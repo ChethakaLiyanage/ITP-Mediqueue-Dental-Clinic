@@ -376,7 +376,6 @@ export default function ReceptionistAppointments() {
           date,
           time: appointmentFields.time,
           reason: appointmentFields.reason,
-          confirmNow: true,
         }),
       });
       setInfo(`Appointment booked for ${patientCode}`);
@@ -444,7 +443,6 @@ export default function ReceptionistAppointments() {
           date,
           time: appointmentFields.time,
           reason: appointmentFields.reason,
-          confirmNow: true,
         }),
       });
 
@@ -538,7 +536,6 @@ export default function ReceptionistAppointments() {
           date,
           time: appointmentFields.time,
           reason: appointmentFields.reason,
-          confirmNow: true,
           receptionistCode: user?.receptionistCode,
         }),
       });
