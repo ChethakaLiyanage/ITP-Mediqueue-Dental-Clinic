@@ -27,6 +27,7 @@ function timeLocal(iso, displayTime) {
 
 // Helper function to add minutes to a time string (HH:MM format)
 function addMinutesToTimeString(timeString, minutes) {
+  if (!timeString) return "--:--";
   const [hours, mins] = timeString.split(':').map(Number);
   const totalMinutes = hours * 60 + mins + minutes;
   const newHours = Math.floor(totalMinutes / 60);

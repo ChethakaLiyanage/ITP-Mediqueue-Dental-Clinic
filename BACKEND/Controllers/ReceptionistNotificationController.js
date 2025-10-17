@@ -31,10 +31,6 @@ async function listAppointmentNotifications(req, res) {
       status: 'pending',
     }).sort({ createdAt: 1 }).lean();
 
-    const autoCancelled = await Appointment.find({
-      status: 'cancelled',
-    }).sort({ updatedAt: -1 }).limit(20).lean();
-
     const autoConfirmed = await Appointment.find({
       status: 'confirmed',
       autoConfirmedAt: { $exists: true },
@@ -42,7 +38,7 @@ async function listAppointmentNotifications(req, res) {
 
     const patientCodes = new Set();
     const dentistCodes = new Set();
-    [...pending, ...autoCancelled, ...autoConfirmed].forEach(a => {
+    [...pending, ...autoConfirmed].forEach(a => {
       if (a?.patient_code) patientCodes.add(a.patient_code);
       if (a?.dentist_code) dentistCodes.add(a.dentist_code);
     });
@@ -89,23 +85,6 @@ async function listAppointmentNotifications(req, res) {
       };
     });
 
-    const fmtAuto = autoCancelled.map(a => ({
-      appointmentCode: a.appointmentCode,
-      patient_code: a.patient_code,
-      patient: patientMap.get(a.patient_code) || null,
-      dentist_code: a.dentist_code,
-      dentist: dentistMap.get(a.dentist_code) || null,
-      appointment_date: a.appointment_date,
-      appointmentReason: a.reason || 'No reason provided',
-      cancellationReason: a.cancellationReason || 'Not confirmed in time',
-      requestedAt: a.createdAt,
-      canceledAt: a.updatedAt, // Use updatedAt as cancellation time
-      autoCanceledAt: a.updatedAt, // Use updatedAt as auto-cancellation time
-      canceledByCode: a.canceledByCode || 'AUTO',
-      status: a.status,
-      origin: 'online', // Default to online for all appointments
-    }));
-
     const fmtAutoConfirmed = autoConfirmed.map(a => ({
       appointmentCode: a.appointmentCode,
       patient_code: a.patient_code,
@@ -123,7 +102,6 @@ async function listAppointmentNotifications(req, res) {
 
     return res.status(200).json({ 
       pending: fmtPending, 
-      autoCancelled: fmtAuto,
       autoConfirmed: fmtAutoConfirmed 
     });
   } catch (e) {

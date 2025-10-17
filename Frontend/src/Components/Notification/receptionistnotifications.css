@@ -518,16 +518,6 @@
   letter-spacing: 0.02em;
 }
 
-.notif-status-cancelled {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  color: #991b1b;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
 
 .notif-status-confirmed {
   background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);

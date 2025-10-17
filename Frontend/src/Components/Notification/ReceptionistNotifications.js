@@ -30,7 +30,6 @@ export default function ReceptionistNotifications() {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [pending, setPending] = useState([]);
-  const [autoCancelled, setAutoCancelled] = useState([]);
   const [autoConfirmed, setAutoConfirmed] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
 
@@ -85,10 +84,8 @@ export default function ReceptionistNotifications() {
       const data = await response.json();
       console.log('📋 Notifications data received:', data);
       console.log('📊 Pending appointments:', data?.pending?.length || 0);
-      console.log('📊 Auto-cancelled appointments:', data?.autoCancelled?.length || 0);
       console.log('📊 Auto-confirmed appointments:', data?.autoConfirmed?.length || 0);
       setPending(data?.pending || []);
-      setAutoCancelled(data?.autoCancelled || []);
       setAutoConfirmed(data?.autoConfirmed || []);
       setLastUpdated(new Date());
     } catch (e) {
@@ -205,13 +202,6 @@ export default function ReceptionistNotifications() {
           ✅ Auto-Confirmed (4h)
           <span className="notif-tab-count">{autoConfirmed.length}</span>
         </button>
-        <button 
-          className={`notif-tab ${activeTab === "cancelled" ? "active" : ""}`}
-          onClick={() => setActiveTab("cancelled")}
-        >
-          ❌ Auto-Cancelled
-          <span className="notif-tab-count">{autoCancelled.length}</span>
-        </button>
       </div>
 
       {/* Main Content */}
@@ -313,68 +303,6 @@ export default function ReceptionistNotifications() {
             </div>
           )}
 
-          <div className="notif-section-head">
-            <div className="notif-section-title">
-              <h2>📋 Auto-cancelled Appointments</h2>
-              <span className="notif-count-badge">
-                {autoCancelled.length} cancelled
-              </span>
-            </div>
-          </div>
-          
-          {autoCancelled.length === 0 ? (
-            <div className="notif-empty">
-              <div className="notif-empty-content">
-                <span className="notif-empty-icon">🎉</span>
-                <h3>Great Job!</h3>
-                <p>No auto-cancelled appointments in recent history.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="notif-cancelled-list">
-              {autoCancelled.map(item => (
-                <div className="notif-card cancelled" key={`${item.appointmentCode}-${item.autoCanceledAt || item.canceledAt}`}>
-                  <div className="notif-card-header">
-                    <div className="notif-card-title">{item.appointmentCode}</div>
-                    <div className="notif-card-status">
-                      <span className="notif-status-cancelled">❌ Auto-cancelled</span>
-                    </div>
-                  </div>
-                  
-                  <div className="notif-card-body">
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">👤 Patient:</div>
-                      <div className="notif-card-value">{item.patient?.name || item.patient_code}</div>
-                    </div>
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">👨‍⚕️ Dentist:</div>
-                      <div className="notif-card-value">{item.dentist?.name || item.dentist_code}</div>
-                    </div>
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">📅 Requested for:</div>
-                      <div className="notif-card-value">{fmtDateTime(item.appointment_date)}</div>
-                    </div>
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">❌ Auto cancelled:</div>
-                      <div className="notif-card-value">{fmtDateTime(item.autoCanceledAt || item.canceledAt)}</div>
-                    </div>
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">👤 Cancelled by:</div>
-                      <div className="notif-card-value">{item.canceledByCode || "AUTO"}</div>
-                    </div>
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">📝 Notes:</div>
-                      <div className="notif-card-value">{item.appointmentReason || "No notes"}</div>
-                    </div>
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">💭 Cancel reason:</div>
-                      <div className="notif-card-value">{item.cancellationReason || 'Not confirmed in time'}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
           </section>
         )}
 
@@ -452,73 +380,6 @@ export default function ReceptionistNotifications() {
         </section>
       )}
 
-      {/* Auto-Cancelled Tab */}
-      {activeTab === "cancelled" && (
-        <section className="notif-section">
-          <div className="notif-section-head">
-            <div className="notif-section-title">
-              <h2>❌ Auto-Cancelled Appointments</h2>
-              <span className="notif-count-badge">
-                {autoCancelled.length} cancelled
-              </span>
-            </div>
-          </div>
-          
-          {autoCancelled.length === 0 ? (
-            <div className="notif-empty">
-              <div className="notif-empty-content">
-                <span className="notif-empty-icon">🎉</span>
-                <h3>Great Job!</h3>
-                <p>No auto-cancelled appointments in recent history.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="notif-cancelled-list">
-              {autoCancelled.map(item => (
-                <div className="notif-card cancelled" key={`${item.appointmentCode}-${item.autoCanceledAt || item.canceledAt}`}>
-                  <div className="notif-card-header">
-                    <div className="notif-card-title">{item.appointmentCode}</div>
-                    <div className="notif-card-status">
-                      <span className="notif-status-cancelled">❌ Auto-cancelled</span>
-                    </div>
-                  </div>
-                  
-                  <div className="notif-card-body">
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">👤 Patient:</div>
-                      <div className="notif-card-value">{item.patient?.name || item.patient_code}</div>
-                    </div>
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">👨‍⚕️ Dentist:</div>
-                      <div className="notif-card-value">{item.dentist?.name || item.dentist_code}</div>
-                    </div>
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">📅 Requested for:</div>
-                      <div className="notif-card-value">{fmtDateTime(item.appointment_date)}</div>
-                    </div>
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">❌ Auto cancelled:</div>
-                      <div className="notif-card-value">{fmtDateTime(item.autoCanceledAt || item.canceledAt)}</div>
-                    </div>
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">👤 Cancelled by:</div>
-                      <div className="notif-card-value">{item.canceledByCode || "AUTO"}</div>
-                    </div>
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">📝 Notes:</div>
-                      <div className="notif-card-value">{item.appointmentReason || "No notes"}</div>
-                    </div>
-                    <div className="notif-card-row">
-                      <div className="notif-card-label">💭 Cancel reason:</div>
-                      <div className="notif-card-value">{item.cancellationReason || 'Not confirmed in time'}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
       </div>
   );
 }
