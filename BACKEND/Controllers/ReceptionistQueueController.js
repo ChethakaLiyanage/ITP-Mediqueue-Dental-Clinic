@@ -22,8 +22,8 @@ async function listQueue(req, res) {
   try {
     const { date, dentistCode } = req.query;
     
-    // ✅ Only allow today's date (2025/10/17) - ignore any other date requests
-    const today = "2025-10-17"; // Hardcoded to show only 2025-10-17 appointments
+    // ✅ Only allow today's date (2025/10/18) - ignore any other date requests
+    const today = "2025-10-18"; // Hardcoded to show only 2025-10-18 appointments
     
     // ✅ Force today's date regardless of what's requested
     const dayStart = new Date(today + "T00:00:00");
