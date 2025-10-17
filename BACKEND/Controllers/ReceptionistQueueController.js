@@ -38,8 +38,39 @@ async function listQueue(req, res) {
     // ✅ Fetch only today's items without auto-updating
     const items = await Queue.find(q).sort({ dentistCode: 1, position: 1 }).lean();
 
-    console.log(`[listQueue] Showing only today's (${today}) appointments: ${items.length} items`);
-    return res.json({ items });
+    // ✅ Add patient names to queue items
+    const Patient = require('../Model/PatientModel');
+    const User = require('../Model/User');
+    
+    const enrichedItems = await Promise.all(items.map(async (item) => {
+      let patientName = 'Unknown Patient';
+      
+      // Handle guest patients (GUEST- prefix)
+      if (item.patientCode.startsWith('GUEST-')) {
+        patientName = 'Guest Patient';
+      } else {
+        // Handle registered patients
+        try {
+          const patient = await Patient.findOne({ patientCode: item.patientCode })
+            .populate('userId', 'name')
+            .lean();
+          
+          if (patient?.userId?.name) {
+            patientName = patient.userId.name;
+          }
+        } catch (error) {
+          console.error(`[listQueue] Error fetching patient name for ${item.patientCode}:`, error);
+        }
+      }
+      
+      return {
+        ...item,
+        patientName
+      };
+    }));
+
+    console.log(`[listQueue] Showing only today's (${today}) appointments: ${enrichedItems.length} items`);
+    return res.json({ items: enrichedItems });
   } catch (e) {
     console.error("[listQueue]", e);
     return res.status(500).json({ message: e.message || "Failed to list queue" });

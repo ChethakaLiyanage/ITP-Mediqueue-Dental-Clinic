@@ -1,4 +1,4 @@
-﻿﻿// Jobs/notificationCron.js
+﻿// Jobs/notificationCron.js
 const cron = require('node-cron');
 const Appointment = require('../Model/AppointmentModel');
 const Queue = require('../Model/QueueModel');
