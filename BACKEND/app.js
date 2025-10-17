@@ -30,6 +30,7 @@ const router = require("./Routes/DentistRoutes");
 const treatmentplan_router = require("./Routes/DentistTreatmentplanRoutes");
 const patientTreatmentplan_router = require("./Routes/PatientTreatmentplanRoutes");
 const patientPrescription_router = require("./Routes/PatientPrescriptionRoutes");
+const patientMedicalHistory_router = require("./Routes/PatientMedicalHistoryRoutes");
 const Patient_router = require("./Routes/PatientRoutes");
 const Prescription_router = require("./Routes/DentistPrescriptionRoutes");
 const Feedback_router = require("./Routes/FeedbackRoutes");
@@ -99,6 +100,7 @@ app.use("/treatmentplans", (req, res, next) => {
 }, treatmentplan_router);
 app.use("/api/treatmentplans", patientTreatmentplan_router);
 app.use("/api/prescriptions", patientPrescription_router);
+app.use("/api/medical-history", patientMedicalHistory_router);
 app.use("/patients", Patient_router);
 app.use("/api/patients", Patient_router); // Add API prefix for frontend compatibility
 app.use("/prescriptions", Prescription_router);
