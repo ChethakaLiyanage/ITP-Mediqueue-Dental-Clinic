@@ -45,11 +45,12 @@ const getMedicalHistory = async (req, res) => {
 
     let medicalHistory = [];
 
-    // Get treatments
+    // Get treatments (only completed/archived ones for medical history)
     if (type === 'all' || type === 'treatments' || !type) {
       const treatmentFilter = { 
         patientCode, 
-        isDeleted: false, 
+        isDeleted: true,  // Only show archived/completed treatments
+        status: "archived",  // Only show archived status
         ...dateFilter, 
         ...dentistFilter 
       };
@@ -202,7 +203,7 @@ const getMedicalHistory = async (req, res) => {
 const getMedicalHistorySummary = async (patientCode) => {
   try {
     const [treatmentCount, prescriptionCount, appointmentCount] = await Promise.all([
-      Treatmentplan.countDocuments({ patientCode, isDeleted: false }),
+      Treatmentplan.countDocuments({ patientCode, isDeleted: true, status: "archived" }), // Only completed treatments
       Prescription.countDocuments({ patientCode, isActive: true }),
       AppointmentModel.countDocuments({ patient_code: patientCode })
     ]);
@@ -214,7 +215,8 @@ const getMedicalHistorySummary = async (patientCode) => {
     const [recentTreatments, recentPrescriptions, recentAppointments] = await Promise.all([
       Treatmentplan.countDocuments({ 
         patientCode, 
-        isDeleted: false, 
+        isDeleted: true, 
+        status: "archived",
         created_date: { $gte: thirtyDaysAgo } 
       }),
       Prescription.countDocuments({ 
@@ -309,7 +311,7 @@ const exportMedicalHistory = async (req, res) => {
 
     // Get comprehensive medical history
     const [treatments, prescriptions, appointments] = await Promise.all([
-      Treatmentplan.find({ patientCode, isDeleted: false, ...dateFilter }).lean(),
+      Treatmentplan.find({ patientCode, isDeleted: true, status: "archived", ...dateFilter }).lean(),
       Prescription.find({ patientCode, isActive: true, ...dateFilter }).lean(),
       AppointmentModel.find({ patient_code: patientCode, ...dateFilter }).lean()
     ]);
