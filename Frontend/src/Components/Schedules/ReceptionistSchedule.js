@@ -46,7 +46,7 @@ export default function ReceptionistSchedule() {
   }), [token]);
   
   const [date, setDate] = useState(getYYYYMMDD());
-  const [dentistCode, setDentistCode] = useState("Dr-0001");
+  const [dentistCode, setDentistCode] = useState("");
   const [slotMinutes, setSlotMinutes] = useState(30);
   const [dentists, setDentists] = useState([]);
 
@@ -262,12 +262,15 @@ export default function ReceptionistSchedule() {
                 setDentistCode(e.target.value);
               }}
             >
-              <option value="">Select Dentist</option>
+              <option value="">Select a dentist</option>
               {dentists.map((dentist) => {
                 console.log('Rendering dentist option:', dentist);
+                console.log('Dentist name:', dentist.name, 'Dentist userId:', dentist.userId);
+                // Use userId.name if name is not directly available
+                const displayName = dentist.name || dentist.userId?.name || 'Unknown';
                 return (
                   <option key={dentist.dentistCode} value={dentist.dentistCode}>
-                    {dentist.name} ({dentist.dentistCode})
+                    {displayName} - {dentist.dentistCode} ({dentist.specialization})
                   </option>
                 );
               })}

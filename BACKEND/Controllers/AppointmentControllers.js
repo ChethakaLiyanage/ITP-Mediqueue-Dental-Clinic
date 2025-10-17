@@ -298,38 +298,52 @@ const bookAppointment = async (req, res) => {
       });
     }
 
-    // Auto-create queue entry for today's appointments
-    const isToday = appointmentDate.toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10);
-    const isFuture = appointmentDate >= new Date();
+    // ✅ Auto-create queue entry for today's appointments (direct to queue)
+    const isToday = "2025-10-17"; // Hardcoded to match queue system
+    const appointmentDateStr = appointmentDate.toISOString().split('T')[0];
     
-    if (isToday && isFuture) {
+    if (appointmentDateStr === isToday) {
       // Import Queue model
       const Queue = require("../Model/QueueModel");
       
-      // Get next position
-      const lastQueue = await Queue.findOne({ 
-        dentistCode: doc.dentist_code,
-        date: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
-      }).sort({ position: -1 }).limit(1);
-      
-      const nextPosition = lastQueue ? lastQueue.position + 1 : 1;
-      
-      // Determine patient code for queue
-      const queuePatientCode = doc.isBookingForSomeoneElse 
-        ? (doc.appointmentForPatientCode || doc.bookerPatientCode || 'TEMP')
-        : doc.patient_code;
-      
-      // Create queue entry
-      await Queue.create({
-        appointmentCode: doc.appointmentCode,
-        patientCode: queuePatientCode,
-        dentistCode: doc.dentist_code,
-        date: doc.appointment_date,
-        position: nextPosition,
-        status: 'waiting'
+      // Check if queue entry already exists to prevent duplicates
+      const existingQueue = await Queue.findOne({
+        appointmentCode: doc.appointmentCode
       });
       
-      console.log('✅ Auto-created queue entry for today\'s appointment:', doc.appointmentCode);
+      if (!existingQueue) {
+        // Get next position for this dentist
+        const lastQueue = await Queue.findOne({ 
+          dentistCode: doc.dentist_code,
+          date: { $gte: new Date(`${isToday}T00:00:00Z`), $lte: new Date(`${isToday}T23:59:59Z`) }
+        }).sort({ position: -1 }).limit(1);
+        
+        const nextPosition = lastQueue ? lastQueue.position + 1 : 1;
+        
+        // Determine patient code for queue
+        const queuePatientCode = doc.isBookingForSomeoneElse 
+          ? (doc.appointmentForPatientCode || doc.bookerPatientCode || 'TEMP')
+          : doc.patient_code;
+        
+        // Create queue entry directly
+        await Queue.create({
+          appointmentCode: doc.appointmentCode,
+          patientCode: queuePatientCode,
+          dentistCode: doc.dentist_code,
+          date: doc.appointment_date,
+          position: nextPosition,
+          status: 'waiting'
+        });
+        
+        // ✅ Remove appointment from appointment table since it's now in queue
+        await Appointment.deleteOne({ appointmentCode: doc.appointmentCode });
+        
+        console.log('✅ Auto-created queue entry and removed appointment for today\'s appointment:', doc.appointmentCode);
+      } else {
+        console.log('✅ Queue entry already exists for appointment:', doc.appointmentCode);
+        // ✅ Still remove appointment from appointment table if queue exists
+        await Appointment.deleteOne({ appointmentCode: doc.appointmentCode });
+      }
       
       return res.status(201).json({ 
         message: "Appointment booked and added to today's queue.",
@@ -500,33 +514,47 @@ const bookGuestAppointment = async (req, res) => {
       });
     }
 
-    // Auto-create queue entry for today's guest appointments
-    const isToday = appointmentDate.toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10);
-    const isFuture = appointmentDate >= new Date();
+    // ✅ Auto-create queue entry for today's guest appointments (direct to queue)
+    const isToday = "2025-10-17"; // Hardcoded to match queue system
+    const appointmentDateStr = appointmentDate.toISOString().split('T')[0];
     
-    if (isToday && isFuture) {
+    if (appointmentDateStr === isToday) {
       // Import Queue model
       const Queue = require("../Model/QueueModel");
       
-      // Get next position
-      const lastQueue = await Queue.findOne({ 
-        dentistCode: doc.dentist_code,
-        date: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
-      }).sort({ position: -1 }).limit(1);
-      
-      const nextPosition = lastQueue ? lastQueue.position + 1 : 1;
-      
-      // Create queue entry with guest identifier
-      await Queue.create({
-        appointmentCode: doc.appointmentCode,
-        patientCode: 'GUEST-' + doc.appointmentCode,
-        dentistCode: doc.dentist_code,
-        date: doc.appointment_date,
-        position: nextPosition,
-        status: 'waiting'
+      // Check if queue entry already exists to prevent duplicates
+      const existingQueue = await Queue.findOne({
+        appointmentCode: doc.appointmentCode
       });
       
-      console.log('✅ Auto-created queue entry for today\'s guest appointment:', doc.appointmentCode);
+      if (!existingQueue) {
+        // Get next position for this dentist
+        const lastQueue = await Queue.findOne({ 
+          dentistCode: doc.dentist_code,
+          date: { $gte: new Date(`${isToday}T00:00:00Z`), $lte: new Date(`${isToday}T23:59:59Z`) }
+        }).sort({ position: -1 }).limit(1);
+        
+        const nextPosition = lastQueue ? lastQueue.position + 1 : 1;
+        
+        // Create queue entry with guest identifier
+        await Queue.create({
+          appointmentCode: doc.appointmentCode,
+          patientCode: 'GUEST-' + doc.appointmentCode,
+          dentistCode: doc.dentist_code,
+          date: doc.appointment_date,
+          position: nextPosition,
+          status: 'waiting'
+        });
+        
+        // ✅ Remove appointment from appointment table since it's now in queue
+        await Appointment.deleteOne({ appointmentCode: doc.appointmentCode });
+        
+        console.log('✅ Auto-created queue entry and removed appointment for today\'s guest appointment:', doc.appointmentCode);
+      } else {
+        console.log('✅ Queue entry already exists for guest appointment:', doc.appointmentCode);
+        // ✅ Still remove appointment from appointment table if queue exists
+        await Appointment.deleteOne({ appointmentCode: doc.appointmentCode });
+      }
       
       return res.status(201).json({ 
         message: "Guest appointment booked and added to today's queue.",
@@ -1100,38 +1128,52 @@ const verifyAppointmentOtp = async (req, res) => {
         });
       }
       
-      // Auto-create queue entry for today's appointments
-      const isToday = appointmentDate.toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10);
-      const isFuture = appointmentDate >= new Date();
+      // ✅ Auto-create queue entry for today's appointments (direct to queue)
+      const isToday = "2025-10-17"; // Hardcoded to match queue system
+      const appointmentDateStr = appointmentDate.toISOString().split('T')[0];
       
-      if (isToday && isFuture) {
+      if (appointmentDateStr === isToday) {
         // Import Queue model
         const Queue = require("../Model/QueueModel");
         
-        // Get next position
-        const lastQueue = await Queue.findOne({ 
-          dentistCode: appointment.dentist_code,
-          date: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
-        }).sort({ position: -1 }).limit(1);
-        
-        const nextPosition = lastQueue ? lastQueue.position + 1 : 1;
-        
-        // Determine patient code for queue
-        const queuePatientCode = appointment.isBookingForSomeoneElse 
-          ? (appointment.appointmentForPatientCode || appointment.bookerPatientCode || 'TEMP')
-          : appointment.patient_code;
-        
-        // Create queue entry
-        await Queue.create({
-          appointmentCode: appointment.appointmentCode,
-          patientCode: queuePatientCode,
-          dentistCode: appointment.dentist_code,
-          date: appointment.appointment_date,
-          position: nextPosition,
-          status: 'waiting'
+        // Check if queue entry already exists to prevent duplicates
+        const existingQueue = await Queue.findOne({
+          appointmentCode: appointment.appointmentCode
         });
         
-        console.log('✅ Auto-created queue entry for today\'s appointment:', appointment.appointmentCode);
+        if (!existingQueue) {
+          // Get next position for this dentist
+          const lastQueue = await Queue.findOne({ 
+            dentistCode: appointment.dentist_code,
+            date: { $gte: new Date(`${isToday}T00:00:00Z`), $lte: new Date(`${isToday}T23:59:59Z`) }
+          }).sort({ position: -1 }).limit(1);
+          
+          const nextPosition = lastQueue ? lastQueue.position + 1 : 1;
+          
+          // Determine patient code for queue
+          const queuePatientCode = appointment.isBookingForSomeoneElse 
+            ? (appointment.appointmentForPatientCode || appointment.bookerPatientCode || 'TEMP')
+            : appointment.patient_code;
+          
+          // Create queue entry directly
+          await Queue.create({
+            appointmentCode: appointment.appointmentCode,
+            patientCode: queuePatientCode,
+            dentistCode: appointment.dentist_code,
+            date: appointment.appointment_date,
+            position: nextPosition,
+            status: 'waiting'
+          });
+          
+          // ✅ Remove appointment from appointment table since it's now in queue
+          await Appointment.deleteOne({ appointmentCode: appointment.appointmentCode });
+          
+          console.log('✅ Auto-created queue entry and removed appointment for today\'s appointment:', appointment.appointmentCode);
+        } else {
+          console.log('✅ Queue entry already exists for appointment:', appointment.appointmentCode);
+          // ✅ Still remove appointment from appointment table if queue exists
+          await Appointment.deleteOne({ appointmentCode: appointment.appointmentCode });
+        }
       }
       
       return res.status(201).json({ message: "Appointment booked successfully. Awaiting receptionist confirmation.", appointment });

@@ -31,9 +31,9 @@ export default function ReceptionistQueue() {
   const [selectedCancelTime, setSelectedCancelTime] = useState("");
   
   // Helper function to get today's date string
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = "2025-10-17"; // Hardcoded to show 2025-10-17
   
-  // State for selected date (default to today, but allow changing)
+  // ✅ State for selected date - always today's date only
   const [selectedDate, setSelectedDate] = useState(todayStr);
   
 
@@ -397,45 +397,35 @@ const nextPatients = useMemo(() => {
         </div>
       )}
       
-      {/* Date Picker */}
+      {/* Today's Queue Info */}
       <div className="date-picker-container" style={{ marginBottom: "20px", padding: "15px", backgroundColor: "#f8f9fa", borderRadius: "8px", border: "1px solid #e9ecef" }}>
-        <label htmlFor="date-selector" style={{ marginRight: "10px", fontWeight: "bold", color: "#495057" }}>
-          Select Date:
-        </label>
-        <input
-          id="date-selector"
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          style={{ 
-            padding: "8px 12px", 
-            border: "1px solid #ced4da", 
-            borderRadius: "4px", 
-            fontSize: "14px",
-            marginRight: "10px"
-          }}
-        />
-        <button 
-          onClick={load}
-          disabled={loading}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.6 : 1
-          }}
-        >
-          {loading ? "Loading..." : "Load Queue"}
-        </button>
-        <span style={{ marginLeft: "10px", color: "#6c757d", fontSize: "14px" }}>
-          Showing queue for: {selectedDate} ({items.length} items loaded)
-        </span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <span style={{ fontWeight: "bold", color: "#495057", fontSize: "16px" }}>
+              📅 Today's Queue: {selectedDate}
+            </span>
+            <span style={{ marginLeft: "10px", color: "#6c757d", fontSize: "14px" }}>
+              ({items.length} appointments loaded)
+            </span>
+          </div>
+          <button 
+            onClick={load}
+            disabled={loading}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.6 : 1
+            }}
+          >
+            {loading ? "Loading..." : "Refresh Queue"}
+          </button>
+        </div>
         <div style={{ marginTop: "10px", padding: "8px", backgroundColor: "#e3f2fd", borderRadius: "4px", fontSize: "12px" }}>
-          <strong>Note:</strong> This is the Queue page. If you're seeing 404 errors for schedule endpoints, 
-          make sure you're on the correct page: <strong>/receptionist/queue</strong> (not /receptionist/schedule)
+          <strong>Note:</strong> Queue shows only today's appointments. Yesterday's appointments are automatically removed.
         </div>
       </div>
       

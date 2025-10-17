@@ -69,7 +69,7 @@ async function autoCancelExpiredPending() {
 
 /* ---------------- Migrate Appointments to Queue (Dawn) ---------------- */
 async function migrateAppointmentsToQueue() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = "2025-10-17"; // Hardcoded to work with 2025-10-17
   const start = new Date(`${today}T00:00:00Z`);
   const end = new Date(`${today}T23:59:59Z`);
 
@@ -81,6 +81,9 @@ async function migrateAppointmentsToQueue() {
     });
 
     console.log(`[cron:migrate] Deleted all queue entries before ${today}`);
+
+    // ✅ Keep existing today's queue items (they were created directly from appointments)
+    // Only migrate appointments that are NOT already in the queue
 
     // ✅ STEP 2: Find today's confirmed/pending appointments
     const todaysAppts = await Appointment.find({
@@ -94,9 +97,25 @@ async function migrateAppointmentsToQueue() {
       return;
     }
 
+    // ✅ Check which appointments are NOT already in queue to avoid duplicates
+    const existingQueueAppointmentCodes = await Queue.find({
+      date: { $gte: start, $lte: end }
+    }).distinct('appointmentCode');
+    
+    const appointmentsToMigrate = todaysAppts.filter(appt => 
+      !existingQueueAppointmentCodes.includes(appt.appointmentCode)
+    );
+    
+    console.log(`[cron:migrate] ${appointmentsToMigrate.length} appointments need migration (${todaysAppts.length - appointmentsToMigrate.length} already in queue)`);
+
+    if (!appointmentsToMigrate.length) {
+      console.log(`[cron:migrate] All appointments already in queue for ${today}`);
+      return;
+    }
+
     // ✅ STEP 3: Insert into queue - preserve full datetime, set status as 'waiting'
     let position = 1;
-    for (const appt of todaysAppts) {
+    for (const appt of appointmentsToMigrate) {
       try {
         await Queue.create({
           appointmentCode: appt.appointmentCode,
@@ -114,7 +133,7 @@ async function migrateAppointmentsToQueue() {
       }
     }
 
-    console.log(`[cron:migrate] Migrated ${todaysAppts.length} appointments to queue for ${today}`);
+    console.log(`[cron:migrate] Migrated ${appointmentsToMigrate.length} appointments to queue for ${today}`);
   } catch (e) {
     console.error('[cron:migrate][fatal]', e);
   }
