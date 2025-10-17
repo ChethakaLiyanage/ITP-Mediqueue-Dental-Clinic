@@ -1,54 +1,36 @@
 const express = require("express");
-const router = express.Router();
-const requireAuth = require("../middleware/requireAuth");
-
 const {
-  bookAppointment,
-  bookGuestAppointment,
-  listAppointments,
-  updateAppointment,
-  deleteAppointment,
-  confirmAppointment,
-  sendAppointmentOtp,
-  verifyAppointmentOtp,
+  getAppointments,
   getAvailableSlots,
-} = require("../Controllers/AppointmentControllers");
+  createAppointment,
+  updateAppointment,
+  cancelAppointment,
+  getAppointment
+} = require("../Controllers/AppointmentController");
+const requireAuth = require("../middleware/requireAuth");
+const requireRole = require("../middleware/requireRole");
 
-// Registered user routes (require authentication)
-router.post("/", requireAuth, bookAppointment);
+const router = express.Router();
 
-// Public routes (no authentication required)
-router.get("/", listAppointments);
+// All routes require authentication
+router.use(requireAuth);
 
-// Guest user routes (no authentication required)
-router.post("/guest", bookGuestAppointment);
+// GET /appointments - Get appointments (for patients, dentists, admins)
+router.get("/", getAppointments);
 
-// Management routes (require authentication for patient operations)
-router.put("/:id", requireAuth, updateAppointment);
-router.patch("/:id", requireAuth, updateAppointment);
-router.delete("/:id", requireAuth, deleteAppointment);
-
-// Convenience route for receptionists to confirm pending appointments
-router.patch("/:id/confirm", confirmAppointment);
-
-// OTP routes (for registered users)
-router.post("/send-otp", requireAuth, sendAppointmentOtp);
-router.post("/verify-otp", requireAuth, verifyAppointmentOtp);
-
-// Public routes
+// GET /appointments/available-slots - Get available time slots for a dentist
 router.get("/available-slots", getAvailableSlots);
 
-// Additional endpoints for frontend compatibility
-router.get("/booked", (req, res) => {
-  // Return empty array for now - this should check for booked appointments
-  res.json([]);
-});
+// GET /appointments/:id - Get a specific appointment
+router.get("/:id", getAppointment);
 
-router.get("/occupied", (req, res) => {
-  // Return empty array for now - this should check for occupied slots
-  res.json([]);
-});
+// POST /appointments - Create a new appointment (patients only)
+router.post("/", requireRole(["Patient"]), createAppointment);
 
-router.get("/availability", getAvailableSlots); // Frontend compatibility endpoint
+// PUT /appointments/:id - Update an appointment
+router.put("/:id", updateAppointment);
+
+// DELETE /appointments/:id - Cancel an appointment
+router.delete("/:id", cancelAppointment);
 
 module.exports = router;

@@ -3,7 +3,6 @@
 const mongoose = require("mongoose");
 const Treatmentplan = require("../Model/TreatmentplanModel");
 const Prescription = require("../Model/PrescriptionModel");
-const AppointmentModel = require("../Model/AppointmentModel");
 const PatientModel = require("../Model/PatientModel");
 const DentistModel = require("../Model/DentistModel");
 
@@ -25,7 +24,7 @@ const getMedicalHistory = async (req, res) => {
       startDate, 
       endDate, 
       dentistCode, 
-      type, // 'all', 'treatments', 'prescriptions', 'appointments'
+      type, // 'all', 'treatments', 'prescriptions'
       limit = 50,
       page = 1 
     } = req.query;
@@ -128,48 +127,11 @@ const getMedicalHistory = async (req, res) => {
       medicalHistory = [...medicalHistory, ...enrichedPrescriptions];
     }
 
-    // Get appointments
-    if (type === 'all' || type === 'appointments' || !type) {
-      const appointmentFilter = { 
-        patient_code: patientCode, 
-        ...dateFilter 
-      };
-      
-      const appointments = await AppointmentModel.find(appointmentFilter)
-        .sort({ appointment_date: -1 })
-        .limit(parseInt(limit))
-        .skip(skip)
-        .lean();
-
-      // Enrich appointments with dentist info
-      const enrichedAppointments = await Promise.all(
-        appointments.map(async (appointment) => {
-          try {
-            const dentist = await DentistModel.findOne({ dentistCode: appointment.dentist_code }).lean();
-            return {
-              ...appointment,
-              type: 'appointment',
-              dentistName: dentist ? `${dentist.firstName} ${dentist.lastName}` : 'Unknown Dentist',
-              dentistSpecialty: dentist?.specialty || 'General Dentistry'
-            };
-          } catch (err) {
-            return {
-              ...appointment,
-              type: 'appointment',
-              dentistName: 'Unknown Dentist',
-              dentistSpecialty: 'General Dentistry'
-            };
-          }
-        })
-      );
-
-      medicalHistory = [...medicalHistory, ...enrichedAppointments];
-    }
 
     // Sort combined history by date (most recent first)
     medicalHistory.sort((a, b) => {
-      const dateA = a.created_date || a.issuedAt || a.appointment_date;
-      const dateB = b.created_date || b.issuedAt || b.appointment_date;
+      const dateA = a.created_date || a.issuedAt;
+      const dateB = b.created_date || b.issuedAt;
       return new Date(dateB) - new Date(dateA);
     });
 
@@ -202,17 +164,16 @@ const getMedicalHistory = async (req, res) => {
 // GET /api/medical-history/summary - Get medical history summary statistics
 const getMedicalHistorySummary = async (patientCode) => {
   try {
-    const [treatmentCount, prescriptionCount, appointmentCount] = await Promise.all([
+    const [treatmentCount, prescriptionCount] = await Promise.all([
       Treatmentplan.countDocuments({ patientCode, isDeleted: true, status: "archived" }), // Only completed treatments
-      Prescription.countDocuments({ patientCode, isActive: true }),
-      AppointmentModel.countDocuments({ patient_code: patientCode })
+      Prescription.countDocuments({ patientCode, isActive: true })
     ]);
 
     // Get recent activity (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const [recentTreatments, recentPrescriptions, recentAppointments] = await Promise.all([
+    const [recentTreatments, recentPrescriptions] = await Promise.all([
       Treatmentplan.countDocuments({ 
         patientCode, 
         isDeleted: true, 
@@ -223,30 +184,24 @@ const getMedicalHistorySummary = async (patientCode) => {
         patientCode, 
         isActive: true, 
         issuedAt: { $gte: thirtyDaysAgo } 
-      }),
-      AppointmentModel.countDocuments({ 
-        patient_code: patientCode, 
-        appointment_date: { $gte: thirtyDaysAgo } 
       })
     ]);
 
     return {
       total: {
         treatments: treatmentCount,
-        prescriptions: prescriptionCount,
-        appointments: appointmentCount
+        prescriptions: prescriptionCount
       },
       recent: {
         treatments: recentTreatments,
-        prescriptions: recentPrescriptions,
-        appointments: recentAppointments
+        prescriptions: recentPrescriptions
       }
     };
   } catch (error) {
     console.error("getMedicalHistorySummary error:", error);
     return {
-      total: { treatments: 0, prescriptions: 0, appointments: 0 },
-      recent: { treatments: 0, prescriptions: 0, appointments: 0 }
+      total: { treatments: 0, prescriptions: 0 },
+      recent: { treatments: 0, prescriptions: 0 }
     };
   }
 };
@@ -310,10 +265,9 @@ const exportMedicalHistory = async (req, res) => {
     }
 
     // Get comprehensive medical history
-    const [treatments, prescriptions, appointments] = await Promise.all([
+    const [treatments, prescriptions] = await Promise.all([
       Treatmentplan.find({ patientCode, isDeleted: true, status: "archived", ...dateFilter }).lean(),
-      Prescription.find({ patientCode, isActive: true, ...dateFilter }).lean(),
-      AppointmentModel.find({ patient_code: patientCode, ...dateFilter }).lean()
+      Prescription.find({ patientCode, isActive: true, ...dateFilter }).lean()
     ]);
 
     const exportData = {
@@ -337,10 +291,6 @@ const exportMedicalHistory = async (req, res) => {
         prescriptions: prescriptions.map(p => ({
           ...p,
           type: 'prescription'
-        })),
-        appointments: appointments.map(a => ({
-          ...a,
-          type: 'appointment'
         }))
       }
     };

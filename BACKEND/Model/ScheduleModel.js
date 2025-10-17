@@ -40,10 +40,9 @@ const ScheduleSchema = new Schema(
       index: true 
     },
 
-    // Appointment Details (when booked)
+    // Appointment Details (when booked) - Will be recreated with new appointment system
     appointmentId: { 
-      type: Schema.Types.ObjectId, 
-      ref: 'AppointmentModel',
+      type: String,
       sparse: true 
     },
     patientCode: { 

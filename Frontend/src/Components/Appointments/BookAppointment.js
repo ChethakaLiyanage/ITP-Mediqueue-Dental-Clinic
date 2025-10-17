@@ -26,7 +26,9 @@ const BookAppointment = () => {
 
   // Check authentication
   useEffect(() => {
+    console.log('BookAppointment - Auth check:', { isAuthenticated, user, role: user?.role });
     if (!isAuthenticated || user?.role !== 'Patient') {
+      console.log('Redirecting to login - not authenticated or not a patient');
       navigate('/login');
     }
   }, [isAuthenticated, user, navigate]);
