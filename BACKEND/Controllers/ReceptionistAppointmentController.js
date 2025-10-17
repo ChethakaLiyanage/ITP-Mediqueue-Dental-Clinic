@@ -20,8 +20,10 @@ const CONFIRMED = 'confirmed';
 const ACTIVE_STATUSES = [PENDING, CONFIRMED, 'completed'];
 
 function isToday(dateObj) {
-  const today = new Date().toISOString().slice(0, 10);
-  return dateObj.toISOString().slice(0, 10) === today;
+  const today = new Date();
+  const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const appointmentLocal = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  return appointmentLocal.getTime() === todayLocal.getTime();
 }
 
 async function resolveReceptionistContext(req, fallback) {
@@ -138,9 +140,9 @@ async function createByReceptionist(req, res) {
     if (!when) return res.status(400).json({ message: 'Invalid time HH:mm' });
 
     // Determine if appointment should be confirmed immediately or pending
-    // - Today's upcoming appointments: confirm immediately (direct to queue)
+    // - Appointments FOR today: confirm immediately (direct to queue)
     // - Future appointments: create as pending (auto-confirm after 4 hours)
-    const shouldConfirmNow = confirmNow !== undefined ? confirmNow : (isToday(when) && when >= new Date());
+    const shouldConfirmNow = confirmNow !== undefined ? confirmNow : isToday(when);
 
     const patientType =
       incomingPatientType === 'unregistered' ? 'unregistered' : 'registered';
@@ -190,8 +192,8 @@ async function createByReceptionist(req, res) {
       });
     }
 
-    //  Direct to Queue if today and upcoming
-    if (shouldConfirmNow && isToday(when) && when >= new Date()) {
+    //  Direct to Queue if appointment is for today
+    if (shouldConfirmNow && isToday(when)) {
       const position = await nextQueuePosition(dentistCode, date);
       const queue = await Queue.create({
         appointmentCode: `TMP-${Date.now()}`,
@@ -203,21 +205,83 @@ async function createByReceptionist(req, res) {
         reason: reason || 'General consultation',
       });
 
-      await sendApptConfirmed(patientCode, {
-        appointmentCode: queue.appointmentCode,
-        dentistCode,
-        date,
-        time,
+      // Create appointment record for tracking (but it's already confirmed)
+      const appointment = await Appointment.create({
+        patient_code: patientCode,
+        dentist_code: dentistCode,
+        appointment_date: when,
+        reason,
+        status: CONFIRMED,
+        origin: 'receptionist',
         patientType,
-        patientName: patientSnapshot?.name,
+        patientSnapshot,
         createdByCode: receptionistCode,
         acceptedByCode: receptionistCode,
-        receptionistCode,
+        acceptedAt: new Date(),
+        pendingExpiresAt: null,
+        isActive: true,
       });
 
-      return res
-        .status(201)
-        .json({ message: 'Appointment added directly to queue', queue });
+      // Update queue with actual appointment code
+      await Queue.updateOne(
+        { _id: queue._id },
+        { appointmentCode: appointment.appointmentCode }
+      );
+
+      // Send enhanced confirmation with WhatsApp and PDF
+      try {
+        const Notify = require('../Services/NotificationService');
+        const contactInfo = await Notify.getPatientContact(patientCode);
+        
+        if (contactInfo?.phone) {
+          const result = await Notify.sendAppointmentConfirmed({
+            to: contactInfo.phone,
+            patientType: patientType,
+            patientCode: patientCode,
+            dentistCode: dentistCode,
+            appointmentCode: appointment.appointmentCode,
+            datetimeISO: when.toISOString(),
+            reason: reason,
+            patientName: contactInfo.name || patientSnapshot?.name,
+            phone: contactInfo.phone,
+            email: contactInfo.email,
+            nic: contactInfo.nic,
+            passport: contactInfo.passport
+          });
+
+          // Update appointment with confirmation status
+          await Appointment.updateOne(
+            { _id: appointment._id },
+            {
+              $set: {
+                'confirmationStatus.whatsappSent': result.whatsapp.status === 'success',
+                'confirmationStatus.whatsappSentAt': result.whatsapp.status === 'success' ? new Date() : null,
+                'confirmationStatus.whatsappError': result.whatsapp.status === 'failed' ? result.whatsapp.error : null,
+                'confirmationStatus.pdfSent': result.pdf.status === 'success',
+                'confirmationStatus.pdfSentAt': result.pdf.status === 'success' ? new Date() : null,
+                'confirmationStatus.pdfError': result.pdf.status === 'failed' ? result.pdf.error : null,
+                'confirmationStatus.confirmationMessage': result.message
+              }
+            }
+          );
+
+          console.log(`[Today's Appointment] Sent confirmation for ${appointment.appointmentCode}: WhatsApp=${result.whatsapp.status}, PDF=${result.pdf.status}`);
+        }
+      } catch (notificationError) {
+        console.error('[Today\'s Appointment][notification-error]', appointment.appointmentCode, notificationError);
+      }
+
+      return res.status(201).json({
+        message: 'Appointment confirmed and added to queue',
+        appointment: {
+          appointmentCode: appointment.appointmentCode,
+          status: 'confirmed',
+          queuePosition: position,
+          date: when,
+          patientCode,
+          dentistCode,
+        },
+      });
     }
 
     // Normal Appointment flow
@@ -300,27 +364,48 @@ async function createByReceptionist(req, res) {
       });
 
       const timeStr = time;
-      await sendApptConfirmed(patientCode, {
-        appointmentCode: appointment.appointmentCode,
-        dentistCode,
-        date,
-        time: timeStr,
-        patientType,
-        patientName: patientSnapshot?.name,
-        createdByCode: appointment.createdByCode || receptionistCode,
-        acceptedByCode: appointment.acceptedByCode || receptionistCode,
-        receptionistCode,
-      });
-      await sendAppointmentPdf(patientCode, {
-        appointmentCode: appointment.appointmentCode,
-        patientCode,
-        dentistCode,
-        date,
-        time: timeStr,
-        createdByCode: appointment.createdByCode || receptionistCode,
-        acceptedByCode: appointment.acceptedByCode || receptionistCode,
-        patientName: patientSnapshot?.name,
-      });
+      // Send enhanced confirmation with WhatsApp and PDF
+      try {
+        const Notify = require('../Services/NotificationService');
+        const contactInfo = await Notify.getPatientContact(patientCode);
+        
+        if (contactInfo?.phone) {
+          const result = await Notify.sendAppointmentConfirmed({
+            to: contactInfo.phone,
+            patientType: patientType,
+            patientCode: patientCode,
+            dentistCode: dentistCode,
+            appointmentCode: appointment.appointmentCode,
+            datetimeISO: appointment.appointment_date.toISOString(),
+            reason: reason,
+            patientName: contactInfo.name || patientSnapshot?.name,
+            phone: contactInfo.phone,
+            email: contactInfo.email,
+            nic: contactInfo.nic,
+            passport: contactInfo.passport
+          });
+
+          // Update appointment with confirmation status
+          await Appointment.updateOne(
+            { _id: appointment._id },
+            {
+              $set: {
+                'confirmationStatus.whatsappSent': result.whatsapp.status === 'success',
+                'confirmationStatus.whatsappSentAt': result.whatsapp.status === 'success' ? new Date() : null,
+                'confirmationStatus.whatsappError': result.whatsapp.status === 'failed' ? result.whatsapp.error : null,
+                'confirmationStatus.pdfSent': result.pdf.status === 'success',
+                'confirmationStatus.pdfSentAt': result.pdf.status === 'success' ? new Date() : null,
+                'confirmationStatus.pdfError': result.pdf.status === 'failed' ? result.pdf.error : null,
+                'confirmationStatus.confirmationMessage': result.message
+              }
+            }
+          );
+
+          console.log(`[Appointment Confirmed] Sent confirmation for ${appointment.appointmentCode}: WhatsApp=${result.whatsapp.status}, PDF=${result.pdf.status}`);
+        }
+      } catch (notificationError) {
+        console.error('[Appointment Confirmed][notification-error]', appointment.appointmentCode, notificationError);
+      }
 
       try {
         let toPhone = null;

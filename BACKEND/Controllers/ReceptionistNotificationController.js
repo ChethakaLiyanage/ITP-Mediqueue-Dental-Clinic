@@ -47,9 +47,21 @@ async function listAppointmentNotifications(req, res) {
       }
     }).sort({ updatedAt: -1 }).limit(20).lean();
 
+    // Get today's booked appointments (confirmed immediately)
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    
+    const todayBooked = await Appointment.find({
+      status: 'confirmed',
+      createdAt: { $gte: todayStart, $lt: todayEnd },
+      // Exclude auto-confirmed appointments (those with autoConfirmedAt)
+      autoConfirmedAt: { $exists: false }
+    }).sort({ createdAt: -1 }).limit(20).lean();
+
     const patientCodes = new Set();
     const dentistCodes = new Set();
-    [...pending, ...autoConfirmed, ...cancelled].forEach(a => {
+    [...pending, ...autoConfirmed, ...cancelled, ...todayBooked].forEach(a => {
       if (a?.patient_code) patientCodes.add(a.patient_code);
       if (a?.dentist_code) dentistCodes.add(a.dentist_code);
     });
@@ -136,10 +148,34 @@ async function listAppointmentNotifications(req, res) {
       origin: a.origin || 'online',
     }));
 
+    const fmtTodayBooked = todayBooked.map(a => ({
+      appointmentCode: a.appointmentCode,
+      patient_code: a.patient_code,
+      patient: patientMap.get(a.patient_code) || null,
+      dentist_code: a.dentist_code,
+      dentist: dentistMap.get(a.dentist_code) || null,
+      appointment_date: a.appointment_date,
+      appointmentReason: a.reason || 'No reason provided',
+      createdAt: a.createdAt,
+      createdByCode: a.createdByCode || 'SYSTEM',
+      status: a.status,
+      origin: a.origin || 'online',
+      confirmationStatus: a.confirmationStatus || {
+        whatsappSent: false,
+        whatsappSentAt: null,
+        whatsappError: null,
+        pdfSent: false,
+        pdfSentAt: null,
+        pdfError: null,
+        confirmationMessage: null
+      }
+    }));
+
     return res.status(200).json({ 
       pending: fmtPending, 
       autoConfirmed: fmtAutoConfirmed,
-      cancelled: fmtCancelled
+      cancelled: fmtCancelled,
+      todayBooked: fmtTodayBooked
     });
   } catch (e) {
     console.error(e);
