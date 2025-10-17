@@ -38,7 +38,6 @@ import ManagerProfilePage from "./Components/Profile/ManagerProfilePage";
 import ReceptionistDashboard from "./Components/Dashboard/ReceptionistDashboard";
 import ReceptionistEvents from "./Components/Events/ReceptionistEvents";
 import ReceptionistSchedule from "./Components/Schedules/ReceptionistSchedule";
-import ReceptionistAppointments from "./Components/Appointments/ReceptionistAppointments";
 import ReceptionistQueue from "./Components/Queue/ReceptionistQueue";
 import ReceptionistInquiries from "./Components/Inquiries/ReceptionistInquiries";
 import ReceptionistInquiryDetail from "./Components/Inquiries/ReceptionistInquiryDetail";
@@ -51,12 +50,9 @@ import ProfilePrescriptionDetail from "./Components/Profile/ProfilePrescriptionD
 import ProfileTreatments from "./Components/Profile/ProfileTreatments";
 import ProfileTreatmentDetail from "./Components/Profile/ProfileTreatmentDetail";
 import ProfileInquiries from "./Components/Profile/ProfileInquiries";
-import ProfileAppointments from "./Components/Profile/ProfileAppointments";
-import ProfileAppointmentDetail from "./Components/Profile/ProfileAppointmentDetail";
 import PatientReviews from "./Components/Review/MyReviews";
 import ReceptionistLeave from "./Components/Leave/ReceptionistLeave";
 import ReceptionistNotifications from "./Components/Notification/ReceptionistNotifications";
-import BookAppointment from "./Components/Appointments/BookAppointment";
 import Home from "./Components/Home/Home";
 import ProfileUpdate from "./Components/Profile/ProfileUpdate";
 import MedicalHistory from "./Components/Profile/MedicalHistory";
@@ -114,7 +110,6 @@ export default function App() {
         <Route path="profile" element={<ReceptionistProfile />} />
         <Route path="events" element={<ReceptionistEvents />} />
         <Route path="schedule" element={<ReceptionistSchedule />} />
-        <Route path="appointments" element={<ReceptionistAppointments />} />
         <Route path="queue" element={<ReceptionistQueue />} />
         <Route path="inquiries" element={<ReceptionistInquiries />} />
         <Route path="inquiries/:code" element={<ReceptionistInquiryDetail />} />
@@ -127,7 +122,6 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/register-patient" element={<PatientRegister />} />
-      <Route path="/book" element={<BookAppointment />} />
       <Route path="/profile" element={
         <ProtectedRoute>
           <Profile />
@@ -167,16 +161,6 @@ export default function App() {
       <Route path="/profile/inquiries" element={
         <ProtectedRoute>
           <ProfileInquiries />
-        </ProtectedRoute>
-      } />
-      <Route path="/history" element={
-        <ProtectedRoute>
-          <ProfileAppointments />
-        </ProtectedRoute>
-      } />
-      <Route path="/profile/appointments/:id" element={
-        <ProtectedRoute>
-          <ProfileAppointmentDetail />
         </ProtectedRoute>
       } />
       <Route path="/profile/medical-history" element={
