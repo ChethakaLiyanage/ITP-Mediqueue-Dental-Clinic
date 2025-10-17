@@ -491,6 +491,13 @@ export default function Profile() {
 
               <div className="medical-records-grid">
                 <MedicalRecordCard
+                  icon={Calendar}
+                  title="Book Appointment"
+                  description="Schedule a new dental appointment"
+                  onClick={() => navigate("/book-appointment")}
+                  color="green"
+                />
+                <MedicalRecordCard
                   icon={Pill}
                   title="Prescriptions"
                   description="View your prescription history and medications"
