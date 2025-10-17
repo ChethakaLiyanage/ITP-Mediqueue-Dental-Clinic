@@ -157,20 +157,22 @@ async function getBookableSlots(req, res) {
         });
         if (leaveOverlap) return { ...s, status: "blocked_leave" };
 
-        // Check appointments table
-        const bookedOverlap = bookedAppointments.some(
-          (a) =>
-            new Date(a.appointment_date) >= st &&
-            new Date(a.appointment_date) < et
-        );
+        // Check appointments table - improved time comparison
+        const bookedOverlap = bookedAppointments.some((a) => {
+          const appointmentTime = new Date(a.appointment_date);
+          // Allow for small time differences (within 1 minute)
+          const timeDiff = Math.abs(appointmentTime.getTime() - st.getTime());
+          return timeDiff < 60000; // 1 minute in milliseconds
+        });
         if (bookedOverlap) return { ...s, status: "booked" };
 
-       //  ALSO check queue table
-        const queueOverlap = queueBookings.some(
-          (q) =>
-            new Date(q.date) >= st &&
-            new Date(q.date) < et
-        );
+       //  ALSO check queue table - improved time comparison
+        const queueOverlap = queueBookings.some((q) => {
+          const queueTime = new Date(q.date);
+          // Allow for small time differences (within 1 minute)
+          const timeDiff = Math.abs(queueTime.getTime() - st.getTime());
+          return timeDiff < 60000; // 1 minute in milliseconds
+        });
         if (queueOverlap) return { ...s, status: "booked" };
 
         return s;

@@ -153,17 +153,9 @@ export default function ReceptionistSchedule() {
           console.log('Existing appointments found:', appointmentsData);
           console.log('Appointments count:', appointmentsData.items?.length || 0);
           
-          // If we have appointments but no slots are showing as booked, there might be a data sync issue
-          if (appointmentsData.items?.length > 0 && scheduleData.slots?.length > 0) {
-            const bookedSlots = scheduleData.slots.filter(slot => slot.status === 'booked');
-            console.log('Booked slots in schedule:', bookedSlots.length);
-            console.log('Expected booked slots:', appointmentsData.items.length);
-            
-            if (bookedSlots.length !== appointmentsData.items.length) {
-              console.warn('Data sync issue detected: appointments exist but slots not marked as booked');
-              setErr(`Data sync issue: Found ${appointmentsData.items.length} appointments but only ${bookedSlots.length} slots marked as booked. Please refresh or contact admin.`);
-            }
-          }
+          // Data sync check removed to prevent false error messages
+          console.log('Appointments found:', appointmentsData.items?.length || 0);
+          console.log('Schedule slots:', scheduleData.slots?.length || 0);
         } else {
           console.warn('Failed to fetch appointments:', appointmentsResponse.status);
         }
