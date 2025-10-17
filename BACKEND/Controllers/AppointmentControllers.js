@@ -1248,7 +1248,30 @@ const verifyAppointmentOtp = async (req, res) => {
     }
   } catch (err) {
     console.error("verifyAppointmentOtp error:", err);
-    return res.status(500).json({ message: err.message || "Server error" });
+    console.error("Error stack:", err.stack);
+    
+    // Provide more specific error messages
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: "Invalid appointment data", 
+        details: err.message 
+      });
+    } else if (err.name === 'CastError') {
+      return res.status(400).json({ 
+        message: "Invalid data format", 
+        details: err.message 
+      });
+    } else if (err.code === 11000) {
+      return res.status(409).json({ 
+        message: "Duplicate appointment", 
+        details: "This appointment already exists" 
+      });
+    } else {
+      return res.status(500).json({ 
+        message: "Internal server error", 
+        details: process.env.NODE_ENV === 'development' ? err.message : "Something went wrong" 
+      });
+    }
   }
 };
 
