@@ -1,4 +1,5 @@
 // src/App.jsx (or App.js)
+import "./global-styles.css";
 import { Routes, Route, Navigate } from "react-router-dom";
 import DentistLogin from "./Components/Login/Login";
 import DentistNav from "./Components/Nav/DentistNav";
