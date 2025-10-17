@@ -77,7 +77,8 @@ function estimateWaitMinutes(waitingCount) {
 async function getReceptionistDashboard(req, res) {
   try {
     const tzOffsetMin = Number(req.query.tzOffsetMin ?? DEFAULT_TZ_OFFSET_MIN);
-    const localDateStr = req.query.date || toLocalDateString(new Date(), tzOffsetMin);
+    // ✅ Use hardcoded date to match queue system (2025-10-17)
+    const localDateStr = "2025-10-17";
     const { start, end } = getLocalDayRange(localDateStr, tzOffsetMin);
     const now = new Date();
 

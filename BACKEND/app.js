@@ -65,6 +65,7 @@ const receptionistNotification_router = require("./Routes/ReceptionistNotificati
 const patientInquiry_router = require("./Routes/PatientInquiryRoutes");
 const profile_router = require("./routes/profileRoutes");
 const managerReport_router = require("./Routes/managerReportRoutes");
+const appointmentPdf_router = require("./Routes/appointmentPdfRoutes");
 
 const app = express();
 
@@ -131,6 +132,7 @@ app.use("/receptionist/inquiries", receptionistInquiry_router);
 app.use("/receptionist/notifications", receptionistNotification_router);
 app.use("/api/inquiries", patientInquiry_router);
 app.use("/api/manager/reports", managerReport_router);
+app.use("/api/appointments", appointmentPdf_router);
 
 if (!global.__listeners_bound) {
   process.on("unhandledRejection", (e) => {

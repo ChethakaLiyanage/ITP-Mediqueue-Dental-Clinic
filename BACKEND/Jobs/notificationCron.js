@@ -66,18 +66,72 @@ async function autoConfirmExpiredPending() {
         }
       );
 
-      // Send confirmation notification to patient
-      if (appt.patient_code) {
-        await Notify.sendApptConfirmed(appt.patient_code, {
-          appointmentCode: appt.appointmentCode,
-          dentistCode: appt.dentist_code,
-          date: toDate(appt.appointment_date),
-          time: toTime(appt.appointment_date),
-          patientType: appt.patientType,
-          patientName: appt.patientSnapshot?.name,
-          acceptedByCode: 'SYSTEM',
-          receptionistCode: 'SYSTEM',
-        });
+      // Send enhanced confirmation notification to patient
+      if (appt.patient_code || appt.guestInfo?.phone) {
+        try {
+          // Get patient contact information
+          let contactInfo = null;
+          if (appt.patient_code) {
+            contactInfo = await Notify.getPatientContact(appt.patient_code);
+          } else if (appt.guestInfo) {
+            contactInfo = {
+              phone: appt.guestInfo.phone,
+              email: appt.guestInfo.email,
+              name: appt.guestInfo.name
+            };
+          }
+
+          if (contactInfo?.phone) {
+            // Send WhatsApp confirmation with PDF
+            const result = await Notify.sendAppointmentConfirmed({
+              to: contactInfo.phone,
+              patientType: appt.patientType || (appt.isGuestBooking ? 'unregistered' : 'registered'),
+              patientCode: appt.patient_code,
+              dentistCode: appt.dentist_code,
+              appointmentCode: appt.appointmentCode,
+              datetimeISO: appt.appointment_date.toISOString(),
+              reason: appt.reason,
+              patientName: contactInfo.name || appt.patientSnapshot?.name,
+              phone: contactInfo.phone,
+              email: contactInfo.email,
+              nic: appt.patientSnapshot?.nic,
+              passport: appt.patientSnapshot?.passport
+            });
+
+            // Update appointment with confirmation status
+            await Appointment.updateOne(
+              { _id: appt._id },
+              {
+                $set: {
+                  'confirmationStatus.whatsappSent': result.whatsapp.status === 'success',
+                  'confirmationStatus.whatsappSentAt': result.whatsapp.status === 'success' ? new Date() : null,
+                  'confirmationStatus.whatsappError': result.whatsapp.status === 'failed' ? result.whatsapp.error : null,
+                  'confirmationStatus.pdfSent': result.pdf.status === 'success',
+                  'confirmationStatus.pdfSentAt': result.pdf.status === 'success' ? new Date() : null,
+                  'confirmationStatus.pdfError': result.pdf.status === 'failed' ? result.pdf.error : null,
+                  'confirmationStatus.confirmationMessage': result.message
+                }
+              }
+            );
+
+            console.log(`[cron:auto-confirm] Sent confirmation for ${appt.appointmentCode}: WhatsApp=${result.whatsapp.status}, PDF=${result.pdf.status}`);
+          } else {
+            console.log(`[cron:auto-confirm] No phone number found for appointment ${appt.appointmentCode}`);
+          }
+        } catch (notificationError) {
+          console.error('[cron:auto-confirm][notification-error]', appt.appointmentCode, notificationError);
+          
+          // Update appointment with error status
+          await Appointment.updateOne(
+            { _id: appt._id },
+            {
+              $set: {
+                'confirmationStatus.whatsappError': String(notificationError),
+                'confirmationStatus.pdfError': String(notificationError)
+              }
+            }
+          );
+        }
       }
 
       console.log(`[cron:auto-confirm] Auto-confirmed appointment: ${appt.appointmentCode}`);

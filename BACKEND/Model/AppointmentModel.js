@@ -72,6 +72,18 @@ const AppointmentSchema = new Schema(
       dayBeforeSentAt: { type: Date },
       twoHourSentAt:   { type: Date },
     },
+
+    // Confirmation tracking
+    confirmationStatus: {
+      whatsappSent: { type: Boolean, default: false },
+      whatsappSentAt: { type: Date },
+      whatsappError: { type: String },
+      pdfSent: { type: Boolean, default: false },
+      pdfSentAt: { type: Date },
+      pdfError: { type: String },
+      pdfUrl: { type: String }, // For patient access
+      confirmationMessage: { type: String }, // Store the sent message
+    },
   },
   { timestamps: true }
 );

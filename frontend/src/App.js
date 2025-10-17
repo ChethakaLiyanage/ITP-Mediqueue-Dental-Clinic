@@ -44,6 +44,7 @@ import ReceptionistInquiryDetail from "./Components/Inquiries/ReceptionistInquir
 import ReceptionistPatients from "./Components/Patients/ReceptionistPatients";
 import ReceptionistDentists from "./Components/Dentists/ReceptionistDentists";
 import ReceptionistUnregisteredPatients from "./Components/Patients/ReceptionistUnregisteredPatients";
+import ReceptionistAppointments from "./Components/Appointments/ReceptionistAppointments";
 import Profile from "./Components/Profile/Profile";
 import ProfilePrescriptions from "./Components/Profile/ProfilePrescriptions";
 import ProfilePrescriptionDetail from "./Components/Profile/ProfilePrescriptionDetail";
@@ -117,6 +118,7 @@ export default function App() {
         <Route path="patients" element={<ReceptionistPatients />} />
         <Route path="dentists" element={<ReceptionistDentists />} />
         <Route path="unregistered" element={<ReceptionistUnregisteredPatients />} />
+        <Route path="appointments" element={<ReceptionistAppointments />} />
         <Route path="leaves" element={<ReceptionistLeave />} />
         <Route path="notifications" element={<ReceptionistNotifications />} />
       </Route>

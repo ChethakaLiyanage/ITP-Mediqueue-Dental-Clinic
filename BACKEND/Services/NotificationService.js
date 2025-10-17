@@ -365,28 +365,123 @@ function buildAppointmentPdf(meta) {
     if (!PDFDocument) {
       return reject(new Error('pdfkit not available'));
     }
-    const doc = new PDFDocument({ margin: 40 });
+    
+    const doc = new PDFDocument({ 
+      margin: 0,
+      size: 'A4',
+      info: {
+        Title: 'MediCore - Appointment Confirmation',
+        Author: 'MediCore Dental Clinic',
+        Subject: 'Appointment Confirmation',
+        Keywords: 'dental, appointment, confirmation, medicore'
+      }
+    });
+    
     const chunks = [];
     doc.on('data', chunk => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    doc.fontSize(20).text('Appointment Confirmation', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`Appointment Code: ${meta.appointmentCode || '-'}`);
-    doc.text(`Patient Code: ${meta.patientCode || '-'}`);
-    doc.text(`Patient Name: ${meta.patientName || '-'}`);
-    doc.text(`Dentist: ${meta.dentistName || meta.dentistCode || '-'}`);
-    doc.text(`Date: ${meta.date || '-'}`);
-    doc.text(`Time: ${meta.time || '-'}`);
-    doc.text(`Created By: ${meta.createdByCode || '-'}`);
-    doc.text(`Accepted By: ${meta.acceptedByCode || '-'}`);
-    if (meta.notes) {
-      doc.moveDown();
-      doc.text(`Notes: ${meta.notes}`);
+    // Page dimensions
+    const pageWidth = doc.page.width;
+    const pageHeight = doc.page.height;
+    const margin = 40;
+    const contentWidth = pageWidth - (margin * 2);
+
+    // Header with blue background
+    doc.rect(0, 0, pageWidth, 120)
+       .fill('#1e40af'); // Blue color matching MediCore
+
+    // Logo area (left side of header)
+    doc.circle(margin + 25, 30, 20)
+       .fill('#ffffff');
+    
+    // Simple stethoscope/heart icon representation
+    doc.circle(margin + 25, 30, 8)
+       .fill('#0ea5e9'); // Teal color
+    
+    // MediCore text
+    doc.fillColor('#ffffff')
+       .fontSize(14)
+       .text('MediCore', margin + 60, 25);
+
+    // Title (center of header)
+    doc.fillColor('#ffffff')
+       .fontSize(24)
+       .font('Helvetica-Bold')
+       .text('Appointment Confirmation', pageWidth / 2, 45, { align: 'center' });
+
+    // Contact info (right side of header)
+    const currentDate = new Date().toLocaleDateString();
+    doc.fillColor('#ffffff')
+       .fontSize(10)
+       .text(`Date: ${currentDate}`, pageWidth - margin - 100, 25)
+       .text('E-mail: medicore@gmail.com', pageWidth - margin - 100, 40)
+       .text('Contact: +94-64356865', pageWidth - margin - 100, 55)
+       .text('Address: No: 144, Wadduwa. Panadura', pageWidth - margin - 100, 70);
+
+    // Main content area
+    let yPosition = 150;
+
+    // Appointment details table
+    const tableData = [
+      { field: 'Doctor', value: meta.dentistName || meta.dentistCode || '-' },
+      { field: 'Date', value: meta.date || '-' },
+      { field: 'Time', value: meta.time || '-' },
+      { field: 'Patient Name', value: meta.patientName || '-' },
+      { field: 'Phone', value: meta.phone || '-' },
+      { field: 'Email', value: meta.email || '-' }
+    ];
+
+    // Add NIC and Passport for registered patients only
+    if (meta.patientType === 'registered' && meta.nic) {
+      tableData.push({ field: 'NIC', value: meta.nic });
     }
-    doc.moveDown();
-    doc.text('Please arrive 10 minutes early. Contact us if you need to reschedule.');
+    if (meta.patientType === 'registered' && meta.passport) {
+      tableData.push({ field: 'Passport', value: meta.passport });
+    }
+
+    // Table header
+    doc.rect(margin, yPosition, contentWidth, 30)
+       .fill('#1e40af');
+    
+    doc.fillColor('#ffffff')
+       .fontSize(12)
+       .font('Helvetica-Bold')
+       .text('Field', margin + 10, yPosition + 10)
+       .text('Details', margin + contentWidth / 2 + 10, yPosition + 10);
+
+    yPosition += 30;
+
+    // Table rows
+    tableData.forEach((row, index) => {
+      const rowHeight = 25;
+      const bgColor = index % 2 === 0 ? '#f8fafc' : '#ffffff';
+      
+      doc.rect(margin, yPosition, contentWidth, rowHeight)
+         .fill(bgColor);
+      
+      doc.fillColor('#1e40af')
+         .fontSize(10)
+         .font('Helvetica-Bold')
+         .text(row.field, margin + 10, yPosition + 8);
+      
+      doc.fillColor('#000000')
+         .fontSize(10)
+         .font('Helvetica')
+         .text(row.value, margin + contentWidth / 2 + 10, yPosition + 8);
+      
+      yPosition += rowHeight;
+    });
+
+    // Footer message
+    yPosition += 20;
+    doc.fillColor('#374151')
+       .fontSize(10)
+       .text('Please arrive 10 minutes early for your appointment.', margin, yPosition)
+       .text('Contact us if you need to reschedule or have any questions.', margin, yPosition + 15)
+       .text('Thank you for choosing MediCore Dental Clinic.', margin, yPosition + 30);
+
     doc.end();
   });
 }
@@ -504,54 +599,75 @@ async function sendAccountCreatedWhatsApp({ to, patientName, email, tempPassword
   return sendWhatsApp(to, text);
 }
 
-async function sendAppointmentConfirmed({ to, patientType, patientCode, dentistCode, appointmentCode, datetimeISO, reason }) {
+async function sendAppointmentConfirmed({ to, patientType, patientCode, dentistCode, appointmentCode, datetimeISO, reason, patientName, phone, email, nic, passport }) {
+  const appointmentDate = new Date(datetimeISO);
+  const formattedDate = appointmentDate.toLocaleDateString();
+  const formattedTime = appointmentDate.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false 
+  });
+
   const text =
-    `Appointment Confirmed ✅\n` +
-    `Appt: ${appointmentCode}\n` +
-    `Patient: ${patientCode} (${patientType})\n` +
-    `Dentist: ${dentistCode}\n` +
-    `When: ${new Date(datetimeISO).toLocaleString()}\n` +
-    (reason ? `Reason: ${reason}\n` : '') +
-    `A PDF slip is attached.`;
+    `🎉 *Appointment Confirmed!*\n\n` +
+    `📋 *Appointment Details:*\n` +
+    `• Code: ${appointmentCode}\n` +
+    `• Doctor: ${dentistCode}\n` +
+    `• Date: ${formattedDate}\n` +
+    `• Time: ${formattedTime}\n` +
+    (reason ? `• Reason: ${reason}\n` : '') +
+    `\n📄 Your appointment confirmation PDF is attached.\n\n` +
+    `⏰ Please arrive 10 minutes early.\n` +
+    `📞 Contact us if you need to reschedule.\n\n` +
+    `Thank you for choosing MediCore Dental Clinic! 🦷`;
 
   let pdfBuffer = null;
+  let pdfResult = { status: 'failed', error: 'PDF generation failed' };
+
   if (PDFDocument) {
     try {
       const d = new Date(datetimeISO);
       pdfBuffer = await buildAppointmentPdf({
         patientType,
         patientCode,
+        patientName,
         dentistCode,
         appointmentCode,
         date: d.toISOString().slice(0, 10),
         time: d.toISOString().slice(11, 16),
         reason,
+        phone,
+        email,
+        nic,
+        passport,
       });
+      pdfResult = { status: 'success', buffer: pdfBuffer };
     } catch (e) {
       console.error('[Notify][buildAppointmentPdf:error]', e);
+      pdfResult = { status: 'failed', error: String(e) };
     }
   }
 
-  if (pdfBuffer) {
-    await sendWhatsAppWithPdf(to, text, pdfBuffer, `${appointmentCode || 'appointment'}.pdf`);
-  } else {
-    await sendWhatsApp(to, text);
+  let whatsappResult = { status: 'failed', error: 'WhatsApp send failed' };
+
+  try {
+    if (pdfBuffer && pdfResult.status === 'success') {
+      const result = await sendWhatsAppWithPdf(to, text, pdfBuffer, `${appointmentCode || 'appointment'}.pdf`);
+      whatsappResult = { status: 'success', sid: result.sid };
+    } else {
+      const result = await sendWhatsApp(to, text);
+      whatsappResult = { status: 'success', sid: result.sid };
+    }
+  } catch (e) {
+    console.error('[Notify][sendWhatsApp:error]', e);
+    whatsappResult = { status: 'failed', error: String(e) };
   }
 
-  if (patientCode) {
-    try {
-      const d = new Date(datetimeISO);
-      await sendAppointmentPdf(patientCode, {
-        appointmentCode,
-        patientCode,
-        dentistCode,
-        date: d.toISOString().slice(0, 10),
-        time: d.toISOString().slice(11, 16),
-      });
-    } catch (e) {
-      console.error('[Notify][sendAppointmentPdf:followup:error]', e);
-    }
-  }
+  return {
+    whatsapp: whatsappResult,
+    pdf: pdfResult,
+    message: text
+  };
 }
 
 /* ----------------- EXPORTS ----------------- */
@@ -568,4 +684,6 @@ module.exports = {
   // added helpers
   sendAccountCreatedWhatsApp,
   sendAppointmentConfirmed,
+  buildAppointmentPdf,
+  getPatientContact,
 };
