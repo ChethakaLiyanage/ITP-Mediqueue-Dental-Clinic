@@ -59,6 +59,7 @@ import ReceptionistNotifications from "./Components/Notification/ReceptionistNot
 import BookAppointment from "./Components/Appointments/BookAppointment";
 import Home from "./Components/Home/Home";
 import ProfileUpdate from "./Components/Profile/ProfileUpdate";
+import MedicalHistory from "./Components/Profile/MedicalHistory";
 import ProtectedRoute from "./Components/Auth/ProtectedRoute";
 
 
@@ -176,6 +177,11 @@ export default function App() {
       <Route path="/profile/appointments/:id" element={
         <ProtectedRoute>
           <ProfileAppointmentDetail />
+        </ProtectedRoute>
+      } />
+      <Route path="/profile/medical-history" element={
+        <ProtectedRoute>
+          <MedicalHistory />
         </ProtectedRoute>
       } />
     </Routes>
