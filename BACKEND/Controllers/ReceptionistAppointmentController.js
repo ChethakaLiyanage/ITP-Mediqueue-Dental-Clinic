@@ -655,10 +655,13 @@ async function listAppointmentsForDay(req, res) {
     if (includePending === 'true') q.status = { $in: [CONFIRMED, PENDING] };
     else q.status = { $in: [CONFIRMED, 'completed'] };
 
-    // ✅ Exclude today's appointments (2025-10-17) since they should be in queue
-    const today = "2025-10-17";
-    if (date === today) {
-      console.log(`[listAppointmentsForDay] Excluding today's appointments (${today}) - they should be in queue`);
+    // ✅ Exclude today's appointments since they should be in queue
+    const today = new Date();
+    const todayLocalStr = today.toLocaleDateString(); // Gets local date string like "10/18/2025"
+    const requestedDateLocalStr = new Date(date + 'T00:00:00').toLocaleDateString();
+    
+    if (requestedDateLocalStr === todayLocalStr) {
+      console.log(`[listAppointmentsForDay] Excluding today's appointments (${date}) - they should be in queue`);
       return res.status(200).json({ items: [] });
     }
 
