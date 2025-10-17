@@ -21,7 +21,7 @@ const BookAppointment = () => {
   
   // UI state
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1: Select dentist, 2: Select date, 3: Select duration, 4: Select time, 5: Confirm
+  const [step, setStep] = useState(1); // 1: All-in-one booking form
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -70,28 +70,33 @@ const BookAppointment = () => {
 
   const handleDentistSelect = (dentistCode) => {
     setSelectedDentist(dentistCode);
-    setStep(2);
     setError('');
+    // Auto-fetch slots if date and duration are already selected
+    if (selectedDate && selectedDuration) {
+      fetchAvailableSlots(dentistCode, selectedDate, selectedDuration);
+    }
   };
 
   const handleDateSelect = (date) => {
     setSelectedDate(date);
-    setStep(3);
     setError('');
+    // Auto-fetch slots if dentist and duration are already selected
+    if (selectedDentist && selectedDuration) {
+      fetchAvailableSlots(selectedDentist, date, selectedDuration);
+    }
   };
 
   const handleDurationSelect = (duration) => {
     setSelectedDuration(duration);
+    setError('');
+    // Auto-fetch slots if dentist and date are already selected
     if (selectedDentist && selectedDate) {
       fetchAvailableSlots(selectedDentist, selectedDate, duration);
     }
-    setStep(4);
-    setError('');
   };
 
   const handleSlotSelect = (slotTime) => {
     setSelectedSlot(slotTime);
-    setStep(5);
     setError('');
   };
 
@@ -186,29 +191,16 @@ const BookAppointment = () => {
         </div>
       )}
 
-      <div className="booking-steps">
-        <div className={`step ${step >= 1 ? 'active' : ''}`}>
-          <div className="step-number">1</div>
-          <div className="step-label">Select Dentist</div>
-        </div>
-        <div className={`step ${step >= 2 ? 'active' : ''}`}>
-          <div className="step-number">2</div>
-          <div className="step-label">Select Date</div>
-        </div>
-        <div className={`step ${step >= 3 ? 'active' : ''}`}>
-          <div className="step-number">3</div>
-          <div className="step-label">Select Time</div>
-        </div>
-        <div className={`step ${step >= 4 ? 'active' : ''}`}>
-          <div className="step-number">4</div>
-          <div className="step-label">Confirm</div>
-        </div>
+      <div className="booking-header">
+        <h2>Book Your Appointment</h2>
+        <p>Select your preferences and see available time slots</p>
       </div>
 
       <div className="booking-content">
-        {step === 1 && (
-          <div className="step-content">
-            <h2>Select a Dentist</h2>
+        <div className="booking-form">
+          {/* Dentist Selection */}
+          <div className="form-section">
+            <h3>Select Dentist</h3>
             {loading ? (
               <div className="loading">
                 <Loader2 className="spinner" />
@@ -226,7 +218,7 @@ const BookAppointment = () => {
                       <User size={24} />
                     </div>
                     <div className="dentist-info">
-                      <h3>{dentist.userId?.name || 'Dr. Unknown'}</h3>
+                      <h4>{dentist.userId?.name || 'Dr. Unknown'}</h4>
                       <p className="specialization">{dentist.specialization || 'General Dentistry'}</p>
                       <p className="dentist-code">{dentist.dentistCode}</p>
                     </div>
@@ -235,11 +227,10 @@ const BookAppointment = () => {
               </div>
             )}
           </div>
-        )}
 
-        {step === 2 && (
-          <div className="step-content">
-            <h2>Select a Date</h2>
+          {/* Date Selection */}
+          <div className="form-section">
+            <h3>Select Date</h3>
             <div className="date-picker">
               <input
                 type="date"
@@ -249,18 +240,11 @@ const BookAppointment = () => {
                 className="date-input"
               />
             </div>
-            {selectedDate && (
-              <div className="selected-date">
-                <Calendar className="date-icon" />
-                <span>{formatDate(selectedDate)}</span>
-              </div>
-            )}
           </div>
-        )}
 
-        {step === 3 && (
-          <div className="step-content">
-            <h2>Select Appointment Duration</h2>
+          {/* Duration Selection */}
+          <div className="form-section">
+            <h3>Appointment Duration</h3>
             <div className="duration-options">
               <div className={`duration-card ${selectedDuration === 30 ? 'selected' : ''}`} onClick={() => handleDurationSelect(30)}>
                 <div className="duration-time">30 min</div>
@@ -280,140 +264,120 @@ const BookAppointment = () => {
               </div>
             </div>
           </div>
-        )}
 
-        {step === 4 && (
-          <div className="step-content">
-            <h2>Select a Time Slot</h2>
-            {loading ? (
-              <div className="loading">
-                <Loader2 className="spinner" />
-                <span>Loading available slots...</span>
-              </div>
-            ) : availableSlots.length > 0 ? (
-              <div className="time-slots">
-                {availableSlots.map((slot, index) => (
-                  <button
-                    key={index}
-                    className={`time-slot ${selectedSlot === slot.time ? 'selected' : ''}`}
-                    onClick={() => handleSlotSelect(slot.time)}
-                  >
-                    <Clock className="time-icon" />
-                    <span>{formatTime(slot.time)}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="no-slots">
-                <AlertCircle className="no-slots-icon" />
-                <p>No available time slots for this date.</p>
-                <button onClick={() => setStep(2)} className="back-button">
-                  Choose Different Date
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {step === 5 && (
-          <div className="step-content">
-            <h2>Confirm Your Appointment</h2>
-            <div className="appointment-summary">
-              <div className="summary-item">
-                <User className="summary-icon" />
-                <div>
-                  <label>Dentist:</label>
-                  <span>{getSelectedDentistInfo()?.userId?.name || 'Unknown'}</span>
+          {/* Available Time Slots */}
+          {selectedDentist && selectedDate && selectedDuration && (
+            <div className="form-section">
+              <h3>Available Time Slots</h3>
+              {loading ? (
+                <div className="loading">
+                  <Loader2 className="spinner" />
+                  <span>Loading available slots...</span>
                 </div>
-              </div>
-              <div className="summary-item">
-                <Calendar className="summary-icon" />
-                <div>
-                  <label>Date:</label>
-                  <span>{formatDate(selectedDate)}</span>
+              ) : availableSlots.length > 0 ? (
+                <div className="time-slots">
+                  {availableSlots.map((slot, index) => (
+                    <button
+                      key={index}
+                      className={`time-slot ${selectedSlot === slot.time ? 'selected' : ''}`}
+                      onClick={() => handleSlotSelect(slot.time)}
+                    >
+                      <Clock className="time-icon" />
+                      <span>{formatTime(slot.time)}</span>
+                    </button>
+                  ))}
                 </div>
-              </div>
-              <div className="summary-item">
-                <Clock className="summary-icon" />
-                <div>
-                  <label>Time:</label>
-                  <span>{formatTime(selectedSlot)}</span>
+              ) : (
+                <div className="no-slots">
+                  <AlertCircle className="no-slots-icon" />
+                  <p>No available time slots for the selected date and duration.</p>
                 </div>
-              </div>
-              <div className="summary-item">
-                <Clock className="summary-icon" />
-                <div>
-                  <label>Duration:</label>
-                  <span>{selectedDuration} minutes</span>
-                </div>
-              </div>
+              )}
             </div>
+          )}
 
-            <form onSubmit={handleSubmit} className="appointment-form">
-              <div className="form-group">
-                <label htmlFor="reason">Reason for Visit (Optional)</label>
-                <input
-                  type="text"
-                  id="reason"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="e.g., Regular checkup, tooth pain, cleaning"
-                  className="form-input"
-                />
+          {/* Appointment Details Form */}
+          {selectedSlot && (
+            <div className="form-section">
+              <h3>Appointment Details</h3>
+              <div className="appointment-summary">
+                <div className="summary-item">
+                  <User className="summary-icon" />
+                  <div>
+                    <label>Dentist:</label>
+                    <span>{getSelectedDentistInfo()?.userId?.name || 'Unknown'}</span>
+                  </div>
+                </div>
+                <div className="summary-item">
+                  <Calendar className="summary-icon" />
+                  <div>
+                    <label>Date:</label>
+                    <span>{formatDate(selectedDate)}</span>
+                  </div>
+                </div>
+                <div className="summary-item">
+                  <Clock className="summary-icon" />
+                  <div>
+                    <label>Time:</label>
+                    <span>{formatTime(selectedSlot)}</span>
+                  </div>
+                </div>
+                <div className="summary-item">
+                  <Clock className="summary-icon" />
+                  <div>
+                    <label>Duration:</label>
+                    <span>{selectedDuration} minutes</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="notes">Additional Notes (Optional)</label>
-                <textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Any special requirements or concerns..."
-                  rows={3}
-                  className="form-textarea"
-                />
-              </div>
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="cancel-button"
-                  disabled={loading}
-                >
-                  Start Over
-                </button>
-                <button
-                  type="submit"
-                  className="submit-button"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="spinner" />
-                      Booking...
-                    </>
-                  ) : (
-                    'Book Appointment'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+              <form onSubmit={handleSubmit} className="appointment-form">
+                <div className="form-group">
+                  <label htmlFor="reason">Reason for Visit (Optional)</label>
+                  <input
+                    type="text"
+                    id="reason"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="e.g., Regular checkup, tooth pain, cleaning"
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="notes">Additional Notes (Optional)</label>
+                  <textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Any specific concerns or requests..."
+                    className="form-textarea"
+                    rows="3"
+                  />
+                </div>
+                <div className="form-actions">
+                  <button type="submit" className="submit-button" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="spinner" />
+                        Booking...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="button-icon" />
+                        Book Appointment
+                      </>
+                    )}
+                  </button>
+                  <button type="button" onClick={() => navigate('/profile')} className="cancel-button">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
       </div>
 
-      {step > 1 && (
-        <div className="navigation-buttons">
-          <button
-            onClick={() => setStep(step - 1)}
-            className="back-button"
-            disabled={loading}
-          >
-            Back
-          </button>
-        </div>
-      )}
     </div>
   );
 };

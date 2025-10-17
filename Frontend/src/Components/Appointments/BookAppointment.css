@@ -469,6 +469,58 @@
   color: #495057;
 }
 
+/* Single Form Layout Styles */
+.booking-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e1e5e9;
+}
+
+.booking-header h2 {
+  color: #2c3e50;
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.booking-header p {
+  color: #6c757d;
+  font-size: 1.1rem;
+}
+
+.booking-form {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.form-section {
+  background: white;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-section h3 {
+  color: #2c3e50;
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e1e5e9;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-section h3::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  background: #007bff;
+  border-radius: 2px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .book-appointment-container {
@@ -512,6 +564,14 @@
   
   .duration-card {
     padding: 20px;
+  }
+  
+  .form-section {
+    padding: 20px;
+  }
+  
+  .booking-form {
+    gap: 20px;
   }
   
   .form-actions {
