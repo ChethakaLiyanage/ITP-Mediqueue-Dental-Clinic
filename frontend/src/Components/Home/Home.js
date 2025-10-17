@@ -438,7 +438,7 @@ export default function Home() {
 
   const bookService = useCallback((serviceName) => {
     closeServiceModal();
-    navigate('/book', { state: { selectedService: serviceName } });
+    navigate('/book-appointment', { state: { selectedService: serviceName } });
   }, [closeServiceModal, navigate]);
 
   const handleLoginClick = useCallback(() => {
@@ -563,7 +563,7 @@ export default function Home() {
             facilities. Experience comfort, professionalism, and excellence.
           </p>
           <div className="hero-buttons">
-            <Link to="/book" className="btn-primary">
+            <Link to="/book-appointment" className="btn-primary">
               <span>BOOK APPOINTMENT</span>
               <i className="fas fa-calendar-plus"></i>
             </Link>
@@ -764,7 +764,7 @@ export default function Home() {
               <p>Medi Queue was created to provide Sri Lankans with a specialized dental treatment center that uses modern dentistry techniques coupled with state-of-the-art facilities.</p>
               <p>Conveniently located with ample parking, our center is designed to provide you with comfort and set your mind at ease. Our professional, friendly team comprising of well-trained specialists will guide you every step of the way.</p>
               <p>We are open from 09 am to 07 pm from Thursday to Tuesday, ensuring your entire family has easy access to the best dental care facilities.</p>
-              <Link to="/book" className="btn-primary">
+              <Link to="/book-appointment" className="btn-primary">
                 <span>Schedule Consultation</span>
                 <i className="fas fa-calendar-check"></i>
               </Link>
@@ -882,7 +882,7 @@ export default function Home() {
                 <li><a href="#about">About Us</a></li>
                 <li><a href="#services">Services</a></li>
                 <li><a href="#contact">Contact</a></li>
-                <li><Link to="/book">Book Appointment</Link></li>
+                <li><Link to="/book-appointment">Book Appointment</Link></li>
               </ul>
             </div>
 
