@@ -88,6 +88,7 @@ async function getReceptionistDashboard(req, res) {
     const [
       apptAgg,
       nextAppts,
+      nextQueueAppts,
       queueAgg,
       queueToday,
       openInquiryCount,
@@ -108,6 +109,15 @@ async function getReceptionistDashboard(req, res) {
         .sort({ appointment_date: 1 })
         .limit(5)
         .select("appointmentCode patient_code dentist_code appointment_date status reason")
+        .lean(),
+
+      Queue.find({
+        date: { $gte: now, $lte: end },
+        status: { $in: ['waiting', 'called'] }
+      })
+        .sort({ date: 1 })
+        .limit(5)
+        .select("appointmentCode patientCode dentistCode date status")
         .lean(),
 
       Queue.aggregate([
@@ -146,11 +156,54 @@ async function getReceptionistDashboard(req, res) {
       Notification.countDocuments({ isRead: false })
     ]);
 
-    const nextAppointments = nextAppts.map(appt => ({
-      ...appt,
-      timeLocal: appt.appointment_date ? toLocalHHmm(appt.appointment_date, tzOffsetMin) : null,
-      appointmentDateISO: appt.appointment_date ? appt.appointment_date.toISOString() : null
+    // Add patient names to queue appointments
+    const Patient = require("../Model/PatientModel");
+    const User = require("../Model/User");
+    
+    const enrichedQueueAppts = await Promise.all(nextQueueAppts.map(async (item) => {
+      let patientName = 'Unknown Patient';
+      
+      // Handle guest patients (GUEST- prefix)
+      if (item.patientCode.startsWith('GUEST-')) {
+        patientName = 'Guest Patient';
+      } else {
+        // Handle registered patients
+        try {
+          const patient = await Patient.findOne({ patientCode: item.patientCode })
+            .populate('userId', 'name')
+            .lean();
+          
+          if (patient?.userId?.name) {
+            patientName = patient.userId.name;
+          }
+        } catch (error) {
+          console.error(`[getReceptionistDashboard] Error fetching patient name for ${item.patientCode}:`, error);
+        }
+      }
+      
+      return {
+        ...item,
+        patientName,
+        patient_code: item.patientCode, // Map to expected field name
+        dentist_code: item.dentistCode, // Map to expected field name
+        appointment_date: item.date,    // Map to expected field name
+        timeLocal: item.date ? toLocalHHmm(item.date, tzOffsetMin) : null,
+        appointmentDateISO: item.date ? item.date.toISOString() : null
+      };
     }));
+
+    const nextAppointments = [
+      ...nextAppts.map(appt => ({
+        ...appt,
+        timeLocal: appt.appointment_date ? toLocalHHmm(appt.appointment_date, tzOffsetMin) : null,
+        appointmentDateISO: appt.appointment_date ? appt.appointment_date.toISOString() : null
+      })),
+      ...enrichedQueueAppts
+    ].sort((a, b) => {
+      const dateA = a.appointment_date || a.date;
+      const dateB = b.appointment_date || b.date;
+      return new Date(dateA) - new Date(dateB);
+    }).slice(0, 5); // Limit to 5 total appointments
 
     const eventsNormalized = publishedEvents.map(ev => ({
       ...ev,

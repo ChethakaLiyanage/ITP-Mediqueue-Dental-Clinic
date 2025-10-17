@@ -557,10 +557,27 @@
 .notif-actions {
   display: flex;
   gap: 12px;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid #f1f5f9;
+}
+
+.notif-auto-confirm-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.notif-auto-confirm-text {
+  color: #059669;
+  font-size: 14px;
+  font-weight: 500;
+  background: #d1fae5;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #a7f3d0;
 }
 
 .notif-btn {

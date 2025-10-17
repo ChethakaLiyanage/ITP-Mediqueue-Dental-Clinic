@@ -64,8 +64,8 @@ async function listAppointmentNotifications(req, res) {
     }
 
     const fmtPending = pending.map(a => {
-      // Calculate expiration time (24 hours from creation for pending appointments)
-      const expiresInMs = a.createdAt ? (new Date(a.createdAt).getTime() + (24 * 60 * 60 * 1000) - Date.now()) : null;
+      // Calculate expiration time (4 hours from creation for pending appointments)
+      const expiresInMs = a.createdAt ? (new Date(a.createdAt).getTime() + (4 * 60 * 60 * 1000) - Date.now()) : null;
       return {
         appointmentCode: a.appointmentCode,
         patient_code: a.patient_code,
@@ -76,7 +76,7 @@ async function listAppointmentNotifications(req, res) {
         appointmentReason: a.reason || 'No reason provided',
         cancellationReason: a.cancellationReason || null,
         requestedAt: a.createdAt,
-        pendingExpiresAt: a.createdAt ? new Date(a.createdAt.getTime() + (24 * 60 * 60 * 1000)) : null,
+        pendingExpiresAt: a.createdAt ? new Date(a.createdAt.getTime() + (4 * 60 * 60 * 1000)) : null,
         expiresInMinutes: expiresInMs != null ? Math.max(0, Math.round(expiresInMs / 60000)) : null,
         status: a.status,
         origin: 'online', // Default to online for all appointments

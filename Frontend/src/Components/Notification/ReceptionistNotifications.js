@@ -104,28 +104,7 @@ export default function ReceptionistNotifications() {
     }
   }, [user, token, load]);
 
-  async function accept(code) {
-    try {
-      console.log('🎯 Accepting appointment:', code);
-      const response = await authenticatedFetch(`${API_BASE}/receptionist/appointments/${code}/confirm`, {
-        method: 'POST',
-        body: JSON.stringify({})
-      });
-      const data = await response.json();
-      console.log('✅ Accept response:', data);
-      
-      const who = data.receptionistCode ? ` by ${data.receptionistCode}` : "";
-      setInfo(`✅ Appointment ${code} accepted${who}! Added to queue.`);
-      setTimeout(() => setInfo(""), 5000);
-      
-      // Reload the notifications to update the list
-      await load();
-    } catch (e) {
-      console.error('❌ Accept error:', e);
-      setError(`Failed to accept ${code}: ${e.message}`);
-      setTimeout(() => setError(""), 5000);
-    }
-  }
+  // Manual acceptance function removed - appointments now auto-confirm after 4 hours
 
   async function cancel(code) {
     const reason = window.prompt(`Cancel ${code}? Optional reason:`) || "";
@@ -210,7 +189,7 @@ export default function ReceptionistNotifications() {
         <section className="notif-section">
           <div className="notif-section-head">
             <div className="notif-section-title">
-              <h2>⏰ Pending Online Appointments</h2>
+              <h2>⏰ Pending Online Appointments (Auto-confirm in 4h)</h2>
               <span className="notif-count-badge">
                 {groupedPending.reduce((total, group) => total + group.items.length, 0)} pending
               </span>
@@ -227,7 +206,7 @@ export default function ReceptionistNotifications() {
               <div className="notif-empty-content">
                 <span className="notif-empty-icon">✅</span>
                 <h3>All Clear!</h3>
-                <p>No pending online appointments at the moment.</p>
+                <p>No pending online appointments at the moment. New appointments will auto-confirm after 4 hours.</p>
               </div>
             </div>
           ) : (
@@ -283,13 +262,11 @@ export default function ReceptionistNotifications() {
                         </div>
                         
                         <div className="notif-actions">
-                          <button 
-                            className="notif-btn ok" 
-                            onClick={() => accept(item.appointmentCode)}
-                            title="Accept this appointment"
-                          >
-                            ✅ Accept
-                          </button>
+                          <div className="notif-auto-confirm-info">
+                            <span className="notif-auto-confirm-text">
+                              ⏰ Will auto-confirm after 4 hours
+                            </span>
+                          </div>
                           <button 
                             className="notif-btn danger" 
                             onClick={() => cancel(item.appointmentCode)}
