@@ -50,49 +50,34 @@ async function getBookableSlotsByScheduleModel(dentistCode, dateStr, slotMinutes
      console.log(`🔍 ScheduleModel Debug - targetDate:`, targetDate);
      console.log(`🔍 ScheduleModel Debug - targetDate type:`, typeof targetDate);
      console.log(`🔍 ScheduleModel Debug - availability_schedule:`, dentist.availability_schedule);
-     console.log(`🔍 ScheduleModel Debug - daySchedule:`, dentist.availability_schedule?.[dbDayName]);
+     console.log(`🔍 ScheduleModel Debug - daySchedule (${dayName}):`, dentist.availability_schedule?.[dayName]);
+     console.log(`🔍 ScheduleModel Debug - daySchedule (${dbDayName}):`, dentist.availability_schedule?.[dbDayName]);
 
-     // First, check if dentist works on this day at all
-     if (dentist.availability_schedule) {
-       const daySchedule = dentist.availability_schedule[dbDayName];
+     // Read the exact availability schedule from the database
+     if (dentist.availability_schedule && dentist.availability_schedule[dayName]) {
+       const daySchedule = dentist.availability_schedule[dayName];
        
-       if (daySchedule) {
-        // Check if it's the new object format: { start: '09:00', end: '17:00', available: true }
-        if (typeof daySchedule === 'object' && (daySchedule.startTime || daySchedule.start) && (daySchedule.endTime || daySchedule.end)) {
-          const startTime = daySchedule.startTime || daySchedule.start;
-          const endTime = daySchedule.endTime || daySchedule.end;
-          const isWorking = daySchedule.isWorking !== undefined ? daySchedule.isWorking : daySchedule.available;
-          
-          if (isWorking) {
-            workingHours = {
-              start: parseInt(startTime.split(':')[0]),
-              end: parseInt(endTime.split(':')[0])
-            };
-            console.log(`✅ Dentist working hours for ${dayName}: ${startTime}-${endTime}`);
-          } else {
-            console.log(`❌ Dentist not working on ${dayName}:`, daySchedule);
-            return { slots: [], message: `Dentist not working on ${dayName}` };
-          }
-        }
-         // Check if it's the old string format: '09:00-17:00'
-         else if (typeof daySchedule === 'string' && daySchedule.includes('-')) {
-           const [startTime, endTime] = daySchedule.split('-');
-           workingHours = {
-             start: parseInt(startTime.split(':')[0]),
-             end: parseInt(endTime.split(':')[0])
-           };
-           console.log(`✅ Dentist working hours for ${dayName}: ${daySchedule}`);
-         }
-         // Check if it's 'Not Available' or similar
-         else if (typeof daySchedule === 'string' && (daySchedule.toLowerCase().includes('not') || daySchedule === '-')) {
-           console.log(`❌ Dentist not working on ${dayName}: ${daySchedule}`);
-           return { slots: [], message: `Dentist not working on ${dayName}` };
-         }
+       // Check if it's 'Not Available' or similar
+       if (typeof daySchedule === 'string' && (daySchedule.toLowerCase().includes('not') || daySchedule === '-')) {
+         console.log(`❌ Dentist not working on ${dayName}: ${daySchedule}`);
+         return { slots: [], message: `Dentist not working on ${dayName}` };
+       }
+       
+       // Parse the time range (e.g., "16:00-20:00")
+       if (typeof daySchedule === 'string' && daySchedule.includes('-')) {
+         const [startTime, endTime] = daySchedule.split('-');
+         workingHours = {
+           start: parseInt(startTime.split(':')[0]),
+           end: parseInt(endTime.split(':')[0])
+         };
+         console.log(`✅ Dentist working hours for ${dayName}: ${daySchedule}`);
        } else {
-         console.log(`⚠️ No schedule defined for ${dayName}, using default hours 9-17`);
+         console.log(`❌ Invalid schedule format for ${dayName}: ${daySchedule}`);
+         return { slots: [], message: `Invalid schedule format for ${dayName}` };
        }
      } else {
-       console.log(`⚠️ No availability_schedule found, using default hours 9-17`);
+       console.log(`❌ No schedule defined for ${dayName}, dentist not working on this day`);
+       return { slots: [], message: `Dentist not working on ${dayName}` };
      }
 
     // Query ScheduleModel directly for available slots
@@ -218,49 +203,31 @@ async function getBookableSlotsByCodes(dentistCode, dateStr, slotMinutes = 30, e
      console.log(`🔍 Fallback Debug - availability_schedule:`, dentist.availability_schedule);
      console.log(`🔍 Fallback Debug - daySchedule:`, dentist.availability_schedule?.[dbDayName]);
 
-     // First, check if dentist works on this day at all
-     if (dentist.availability_schedule && dentist.availability_schedule[dbDayName]) {
-       const daySchedule = dentist.availability_schedule[dbDayName];
+     // Read the exact availability schedule from the database
+     if (dentist.availability_schedule && dentist.availability_schedule[dayName]) {
+       const daySchedule = dentist.availability_schedule[dayName];
        
-       // Check if it's the new object format: { start: '09:00', end: '17:00', available: true }
-       if (typeof daySchedule === 'object' && (daySchedule.startTime || daySchedule.start) && (daySchedule.endTime || daySchedule.end)) {
-         const startTime = daySchedule.startTime || daySchedule.start;
-         const endTime = daySchedule.endTime || daySchedule.end;
-         const isWorking = daySchedule.isWorking !== undefined ? daySchedule.isWorking : daySchedule.available;
-         
-         if (isWorking) {
-           workingHours = {
-             start: parseInt(startTime.split(':')[0]),
-             end: parseInt(endTime.split(':')[0])
-           };
-           console.log(`✅ Fallback - Dentist working hours for ${dayName}: ${startTime}-${endTime}`);
-         } else {
-           console.log(`❌ Fallback - Dentist not working on ${dayName}:`, daySchedule);
-           return { slots: [], message: `Dentist not working on ${dayName}` };
-         }
+       // Check if it's 'Not Available' or similar
+       if (typeof daySchedule === 'string' && (daySchedule.toLowerCase().includes('not') || daySchedule === '-')) {
+         console.log(`❌ Fallback - Dentist not working on ${dayName}: ${daySchedule}`);
+         return { slots: [], message: `Dentist not working on ${dayName}` };
        }
-       // Check if it's the old string format: '09:00-17:00'
-       else if (typeof daySchedule === 'string' && daySchedule.includes('-')) {
+       
+       // Parse the time range (e.g., "16:00-20:00")
+       if (typeof daySchedule === 'string' && daySchedule.includes('-')) {
          const [startTime, endTime] = daySchedule.split('-');
          workingHours = {
            start: parseInt(startTime.split(':')[0]),
            end: parseInt(endTime.split(':')[0])
          };
          console.log(`✅ Fallback - Dentist working hours for ${dayName}: ${daySchedule}`);
-       }
-       // Check if it's 'Not Available' or similar
-       else if (typeof daySchedule === 'string' && (daySchedule.toLowerCase().includes('not') || daySchedule === '-')) {
-         console.log(`❌ Fallback - Dentist not working on ${dayName}: ${daySchedule}`);
-         return { slots: [], message: `Dentist not working on ${dayName}` };
+       } else {
+         console.log(`❌ Fallback - Invalid schedule format for ${dayName}: ${daySchedule}`);
+         return { slots: [], message: `Invalid schedule format for ${dayName}` };
        }
      } else {
-       // If no schedule defined for this day, check if dentist has any schedule at all
-       if (dentist.availability_schedule && Object.keys(dentist.availability_schedule).length > 0) {
-         console.log(`❌ Fallback - No schedule defined for ${dayName}, dentist not working on this day`);
-         return { slots: [], message: `Dentist not working on ${dayName}` };
-       } else {
-         console.log(`⚠️ Fallback - No availability_schedule found, using default hours`);
-       }
+       console.log(`❌ Fallback - No schedule defined for ${dayName}, dentist not working on this day`);
+       return { slots: [], message: `Dentist not working on ${dayName}` };
      }
 
     // Skip clinic event checking in fallback - only use ScheduleModel for event blocking
@@ -281,8 +248,17 @@ async function getBookableSlotsByCodes(dentistCode, dateStr, slotMinutes = 30, e
     
     for (let hour = workingHours.start; hour < workingHours.end; hour++) {
       for (let min = 0; min < 60; min += slotDuration) {
-        const slotStart = new Date(date);
-        slotStart.setHours(hour, min, 0, 0);
+        // Create date in local timezone to match availability schedule exactly
+        const timeString = hour.toString().padStart(2, '0') + ':' + min.toString().padStart(2, '0') + ':00';
+        const dateString = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+        const dateTimeString = dateString + 'T' + timeString;
+        const slotStart = new Date(dateTimeString);
+        
+        // Debug logging
+        if (isNaN(slotStart.getTime())) {
+          console.log(`❌ Invalid date created: ${dateTimeString}`);
+          continue;
+        }
         
         const slotEnd = new Date(slotStart);
         slotEnd.setMinutes(slotEnd.getMinutes() + slotDuration);

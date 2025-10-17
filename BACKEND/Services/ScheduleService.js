@@ -46,7 +46,7 @@ class ScheduleService {
       }
       
       const dateObj = new Date(date + 'T00:00:00.000Z');
-      const dayName = getDayNameUTC(dateObj);
+      const dayName = getDayNameUTC(date);
       
       // Map abbreviated day names to lowercase full day names (database format)
       const dayNameMapping = {
@@ -61,48 +61,54 @@ class ScheduleService {
       const dbDayName = dayNameMapping[dayName];
       
       // Get working hours from dentist's availability_schedule
-      if (dentist.availability_schedule && dentist.availability_schedule[dbDayName]) {
-        const daySchedule = dentist.availability_schedule[dbDayName];
+      if (dentist.availability_schedule) {
+        // Try both abbreviated format (Fri) and lowercase format (friday)
+        const daySchedule = dentist.availability_schedule[dayName] || dentist.availability_schedule[dbDayName];
         
-        // Check if it's the new object format: { start: '09:00', end: '17:00', available: true }
-        if (typeof daySchedule === 'object' && (daySchedule.startTime || daySchedule.start) && (daySchedule.endTime || daySchedule.end)) {
-          const startTime = daySchedule.startTime || daySchedule.start;
-          const endTime = daySchedule.endTime || daySchedule.end;
-          const isWorking = daySchedule.isWorking !== undefined ? daySchedule.isWorking : daySchedule.available;
-          
-          if (isWorking) {
+        if (daySchedule) {
+          // Check if it's the new object format: { start: '09:00', end: '17:00', available: true }
+          if (typeof daySchedule === 'object' && (daySchedule.startTime || daySchedule.start) && (daySchedule.endTime || daySchedule.end)) {
+            const startTime = daySchedule.startTime || daySchedule.start;
+            const endTime = daySchedule.endTime || daySchedule.end;
+            const isWorking = daySchedule.isWorking !== undefined ? daySchedule.isWorking : daySchedule.available;
+            
+            if (isWorking) {
+              workingHours = {
+                start: parseInt(startTime.split(':')[0]),
+                end: parseInt(endTime.split(':')[0])
+              };
+              console.log(`✅ Using dentist's working hours for ${dayName}: ${startTime}-${endTime}`);
+            } else {
+              console.log(`⚠️ Dentist not working on ${dayName}, skipping slot creation`);
+              return; // Don't create slots if dentist doesn't work on this day
+            }
+          }
+          // Check if it's the old string format: '09:00-17:00'
+          else if (typeof daySchedule === 'string' && daySchedule.includes('-')) {
+            const [startTime, endTime] = daySchedule.split('-');
             workingHours = {
               start: parseInt(startTime.split(':')[0]),
               end: parseInt(endTime.split(':')[0])
             };
-            console.log(`✅ Using dentist's working hours for ${dayName}: ${startTime}-${endTime}`);
-          } else {
-            console.log(`⚠️ Dentist not working on ${dayName}, skipping slot creation`);
+            console.log(`✅ Using dentist's working hours for ${dayName}: ${daySchedule}`);
+          }
+          // Check if it's 'Not Available' or similar
+          else if (typeof daySchedule === 'string' && (daySchedule.toLowerCase().includes('not') || daySchedule === '-')) {
+            console.log(`⚠️ Dentist not working on ${dayName}: ${daySchedule}, skipping slot creation`);
             return; // Don't create slots if dentist doesn't work on this day
           }
-        }
-        // Check if it's the old string format: '09:00-17:00'
-        else if (typeof daySchedule === 'string' && daySchedule.includes('-')) {
-          const [startTime, endTime] = daySchedule.split('-');
-          workingHours = {
-            start: parseInt(startTime.split(':')[0]),
-            end: parseInt(endTime.split(':')[0])
-          };
-          console.log(`✅ Using dentist's working hours for ${dayName}: ${daySchedule}`);
-        }
-        // Check if it's 'Not Available' or similar
-        else if (typeof daySchedule === 'string' && (daySchedule.toLowerCase().includes('not') || daySchedule === '-')) {
-          console.log(`⚠️ Dentist not working on ${dayName}: ${daySchedule}, skipping slot creation`);
-          return; // Don't create slots if dentist doesn't work on this day
+        } else {
+          workingHours = { start: 9, end: 17 }; // Default hours
+          console.log(`⚠️ No schedule defined for ${dayName}, using default hours 9-17`);
         }
       } else {
         workingHours = { start: 9, end: 17 }; // Default hours
-        console.log(`⚠️ No schedule defined for ${dayName}, using default hours 9-17`);
+        console.log(`⚠️ No availability_schedule found, using default hours 9-17`);
       }
     }
     
     // Ensure we're working with the correct date (local timezone)
-    const dateObj = new Date(date + 'T00:00:00.000Z'); // Force UTC midnight for the date
+    // dateObj is already declared above
     const timeSlots = this.generateTimeSlots(workingHours.start, workingHours.end, slotDuration);
     
     console.log(`🔧 Ensuring slots exist for ${dentistCode} on ${date} (${timeSlots.length} slots, ${workingHours.start}:00-${workingHours.end}:00)`);

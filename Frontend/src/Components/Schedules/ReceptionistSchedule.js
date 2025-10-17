@@ -12,13 +12,26 @@ function getYYYYMMDD(d = new Date()) {
   return `${y}-${m}-${day}`;
 }
 
-function timeLocal(iso) {
+function timeLocal(iso, displayTime) {
   try {
+    // Use displayTime if available (it's already in correct format)
+    if (displayTime) {
+      return displayTime;
+    }
     const dt = new Date(iso);
-    return dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
   } catch {
     return "--:--";
   }
+}
+
+// Helper function to add minutes to a time string (HH:MM format)
+function addMinutesToTimeString(timeString, minutes) {
+  const [hours, mins] = timeString.split(':').map(Number);
+  const totalMinutes = hours * 60 + mins + minutes;
+  const newHours = Math.floor(totalMinutes / 60);
+  const newMins = totalMinutes % 60;
+  return `${newHours.toString().padStart(2, '0')}:${newMins.toString().padStart(2, '0')}`;
 }
 // Helper functions
 function getDayName(dateStr) {
@@ -442,8 +455,8 @@ export default function ReceptionistSchedule() {
             <div className="rc-tbody">
               {(data?.slots || []).map((s, i) => (
                 <div className="rc-row" key={`${s.start}-${i}`}>
-                  <div>⏱ {timeLocal(s.start)}</div>
-                  <div>{timeLocal(s.end)}</div>
+                  <div>⏱ {timeLocal(s.start, s.displayTime)}</div>
+                  <div>{timeLocal(s.end, s.displayTime ? addMinutesToTimeString(s.displayTime, 30) : null)}</div>
                   <div>
                     <span className={statusPill(s.status)}>
                       {s.status.replace("_", " ")}
@@ -501,7 +514,7 @@ export default function ReceptionistSchedule() {
                   </div>
                   <div>
                     <b>Date:</b> {date} &nbsp; <b>Time:</b>{" "}
-                    {timeLocal(selected.start)}–{timeLocal(selected.end)}
+                    {timeLocal(selected.start, selected.displayTime)}–{timeLocal(selected.end, selected.displayTime ? addMinutesToTimeString(selected.displayTime, 30) : null)}
                   </div>
                 </div>
 

@@ -9,6 +9,12 @@ const Leave = require("../Model/LeaveModel");
 const ScheduleService = require("../Services/ScheduleService"); // RE-ENABLED for new data only
 const { sendSms, normalizePhone } = require("../utils/sms");
 
+// Helper function to parse time string to minutes
+function parseTimeToMinutes(timeStr) {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + (minutes || 0);
+}
+
 const OTP_EXPIRY_MS = Number(process.env.APPOINTMENT_OTP_EXPIRY_MS || 5 * 60 * 1000);
 const OTP_MESSAGE_PREFIX = process.env.APPOINTMENT_OTP_SMS_PREFIX || "Your Medi Queue verification code is";
 
@@ -42,7 +48,8 @@ async function resolveDentistCode({ dentistCode, doctorId }) {
 // Get available appointment slots for a dentist
 const getAvailableSlots = async (req, res) => {
   try {
-    const { dentistCode, doctorId, date, durationMinutes = 30 } = req.query;
+    console.log('🔍 getAvailableSlots called with params:', req.query);
+    const { dentistCode, doctorId, date, durationMinutes = 30, time } = req.query;
     
     // Accept both dentistCode and doctorId for frontend compatibility
     const finalDentistCode = dentistCode || doctorId;
@@ -104,7 +111,7 @@ const getAvailableSlots = async (req, res) => {
       });
       
       // Transform the result to match frontend expectations
-      const transformedSlots = result.slots.map(slot => ({
+      let transformedSlots = result.slots.map(slot => ({
         start: slot.start.toISOString(),
         end: slot.end.toISOString(),
         status: slot.status === 'bookable' ? 'available' : slot.status,
@@ -113,12 +120,63 @@ const getAvailableSlots = async (req, res) => {
         specialization: dentist.specialization,
         time: slot.start.toISOString(),
         iso: slot.start.toISOString(), // Add iso field for frontend compatibility
-        displayTime: slot.start.toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: true 
-        })
+        displayTime: slot.start.getUTCHours().toString().padStart(2, '0') + ':' + slot.start.getUTCMinutes().toString().padStart(2, '0')
       }));
+
+      // Filter slots based on preferred time if specified
+      console.log('🔍 Time parameter check:', { time, timeType: typeof time, isAll: time === 'all' });
+      if (time && time !== 'all') {
+        console.log('🔍 Filtering slots by preferred time:', time);
+        
+        try {
+        
+        // Parse the preferred time (e.g., "15:00" or "15:00-17:00")
+        let preferredStart, preferredEnd;
+        
+        if (time.includes('-')) {
+          // Range format: "15:00-17:00"
+          const [startStr, endStr] = time.split('-');
+          preferredStart = parseTimeToMinutes(startStr.trim());
+          preferredEnd = parseTimeToMinutes(endStr.trim());
+        } else {
+          // Single time format: "15:00"
+          preferredStart = parseTimeToMinutes(time);
+          preferredEnd = preferredStart + parseInt(durationMinutes);
+        }
+        
+        console.log('🔍 Preferred time range:', { preferredStart, preferredEnd });
+        
+        // Filter slots to only include those within the preferred time range
+        transformedSlots = transformedSlots.filter(slot => {
+          const slotStart = new Date(slot.start);
+          // The slot.start is in UTC but represents local time
+          // We need to get the local time representation for comparison
+          const slotStartMinutes = slotStart.getUTCHours() * 60 + slotStart.getUTCMinutes();
+          const slotEndMinutes = slotStartMinutes + parseInt(durationMinutes);
+          
+          // Check if slot overlaps with preferred time range
+          const overlaps = (slotStartMinutes < preferredEnd) && (slotEndMinutes > preferredStart);
+          
+          console.log('🔍 Slot time check:', {
+            slotTimeUTC: slotStart.toISOString(),
+            slotTimeLocal: slotStart.getUTCHours().toString().padStart(2, '0') + ':' + slotStart.getUTCMinutes().toString().padStart(2, '0'),
+            slotStartMinutes,
+            slotEndMinutes,
+            preferredStart,
+            preferredEnd,
+            overlaps
+          });
+          
+          return overlaps;
+        });
+        
+        console.log(`🔍 Filtered to ${transformedSlots.length} slots matching preferred time`);
+        
+        } catch (filterError) {
+          console.error('❌ Error in time filtering:', filterError);
+          // Continue without filtering if there's an error
+        }
+      }
 
       return res.status(200).json({
         slots: transformedSlots,

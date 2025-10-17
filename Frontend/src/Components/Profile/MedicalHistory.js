@@ -19,7 +19,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../../services/apiService';
 import './medical-history.css';
 
 export default function MedicalHistory() {
@@ -45,7 +45,6 @@ export default function MedicalHistory() {
   const fetchMedicalHistory = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       
       if (filters.type !== 'all') params.append('type', filters.type);
@@ -53,9 +52,7 @@ export default function MedicalHistory() {
       if (filters.endDate) params.append('endDate', filters.endDate);
       if (filters.dentistCode) params.append('dentistCode', filters.dentistCode);
 
-      const response = await axios.get(`/api/medical-history?${params}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get(`/medical-history?${params}`);
 
       if (response.data.success) {
         setMedicalHistory(response.data.data.medicalHistory);
@@ -72,10 +69,7 @@ export default function MedicalHistory() {
 
   const fetchSummary = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/medical-history/summary', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/medical-history/summary');
 
       if (response.data.success) {
         setSummary(response.data.data);
@@ -101,14 +95,12 @@ export default function MedicalHistory() {
 
   const exportHistory = async () => {
     try {
-      const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       params.append('format', 'json');
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
 
-      const response = await axios.get(`/api/medical-history/export?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await api.get(`/medical-history/export?${params}`, {
         responseType: 'blob'
       });
 
@@ -137,11 +129,17 @@ export default function MedicalHistory() {
   const getItemStatus = (item) => {
     if (item.type === 'appointment') {
       const now = new Date();
-      const appointmentDate = new Date(item.appointmentDate);
+      const appointmentDate = new Date(item.appointment_date || item.appointmentDate);
       if (appointmentDate > now) return { status: 'upcoming', color: 'text-blue-600', icon: <Clock size={16} /> };
       if (item.status === 'completed') return { status: 'completed', color: 'text-green-600', icon: <CheckCircle size={16} /> };
       if (item.status === 'cancelled') return { status: 'cancelled', color: 'text-red-600', icon: <XCircle size={16} /> };
       return { status: 'past', color: 'text-gray-600', icon: <Clock size={16} /> };
+    }
+    if (item.type === 'treatment') {
+      return { status: 'completed', color: 'text-green-600', icon: <CheckCircle size={16} /> };
+    }
+    if (item.type === 'prescription') {
+      return { status: 'active', color: 'text-blue-600', icon: <Pill size={16} /> };
     }
     return { status: 'active', color: 'text-green-600', icon: <CheckCircle size={16} /> };
   };
@@ -203,7 +201,7 @@ export default function MedicalHistory() {
             Medical History
           </h1>
           <p className="page-subtitle">
-            View your complete medical records, treatments, and appointments
+            View your complete medical history including completed treatments, prescriptions, and appointments
           </p>
         </div>
         <button onClick={exportHistory} className="btn-secondary">
@@ -323,13 +321,13 @@ export default function MedicalHistory() {
                     </div>
                     <div className="item-details">
                       <h3 className="item-title">
-                        {item.type === 'treatment' && item.diagnosis}
+                        {item.type === 'treatment' && `Completed: ${item.diagnosis}`}
                         {item.type === 'prescription' && `Prescription ${item.prescriptionCode}`}
                         {item.type === 'appointment' && `Appointment with Dr. ${item.dentistName}`}
                       </h3>
                       <div className="item-meta">
                         <span className="item-date">
-                          {formatDate(item.created_date || item.issuedAt || item.appointmentDate)}
+                          {formatDate(item.created_date || item.issuedAt || item.appointment_date || item.appointmentDate)}
                         </span>
                         <span className="item-dentist">
                           <User size={14} />
@@ -352,7 +350,7 @@ export default function MedicalHistory() {
                     {item.type === 'treatment' && (
                       <div className="treatment-details">
                         <div className="detail-section">
-                          <h4>Diagnosis</h4>
+                          <h4>Completed Treatment</h4>
                           <p>{item.diagnosis}</p>
                         </div>
                         {item.treatment_notes && (
@@ -365,6 +363,18 @@ export default function MedicalHistory() {
                           <h4>Plan Code</h4>
                           <p>{item.planCode}</p>
                         </div>
+                        {item.deletedAt && (
+                          <div className="detail-section">
+                            <h4>Completed Date</h4>
+                            <p>{formatDate(item.deletedAt)}</p>
+                          </div>
+                        )}
+                        {item.deleteReason && (
+                          <div className="detail-section">
+                            <h4>Completion Reason</h4>
+                            <p>{item.deleteReason}</p>
+                          </div>
+                        )}
                       </div>
                     )}
                     
@@ -393,8 +403,9 @@ export default function MedicalHistory() {
                       <div className="appointment-details">
                         <div className="detail-section">
                           <h4>Appointment Details</h4>
-                          <p><strong>Date:</strong> {formatDate(item.appointmentDate)}</p>
+                          <p><strong>Date:</strong> {formatDate(item.appointment_date || item.appointmentDate)}</p>
                           <p><strong>Status:</strong> {item.status}</p>
+                          {item.reason && <p><strong>Reason:</strong> {item.reason}</p>}
                           {item.notes && <p><strong>Notes:</strong> {item.notes}</p>}
                         </div>
                       </div>

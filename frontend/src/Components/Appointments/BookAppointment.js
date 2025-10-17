@@ -46,11 +46,32 @@ function buildSlotLabels(slot, fallbackDuration) {
   if (!iso) return { timeLabel: "Unavailable", dateLabel: "" };
   const start = new Date(iso);
   if (Number.isNaN(start.getTime())) return { timeLabel: "Unavailable", dateLabel: "" };
+  
+  // Use the displayTime from backend if available (it's already in correct format)
+  if (slot.displayTime) {
+    const startTime = slot.displayTime;
+    const endTime = addMinutesToTimeString(startTime, fallbackDuration);
+    return {
+      timeLabel: `${startTime} - ${endTime}`,
+      dateLabel: start.toLocaleDateString(),
+    };
+  }
+  
+  // Fallback to original logic
   const end = addMinutesToDate(start, fallbackDuration);
   return {
-    timeLabel: `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+    timeLabel: `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })} - ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`,
     dateLabel: start.toLocaleDateString(),
   };
+}
+
+// Helper function to add minutes to a time string (HH:MM format)
+function addMinutesToTimeString(timeString, minutes) {
+  const [hours, mins] = timeString.split(':').map(Number);
+  const totalMinutes = hours * 60 + mins + minutes;
+  const newHours = Math.floor(totalMinutes / 60);
+  const newMins = totalMinutes % 60;
+  return `${newHours.toString().padStart(2, '0')}:${newMins.toString().padStart(2, '0')}`;
 }
 function dedupeSlots(slots) {
   const seen = new Set();
