@@ -507,6 +507,14 @@ export default function Profile() {
                   color="green"
                 />
                 <MedicalRecordCard
+                  icon={FileText}
+                  title="Medical History"
+                  description="View your complete medical history and records"
+                  count={medicalCounts.treatments + medicalCounts.prescriptions + medicalCounts.appointments}
+                  onClick={() => navigate("/profile/medical-history")}
+                  color="indigo"
+                />
+                <MedicalRecordCard
                   icon={Calendar}
                   title="Appointments"
                   description="View and manage your appointment history"

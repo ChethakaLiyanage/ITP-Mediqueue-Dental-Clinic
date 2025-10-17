@@ -1072,6 +1072,15 @@
   background: linear-gradient(135deg, #f0fdfa, #ccfbf1);
 }
 
+.medical-record-card.indigo {
+  color: #4f46e5;
+}
+
+.medical-record-card.indigo:hover {
+  border-color: #c7d2fe;
+  background: linear-gradient(135deg, #f8faff, #eef2ff);
+}
+
 /* Medical Record Card Content */
 .medical-record-icon {
   display: flex;
@@ -1105,6 +1114,10 @@
 
 .medical-record-card.teal .medical-record-icon {
   background: linear-gradient(135deg, rgba(13, 148, 136, 0.15), rgba(13, 148, 136, 0.08));
+}
+
+.medical-record-card.indigo .medical-record-icon {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.15), rgba(79, 70, 229, 0.08));
 }
 
 .medical-record-card:hover .medical-record-icon {
