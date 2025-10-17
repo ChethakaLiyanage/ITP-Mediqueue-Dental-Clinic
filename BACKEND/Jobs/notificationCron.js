@@ -22,8 +22,8 @@ function toTime(d) {
   }
 }
 
-/* ---------------- Cancel expired pending ---------------- */
-async function autoCancelExpiredPending() {
+/* ---------------- Auto-confirm expired pending appointments ---------------- */
+async function autoConfirmExpiredPending() {
   const now = new Date();
 
   const expired = await Appointment.find({
@@ -36,33 +36,37 @@ async function autoCancelExpiredPending() {
 
   for (const appt of expired) {
     try {
+      // Auto-confirm the appointment instead of cancelling
       await Appointment.updateOne(
         { _id: appt._id, status: 'pending' },
         {
           $set: {
-            status: 'cancelled',
-            isActive: false,
-            autoCanceledAt: now,
-            cancellationReason: 'Time window to accept expired',
+            status: 'confirmed',
+            acceptedByCode: 'SYSTEM',
+            acceptedAt: now,
+            autoConfirmedAt: now,
           },
-          $unset: { queue_no: '' },
+          $unset: { pendingExpiresAt: '' },
         }
       );
 
+      // Send confirmation notification to patient
       if (appt.patient_code) {
-        await Notify.sendApptCanceled(appt.patient_code, {
+        await Notify.sendApptConfirmed(appt.patient_code, {
           appointmentCode: appt.appointmentCode,
           dentistCode: appt.dentist_code,
           date: toDate(appt.appointment_date),
           time: toTime(appt.appointment_date),
           patientType: appt.patientType,
           patientName: appt.patientSnapshot?.name,
-          reason: 'Time window to accept expired',
-          canceledByCode: 'SYSTEM',
+          acceptedByCode: 'SYSTEM',
+          receptionistCode: 'SYSTEM',
         });
       }
+
+      console.log(`[cron:auto-confirm] Auto-confirmed appointment: ${appt.appointmentCode}`);
     } catch (err) {
-      console.error('[cron:auto-cancel][error]', appt.appointmentCode, err);
+      console.error('[cron:auto-confirm][error]', appt.appointmentCode, err);
     }
   }
 }
@@ -178,12 +182,12 @@ async function sendTomorrowReminders() {
 
 /* ---------------- CRON SCHEDULES ---------------- */
 
-// every minute → auto-cancel + process notifications
+// every minute → auto-confirm + process notifications
 cron.schedule('* * * * *', async () => {
   try {
-    await autoCancelExpiredPending();
+    await autoConfirmExpiredPending();
   } catch (e) {
-    console.error('[cron:auto-cancel][fatal]', e);
+    console.error('[cron:auto-confirm][fatal]', e);
   }
 
   try {
@@ -214,7 +218,7 @@ cron.schedule('0 9 * * *', async () => {
 // run once on boot
 (async () => {
   try {
-    await autoCancelExpiredPending();
+    await autoConfirmExpiredPending();
     await Notify.processDueQueue();
   } catch (e) {
     console.error('[cron:init-run][fatal]', e);

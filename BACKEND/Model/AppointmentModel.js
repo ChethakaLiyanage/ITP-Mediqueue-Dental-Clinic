@@ -50,6 +50,8 @@ const AppointmentSchema = new Schema(
     // Tracking fields
     createdByCode: { type: String, trim: true },
     acceptedByCode: { type: String, trim: true },
+    acceptedAt: { type: Date },
+    autoConfirmedAt: { type: Date },
 
     reminders: {
       dayBeforeSentAt: { type: Date },
