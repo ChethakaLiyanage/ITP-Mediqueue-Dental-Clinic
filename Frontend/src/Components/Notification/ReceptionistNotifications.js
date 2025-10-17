@@ -115,7 +115,7 @@ export default function ReceptionistNotifications() {
   // Download PDF function
   const downloadPdf = async (appointmentCode) => {
     try {
-      const response = await authenticatedFetch(`${API_BASE}/appointments/${appointmentCode}/pdf`);
+      const response = await authenticatedFetch(`${API_BASE}/api/appointments/${appointmentCode}/pdf`);
       
       // Create blob and download
       const blob = await response.blob();

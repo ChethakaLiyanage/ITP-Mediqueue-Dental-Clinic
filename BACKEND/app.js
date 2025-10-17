@@ -106,6 +106,7 @@ app.use("/patients", Patient_router);
 app.use("/api/patients", Patient_router); // Add API prefix for frontend compatibility
 app.use("/prescriptions", Prescription_router);
 app.use("/feedbacks", Feedback_router);
+app.use("/api/appointments", appointmentPdf_router);
 app.use("/appointments", Appointment_router);
 app.use("/api/guest-appointments", GuestAppointment_router);
 app.use("/users", User_router);
@@ -132,7 +133,6 @@ app.use("/receptionist/inquiries", receptionistInquiry_router);
 app.use("/receptionist/notifications", receptionistNotification_router);
 app.use("/api/inquiries", patientInquiry_router);
 app.use("/api/manager/reports", managerReport_router);
-app.use("/api/appointments", appointmentPdf_router);
 
 if (!global.__listeners_bound) {
   process.on("unhandledRejection", (e) => {
