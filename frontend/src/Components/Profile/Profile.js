@@ -494,7 +494,10 @@ export default function Profile() {
                   icon={Calendar}
                   title="Book Appointment"
                   description="Schedule a new dental appointment"
-                  onClick={() => navigate("/book-appointment")}
+                  onClick={() => {
+                    console.log('Book Appointment clicked - navigating to /book-appointment');
+                    navigate("/book-appointment");
+                  }}
                   color="green"
                 />
                 <MedicalRecordCard
