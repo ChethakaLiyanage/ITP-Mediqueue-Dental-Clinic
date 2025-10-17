@@ -1187,16 +1187,6 @@ export default function ReceptionistAppointments() {
                               <td>{a.createdByCode || "-"}</td>
                               <td>{a.acceptedByCode || "-"}</td>
                               <td className="actions">
-                                {a.status === "pending" && (
-                                  <button
-                                    className="btn small"
-                                    onClick={() =>
-                                      confirmAppointment(a.appointmentCode)
-                                    }
-                                  >
-                                    Confirm
-                                  </button>
-                                )}
                                 <button
                                   className="btn dark small"
                                   onClick={() => {
