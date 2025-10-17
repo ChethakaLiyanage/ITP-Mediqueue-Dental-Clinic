@@ -36,7 +36,7 @@ async function listQueue(req, res) {
     // Dentist manually changes all statuses per requirements
 
     // ✅ Fetch only today's items without auto-updating
-    const items = await Queue.find(q).sort({ dentistCode: 1, position: 1 }).lean();
+    const items = await Queue.find(q).sort({ date: 1 }).lean();
 
     // ✅ Add patient names to queue items
     const Patient = require('../Model/PatientModel');
