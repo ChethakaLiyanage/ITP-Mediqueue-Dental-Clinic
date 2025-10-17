@@ -36,9 +36,20 @@ async function listAppointmentNotifications(req, res) {
       autoConfirmedAt: { $exists: true },
     }).sort({ autoConfirmedAt: -1 }).limit(20).lean();
 
+    const cancelled = await Appointment.find({
+      status: 'cancelled',
+      // Exclude auto-cancelled appointments by filtering out those cancelled within 10 seconds of creation
+      $expr: {
+        $gt: [
+          { $subtract: ["$updatedAt", "$createdAt"] },
+          10000 // 10 seconds in milliseconds
+        ]
+      }
+    }).sort({ updatedAt: -1 }).limit(20).lean();
+
     const patientCodes = new Set();
     const dentistCodes = new Set();
-    [...pending, ...autoConfirmed].forEach(a => {
+    [...pending, ...autoConfirmed, ...cancelled].forEach(a => {
       if (a?.patient_code) patientCodes.add(a.patient_code);
       if (a?.dentist_code) dentistCodes.add(a.dentist_code);
     });
@@ -100,9 +111,26 @@ async function listAppointmentNotifications(req, res) {
       origin: a.origin || 'online',
     }));
 
+    const fmtCancelled = cancelled.map(a => ({
+      appointmentCode: a.appointmentCode,
+      patient_code: a.patient_code,
+      patient: patientMap.get(a.patient_code) || null,
+      dentist_code: a.dentist_code,
+      dentist: dentistMap.get(a.dentist_code) || null,
+      appointment_date: a.appointment_date,
+      appointmentReason: a.reason || 'No reason provided',
+      requestedAt: a.createdAt,
+      cancelledAt: a.updatedAt,
+      cancelledByCode: a.cancelledByCode || a.canceledByCode || 'UNKNOWN',
+      cancellationReason: a.cancellationReason || 'No reason provided',
+      status: a.status,
+      origin: a.origin || 'online',
+    }));
+
     return res.status(200).json({ 
       pending: fmtPending, 
-      autoConfirmed: fmtAutoConfirmed 
+      autoConfirmed: fmtAutoConfirmed,
+      cancelled: fmtCancelled
     });
   } catch (e) {
     console.error(e);
