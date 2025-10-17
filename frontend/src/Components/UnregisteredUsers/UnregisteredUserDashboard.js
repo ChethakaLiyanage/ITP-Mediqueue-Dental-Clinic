@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import './unregistered-user-dashboard.css';
 import UnregisteredUserManagement from './UnregisteredUserManagement';
-import AppointmentManagement from '../Appointments/AppointmentManagement';
-import UnregisteredAppointmentBooking from '../Appointments/UnregisteredAppointmentBooking';
 import UnregisteredUserAppointments from './UnregisteredUserAppointments';
-import CheckGuestAppointment from '../Appointments/CheckGuestAppointment';
 
 const UnregisteredUserDashboard = () => {
   const [activeTab, setActiveTab] = useState('users');
@@ -12,9 +9,6 @@ const UnregisteredUserDashboard = () => {
 
   const tabs = [
     { id: 'users', label: 'Manage Users', component: UnregisteredUserManagement },
-    { id: 'appointments', label: 'Manage Appointments', component: AppointmentManagement },
-    { id: 'book', label: 'Book Appointment', component: UnregisteredAppointmentBooking },
-    { id: 'check', label: 'Check Appointments', component: CheckGuestAppointment },
     { id: 'user-appointments', label: 'User Appointments', component: UnregisteredUserAppointments }
   ];
 

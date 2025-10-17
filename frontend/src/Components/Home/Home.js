@@ -3,7 +3,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../Contexts/AuthContext";
 import PremiumFeedbackForm from "../Feedback/Feedback";
-import CheckGuestAppointment from "../Appointments/CheckGuestAppointment";
 import "./home.css";
 // import "../../utils/homePageTest"; // Disabled - just a test utility
 
@@ -708,7 +707,7 @@ export default function Home() {
           <div className="container">
             <div className="section-header">
               <h2>Check Your Appointments</h2>
-              <p>Enter your email or phone number to view your booked appointments</p>
+              <p>Please register or login to view and manage your appointments</p>
               <button 
                 className="close-section-btn"
                 onClick={handleCloseCheckAppointments}
@@ -717,7 +716,20 @@ export default function Home() {
                 <i className="fas fa-times"></i>
               </button>
             </div>
-            <CheckGuestAppointment />
+            <div className="appointment-message">
+              <div className="message-content">
+                <h3>Appointment Management</h3>
+                <p>To book and manage appointments, please create an account or login to your existing account.</p>
+                <div className="action-buttons">
+                  <Link to="/register-patient" className="btn btn-primary">
+                    Register Now
+                  </Link>
+                  <Link to="/login" className="btn btn-secondary">
+                    Login
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       )}
