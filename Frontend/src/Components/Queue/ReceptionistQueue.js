@@ -466,6 +466,7 @@ const nextPatients = useMemo(() => {
             {ongoingPatients.map((q) => (
               <div key={q.queueCode} className="queue-card" data-status={q.status}>
                 <p><b>Patient Code:</b> {q.patientCode}</p>
+                <p><b>Patient Name:</b> {q.patientName || 'Unknown Patient'}</p>
                 <p><b>Dentist:</b> {q.dentistCode}</p>
                 <p><b>Date & Time:</b> {new Date(q.date).toLocaleString()}</p>
                 <p><b>Status:</b> {q.status}</p>
@@ -487,6 +488,7 @@ const nextPatients = useMemo(() => {
               <div key={q.queueCode} className="queue-card" data-status={q.status}>
                 <h3>Dentist: {dentistCode}</h3>
                 <p><b>Patient Code:</b> {q.patientCode}</p>
+                <p><b>Patient Name:</b> {q.patientName || 'Unknown Patient'}</p>
                 <p><b>Date & Time:</b> {new Date(q.date).toLocaleString()}</p>
                 <p><b>Status:</b> {q.status}</p>
                 <div className="actions">
@@ -523,6 +525,7 @@ const nextPatients = useMemo(() => {
                     <thead>
                       <tr>
                         <th>Patient Code</th>
+                        <th>Patient Name</th>
                         <th>Date & Time</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -535,6 +538,7 @@ const nextPatients = useMemo(() => {
                         return (
                           <tr key={item.queueCode}>
                             <td>{item.patientCode}</td>
+                            <td>{item.patientName || 'Unknown Patient'}</td>
                             <td>{new Date(item.date).toLocaleString()}</td>
                             <td><span className={`status-badge status-${item.status}`}>{item.status}</span></td>
                             <td>
