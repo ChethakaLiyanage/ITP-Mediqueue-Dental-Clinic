@@ -24,6 +24,27 @@ api.interceptors.request.use(
   }
 );
 
+// Add response interceptor to handle 401 errors globally
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear auth data and redirect to login
+      localStorage.removeItem('auth');
+      localStorage.removeItem('token');
+      localStorage.removeItem('patientData');
+      
+      // Only redirect if we're not already on the login page
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Reports API
 export const reportsService = {
   getOverview: async () => {

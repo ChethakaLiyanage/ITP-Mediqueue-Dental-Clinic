@@ -14,6 +14,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { validateOTP } from "../../utils/validation";
+import api from "../../services/apiService";
 
 const apiBase = "http://localhost:5000";
 const SLOT_INTERVAL_MINUTES = 30;
@@ -925,31 +926,16 @@ export default function BookAppointment() {
         return; 
       }
 
-      const res = await fetch(`${apiBase}/appointments/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ 
-          otpId: otpMeta.id, 
-          code: otpCode, 
-          reason,
-          bookingForSomeoneElse,
-          otherPersonDetails: bookingForSomeoneElse ? otherPersonDetails : undefined
-        }),
+      // Use api service instead of fetch for better error handling
+      const response = await api.post('/appointments/verify-otp', { 
+        otpId: otpMeta.id, 
+        code: otpCode, 
+        reason,
+        bookingForSomeoneElse,
+        otherPersonDetails: bookingForSomeoneElse ? otherPersonDetails : undefined
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { 
-        console.log('❌ OTP verification failed:', res.status, data);
-        if (res.status === 401) {
-          setOtpError("Authentication failed. Please log in again.");
-          // Clear token and redirect to login
-          localStorage.removeItem('auth');
-          localStorage.removeItem('token');
-          navigate("/login", { replace: true });
-          return;
-        }
-        setOtpError(data.message || "OTP verification failed. Please try again."); 
-        return; 
-      }
+      
+      const data = response.data;
 
       setOtpStatus(data.message || "Appointment confirmed");
       setOtpSent(false);
@@ -960,7 +946,34 @@ export default function BookAppointment() {
       setCurrentStep(1);
       navigate("/", { replace: true });
     } catch (err) {
-      setOtpError(err.message || "Unable to confirm appointment.");
+      console.log('❌ OTP verification error:', err);
+      
+      // Handle different types of errors
+      if (err.response) {
+        const { status, data } = err.response;
+        console.log('❌ API Error:', status, data);
+        
+        if (status === 401) {
+          setOtpError("Authentication failed. Please log in again.");
+          // Clear token and redirect to login
+          localStorage.removeItem('auth');
+          localStorage.removeItem('token');
+          navigate("/login", { replace: true });
+          return;
+        } else if (status === 400) {
+          setOtpError(data.message || "Invalid OTP or request data. Please try again.");
+        } else if (status === 409) {
+          setOtpError(data.message || "This time slot is no longer available. Please select a different time.");
+        } else if (status === 429) {
+          setOtpError(data.message || "Too many attempts. Please request a new OTP.");
+        } else {
+          setOtpError(data.message || "OTP verification failed. Please try again.");
+        }
+      } else if (err.request) {
+        setOtpError("Network error. Please check your connection and try again.");
+      } else {
+        setOtpError(err.message || "Unable to confirm appointment.");
+      }
     }
   };
 
