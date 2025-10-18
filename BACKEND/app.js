@@ -64,7 +64,8 @@ const receptionistInquiry_router = require("./Routes/ReceptionistInquiryRoutes")
 const receptionistNotification_router = require("./Routes/ReceptionistNotificationRoutes");
 const patientInquiry_router = require("./Routes/PatientInquiryRoutes");
 const profile_router = require("./routes/profileRoutes");
-const managerReport_router = require("./Routes/managerReportRoutes");
+const supplier_router = require("./Routes/SupplierRoutes");
+// const managerReport_router = require("./Routes/ManagerReportRoutes");
 
 const app = express();
 
@@ -130,7 +131,25 @@ app.use("/receptionist/queue", receptionistQueue_router);
 app.use("/receptionist/inquiries", receptionistInquiry_router);
 app.use("/receptionist/notifications", receptionistNotification_router);
 app.use("/api/inquiries", patientInquiry_router);
-app.use("/api/manager/reports", managerReport_router);
+app.use("/api/suppliers", supplier_router);
+
+// Import manager report routes
+const managerReportRoutes = require("./Routes/managerReportRoutes");
+
+// Manager Reports Routes
+app.use("/api/manager/reports", managerReportRoutes);
+app.get("/api/manager/reports/test", (req, res) => {
+  res.json({ message: "Manager reports route is working!" });
+});
+
+// Simple test route without authentication
+app.get("/api/manager/reports/simple-test", (req, res) => {
+  res.json({ message: "Simple test route is working!", timestamp: new Date().toISOString() });
+});
+
+// Manager report routes are now handled by the managerReportRoutes router
+
+// Test endpoint removed - backend validation is working correctly
 
 if (!global.__listeners_bound) {
   process.on("unhandledRejection", (e) => {
