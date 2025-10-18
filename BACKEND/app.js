@@ -60,6 +60,7 @@ const receptionistQueue_router = require("./Routes/ReceptionistQueueRoutes");
 const receptionistDentist_router = require("./Routes/ReceptionistDentistRoutes");
 const receptionistInquiry_router = require("./Routes/ReceptionistInquiryRoutes");
 const receptionistNotification_router = require("./Routes/ReceptionistNotificationRoutes");
+const receptionistAppointment_router = require("./Routes/ReceptionistAppointmentRoutes");
 const patientInquiry_router = require("./Routes/PatientInquiryRoutes");
 const profile_router = require("./routes/profileRoutes");
 const managerReport_router = require("./Routes/managerReportRoutes");
@@ -128,6 +129,7 @@ app.use("/receptionist/unregistered-patients", receptionistUnregisteredPatient_r
 app.use("/receptionist/queue", receptionistQueue_router);
 app.use("/receptionist/inquiries", receptionistInquiry_router);
 app.use("/receptionist/notifications", receptionistNotification_router);
+app.use("/receptionist/appointments", receptionistAppointment_router);
 app.use("/api/inquiries", patientInquiry_router);
 app.use("/api/suppliers", supplier_router);
 

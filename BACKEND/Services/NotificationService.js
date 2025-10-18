@@ -376,10 +376,10 @@ async function buildAppointmentPdf(meta) {
       margin: 0,
       size: 'A4',
       info: {
-        Title: 'MediCore - Appointment Confirmation',
-        Author: 'MediCore Dental Clinic',
+        Title: 'Mediqueue Dental Clinic - Appointment Confirmation',
+        Author: 'Mediqueue Dental Clinic',
         Subject: 'Appointment Confirmation',
-        Keywords: 'dental, appointment, confirmation, medicore'
+        Keywords: 'dental, appointment, confirmation, mediqueue'
       }
     });
     
@@ -395,39 +395,53 @@ async function buildAppointmentPdf(meta) {
     const contentWidth = pageWidth - (margin * 2);
 
     // Header with blue background
-    doc.rect(0, 0, pageWidth, 120)
-       .fill('#1e40af'); // Blue color matching MediCore
+    doc.rect(0, 0, pageWidth, 100)
+       .fill('#1e40af'); // Dark blue background
 
-    // Logo area (left side of header)
-    doc.circle(margin + 25, 30, 20)
+    // Logo area (left side of header) - Tooth icon
+    // Outer circle background
+    doc.circle(margin + 20, 25, 18)
        .fill('#ffffff');
     
-    // Simple stethoscope/heart icon representation
-    doc.circle(margin + 25, 30, 8)
-       .fill('#0ea5e9'); // Teal color
+    // Tooth icon representation - improved design
+    // Tooth crown (rounded top part)
+    doc.circle(margin + 20, 18, 7)
+       .fill('#0ea5e9');
     
-    // MediCore text
+    // Tooth body (main part)
+    doc.rect(margin + 13, 25, 14, 10)
+       .fill('#0ea5e9');
+    
+    // Tooth roots (bottom parts)
+    doc.rect(margin + 15, 35, 2.5, 5)
+       .fill('#0ea5e9');
+    doc.rect(margin + 22.5, 35, 2.5, 5)
+       .fill('#0ea5e9');
+    
+    // Mediqueue Dental Clinic text (left side)
     doc.fillColor('#ffffff')
-       .fontSize(14)
-       .text('MediCore', margin + 60, 25);
-
-    // Title (center of header)
-    doc.fillColor('#ffffff')
-       .fontSize(24)
+       .fontSize(16)
        .font('Helvetica-Bold')
-       .text('Appointment Confirmation', pageWidth / 2, 45, { align: 'center' });
+       .text('Mediqueue Dental Clinic', margin + 50, 20);
+
+    // Title (center-right of header)
+    doc.fillColor('#ffffff')
+       .fontSize(16)
+       .font('Helvetica-Bold')
+       .text('Appointment Confirmation', pageWidth - margin - 150, 15);
 
     // Contact info (right side of header)
     const currentDate = new Date().toLocaleDateString();
     doc.fillColor('#ffffff')
-       .fontSize(10)
-       .text(`Date: ${currentDate}`, pageWidth - margin - 100, 25)
-       .text('E-mail: medicore@gmail.com', pageWidth - margin - 100, 40)
-       .text('Contact: +94-64356865', pageWidth - margin - 100, 55)
-       .text('Address: No: 144, Wadduwa. Panadura', pageWidth - margin - 100, 70);
+       .fontSize(9)
+       .font('Helvetica')
+       .text(`Date: ${currentDate}`, pageWidth - margin - 150, 40)
+       .text('E-mail: mediqueue@gmail.com', pageWidth - margin - 150, 52)
+       .text('Contact: +947764356865', pageWidth - margin - 150, 64)
+       .text('Address: No: 144, Wadduwa.', pageWidth - margin - 150, 76);
 
     // Main content area
-    let yPosition = 150;
+    let yPosition = 120;
 
     // Get dentist name and patient age
     const dentistName = await getDentistName(meta.dentistCode);
