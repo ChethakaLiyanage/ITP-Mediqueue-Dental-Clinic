@@ -11,6 +11,7 @@ const Inventory = () => {
   
   // All hooks must be called at the top level, before any conditional returns
   const [items, setItems] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -22,6 +23,28 @@ const Inventory = () => {
     minStockLevel: 10,
     supplier: ''
   });
+
+  // Fetch only active suppliers for the dropdown
+  const fetchSuppliers = async () => {
+    try {
+      // Query parameter filters for active suppliers only
+      const response = await fetch(`${API_BASE}/api/suppliers?isActive=true`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSuppliers(data.suppliers || data);
+      } else {
+        console.error('Failed to fetch active suppliers');
+      }
+    } catch (error) {
+      console.error('Error fetching active suppliers:', error);
+    }
+  };
 
   // Fetch all inventory items
   const fetchItems = async () => {
@@ -84,8 +107,9 @@ const Inventory = () => {
       return;
     }
     
-    console.log('User authenticated, fetching items...');
+    console.log('User authenticated, fetching items and suppliers...');
     fetchItems();
+    fetchSuppliers();
   }, [token, isAuthenticated, navigate]);
   
   console.log('=== INVENTORY AUTH DEBUG ===');
@@ -406,13 +430,21 @@ const Inventory = () => {
             </div>
             <div className="form-group">
               <label>Supplier</label>
-              <input
-                type="text"
+              <select
                 name="supplier"
                 value={formData.supplier}
                 onChange={handleInputChange}
-                placeholder="Enter supplier name"
-              />
+                disabled={suppliers.length === 0}
+              >
+                <option value="">
+                  {suppliers.length === 0 ? 'Loading active suppliers...' : 'Select an active supplier...'}
+                </option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier._id} value={supplier.companyName}>
+                    {supplier.companyName}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="form-actions">
@@ -435,6 +467,8 @@ const Inventory = () => {
                   minStockLevel: 10,
                   supplier: ''
                 });
+                // Refresh suppliers list when canceling
+                fetchSuppliers();
               }}
             >
               Cancel
