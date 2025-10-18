@@ -83,6 +83,10 @@ export default function ManagerNav() {
             <span className="mgr-ico">📋</span>
             <span>Inventory Request</span>
           </NavLink>
+          <NavLink to="/manager/suppliers" className="mgr-link">
+            <span className="mgr-ico">🏢</span>
+            <span>Suppliers</span>
+          </NavLink>
           <NavLink to="/manager/reports" className="mgr-link">
             <span className="mgr-ico">📊</span>
             <span>Reports</span>
