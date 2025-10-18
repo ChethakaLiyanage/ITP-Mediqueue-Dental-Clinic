@@ -89,6 +89,7 @@ export default function ReceptionistNotifications() {
       console.log('📊 Auto-confirmed appointments:', data?.autoConfirmed?.length || 0);
       console.log('📊 Cancelled appointments:', data?.cancelled?.length || 0);
       console.log('📊 Today booked appointments:', data?.todayBooked?.length || 0);
+      
       setPending(data?.pending || []);
       setAutoConfirmed(data?.autoConfirmed || []);
       setCancelled(data?.cancelled || []);
