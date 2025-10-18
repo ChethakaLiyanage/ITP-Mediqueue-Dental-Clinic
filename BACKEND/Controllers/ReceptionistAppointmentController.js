@@ -522,6 +522,11 @@ async function confirmAppointment(req, res) {
       minute: '2-digit',
       timeZone: 'Asia/Colombo'
     });
+
+    // Get patient age information
+    const contactInfo = await Notify.getPatientContact(appt.patient_code);
+    const patientAge = contactInfo?.age || (appt.isGuestBooking && appt.guestInfo?.age) || (appt.otherPersonDetails?.age);
+
     await sendApptConfirmed(appt.patient_code, {
       appointmentCode,
       dentistCode: appt.dentist_code,
@@ -535,6 +540,7 @@ async function confirmAppointment(req, res) {
       dentistCode: appt.dentist_code,
       date: dateStr,
       time: localTime,
+      patientAge: patientAge,
       receptionistCode: finalReceptionistCode,
     });
     const remindAt = new Date(appt.appointment_date.getTime() - 24 * 60 * 60 * 1000);
@@ -817,6 +823,10 @@ async function confirmUpdateAppointment(req, res) {
       minute: '2-digit',
       timeZone: 'Asia/Colombo'
     });
+
+    // Get patient age information
+    const contactInfo = await Notify.getPatientContact(appt.patient_code);
+    const patientAge = contactInfo?.age || (appt.isGuestBooking && appt.guestInfo?.age) || (appt.otherPersonDetails?.age);
     
     await sendApptConfirmed(appt.patient_code, {
       appointmentCode,
@@ -835,6 +845,7 @@ async function confirmUpdateAppointment(req, res) {
       dentistCode: appt.dentist_code,
       date: appt.appointment_date.toISOString().slice(0, 10),
       time: localTime,
+      patientAge: patientAge,
       createdByCode: appt.createdByCode,
       acceptedByCode: receptionistCode,
       patientName: appt.patientSnapshot?.name,

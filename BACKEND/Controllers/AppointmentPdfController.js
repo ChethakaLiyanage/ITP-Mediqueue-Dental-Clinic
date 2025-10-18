@@ -59,11 +59,22 @@ const getAppointmentPdf = async (req, res) => {
       minute: '2-digit',
       timeZone: 'Asia/Colombo'
     });
+
+    // Get patient age
+    let patientAge = null;
+    if (appointment.isGuestBooking && appointment.guestInfo?.age) {
+      patientAge = appointment.guestInfo.age;
+    } else if (appointment.otherPersonDetails?.age) {
+      patientAge = appointment.otherPersonDetails.age;
+    } else if (contactInfo?.age) {
+      patientAge = contactInfo.age;
+    }
     
     const pdfBuffer = await Notify.buildAppointmentPdf({
       patientType: appointment.patientType || (appointment.isGuestBooking ? 'unregistered' : 'registered'),
       patientCode: appointment.patient_code,
       patientName: contactInfo?.name || appointment.patientSnapshot?.name || appointment.guestInfo?.name,
+      patientAge: patientAge,
       dentistCode: appointment.dentist_code,
       appointmentCode: appointment.appointmentCode,
       date: appointmentDate.toISOString().slice(0, 10),
