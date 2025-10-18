@@ -25,8 +25,8 @@ async function listDentistsPublic(req, res) {
     const skip = (pageNum - 1) * limitNum;
 
     const findQuery = DentistX.find({ ...filter, ...textFilter })
-      // select only needed dentist fields (includes avatarUrl for photo)
-      .select('dentistCode specialization availability_schedule avatarUrl userId')
+      // select only needed dentist fields (includes photo for dentist image)
+      .select('dentistCode specialization availability_schedule photo userId')
       .populate({ path: 'userId', select: 'name contact_no role isActive' })
       .lean();
 
@@ -42,7 +42,7 @@ async function listDentistsPublic(req, res) {
         dentistCode: d.dentistCode,
         specialization: d.specialization,
         availability_schedule: d.availability_schedule,
-        avatarUrl: d.avatarUrl, // <-- added for photo
+        photo: d.photo, // <-- added for photo
         name: d.userId?.name,
         contact_no: d.userId?.contact_no,
         isActive: d.userId?.isActive,
@@ -67,7 +67,7 @@ async function getDentistPublic(req, res) {
     const where = byId ? { _id: idOrCode } : { dentistCode: idOrCode };
 
     const d = await DentistX.findOne(where)
-      .select('dentistCode specialization availability_schedule avatarUrl userId')
+      .select('dentistCode specialization availability_schedule photo userId')
       .populate({ path: 'userId', select: 'name contact_no role isActive' })
       .lean();
 
@@ -79,7 +79,7 @@ async function getDentistPublic(req, res) {
         dentistCode: d.dentistCode,
         specialization: d.specialization,
         availability_schedule: d.availability_schedule,
-        avatarUrl: d.avatarUrl, // <-- added for photo
+        photo: d.photo, // <-- added for photo
         name: d.userId?.name,
         contact_no: d.userId?.contact_no,
         isActive: d.userId?.isActive,

@@ -151,11 +151,19 @@ async function cancelAppointmentsForLeave(
       await appt.save();
 
       try {
+        // Format time in local timezone (not UTC)
+        const localTime = appt.appointment_date.toLocaleTimeString('en-US', { 
+          hour12: false, 
+          hour: '2-digit', 
+          minute: '2-digit',
+          timeZone: 'Asia/Colombo'
+        });
+        
         await sendApptCanceled(appt.patient_code, {
           appointmentCode: appt.appointmentCode,
           dentistCode: dentistCode,
           date: appt.appointment_date.toISOString().slice(0, 10),
-          time: appt.appointment_date.toISOString().slice(11, 16),
+          time: localTime,
           reason,
         });
       } catch (e) {

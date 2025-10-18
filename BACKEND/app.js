@@ -63,6 +63,7 @@ const receptionistNotification_router = require("./Routes/ReceptionistNotificati
 const patientInquiry_router = require("./Routes/PatientInquiryRoutes");
 const profile_router = require("./routes/profileRoutes");
 const managerReport_router = require("./Routes/managerReportRoutes");
+const appointmentPdf_router = require("./Routes/appointmentPdfRoutes");
 
 const app = express();
 
@@ -103,6 +104,7 @@ app.use("/patients", Patient_router);
 app.use("/api/patients", Patient_router); // Add API prefix for frontend compatibility
 app.use("/prescriptions", Prescription_router);
 app.use("/feedbacks", Feedback_router);
+app.use("/api/appointments", appointmentPdf_router);
 app.use("/appointments", Appointment_router);
 app.use("/users", User_router);
 app.use("/inventory", Inventory_router);

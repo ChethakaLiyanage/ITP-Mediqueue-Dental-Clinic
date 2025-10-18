@@ -47,6 +47,60 @@
   }
 }
 
+/* ===== Tab Navigation ===== */
+.notif-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0;
+}
+
+.notif-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  border-bottom: 2px solid transparent;
+}
+
+.notif-tab:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.notif-tab.active {
+  background: #ffffff;
+  color: #1e293b;
+  border-bottom-color: #3b82f6;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.notif-tab-count {
+  background: #e2e8f0;
+  color: #64748b;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
+}
+
+.notif-tab.active .notif-tab-count {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
 /* ===== Header (Enhanced for notifications) ===== */
 .notif-header {
   display: flex;
@@ -464,6 +518,18 @@
   letter-spacing: 0.02em;
 }
 
+
+.notif-status-confirmed {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #166534;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .notif-status-cancelled {
   background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
   color: #991b1b;
@@ -744,6 +810,187 @@
   }
 }
 
+/* ===== Confirmation Status Styles ===== */
+.notif-card-confirmation {
+  margin-top: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #3b82f6;
+}
+
+.notif-confirmation-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.notif-confirmation-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notif-confirmation-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notif-confirmation-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.notif-confirmation-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.notif-confirmation-icon {
+  font-size: 14px;
+}
+
+.notif-confirmation-value {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notif-confirmation-success {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notif-confirmation-status {
+  font-size: 13px;
+  font-weight: 600;
+  color: #059669;
+}
+
+.notif-confirmation-time {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.notif-confirmation-error {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notif-confirmation-error .notif-confirmation-status {
+  color: #dc2626;
+}
+
+.notif-confirmation-error-detail {
+  font-size: 11px;
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+  font-weight: 400;
+}
+
+.notif-confirmation-pending {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.notif-confirmation-message {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f0f9ff;
+  border-radius: 8px;
+  border: 1px solid #bae6fd;
+}
+
+.notif-confirmation-message-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0369a1;
+  margin-bottom: 6px;
+}
+
+.notif-confirmation-message-content {
+  font-size: 12px;
+  color: #0c4a6e;
+  line-height: 1.4;
+  font-family: 'Courier New', monospace;
+  background: white;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #e0f2fe;
+}
+
+.notif-confirmation-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.notif-confirmation-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.notif-confirmation-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.notif-confirmation-btn:active {
+  transform: translateY(0);
+}
+
+/* Responsive adjustments for confirmation section */
+@media (max-width: 768px) {
+  .notif-confirmation-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .notif-confirmation-label {
+    min-width: auto;
+  }
+  
+  .notif-confirmation-message-content {
+    font-size: 11px;
+  }
+}
+
 /* ===== Animations ===== */
 @keyframes slideIn {
   from {
@@ -777,4 +1024,70 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ===== Force Auto-Confirm Button ===== */
+.notif-force-confirm-btn {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notif-force-confirm-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff5252 0%, #e53935 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+}
+
+.notif-force-confirm-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.notif-section-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* ===== Send Missing Notifications Button ===== */
+.notif-send-notifications-btn {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notif-send-notifications-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.notif-send-notifications-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }

@@ -22,8 +22,8 @@ async function listQueue(req, res) {
   try {
     const { date, dentistCode } = req.query;
     
-    // ✅ Only allow today's date (2025/10/17) - ignore any other date requests
-    const today = "2025-10-17"; // Hardcoded to show only 2025-10-17 appointments
+    // ✅ Only allow today's date (2025/10/18) - ignore any other date requests
+    const today = "2025-10-18"; // Hardcoded to show only 2025-10-18 appointments
     
     // ✅ Force today's date regardless of what's requested
     const dayStart = new Date(today + "T00:00:00");
@@ -36,7 +36,7 @@ async function listQueue(req, res) {
     // Dentist manually changes all statuses per requirements
 
     // ✅ Fetch only today's items without auto-updating
-    const items = await Queue.find(q).sort({ dentistCode: 1, position: 1 }).lean();
+    const items = await Queue.find(q).sort({ date: 1 }).lean();
 
     // ✅ Add patient names to queue items
     const Patient = require('../Model/PatientModel');
@@ -243,11 +243,20 @@ async function switchTime(req, res) {
 
     // ✅ Send WhatsApp notification (per queue_part4.txt)
     try {
+      // Format time in local timezone (not UTC)
+      const newTimeDate = new Date(newTime);
+      const localTime = newTimeDate.toLocaleTimeString('en-US', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Colombo'
+      });
+      
       await sendApptConfirmed(item.patientCode, {
         appointmentCode: item.appointmentCode,
         dentistCode: item.dentistCode,
-        date: new Date(newTime).toISOString().slice(0, 10),
-        time: new Date(newTime).toISOString().slice(11, 16),
+        date: newTimeDate.toISOString().slice(0, 10),
+        time: localTime,
       });
     } catch (e) {
       console.error("[switchTime:notify]", e);
@@ -321,11 +330,19 @@ async function cancelAppointment(req, res) {
 
     // ✅ Send WhatsApp cancellation notification (per queue_part3.txt)
     try {
+      // Format time in local timezone (not UTC)
+      const localTime = item.date.toLocaleTimeString('en-US', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Colombo'
+      });
+      
       await sendApptCanceled(item.patientCode, {
         appointmentCode: item.appointmentCode,
         dentistCode: item.dentistCode,
         date: item.date.toISOString().slice(0, 10),
-        time: item.date.toISOString().slice(11, 16),
+        time: localTime,
         reason: reason || "Appointment cancelled",
       });
     } catch (e) {
