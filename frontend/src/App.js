@@ -54,6 +54,7 @@ import PatientReviews from "./Components/Review/MyReviews";
 import ReceptionistLeave from "./Components/Leave/ReceptionistLeave";
 import ReceptionistNotifications from "./Components/Notification/ReceptionistNotifications";
 import BookAppointment from "./Components/Appointments/BookAppointment";
+import CheckAppointment from "./Components/Appointments/CheckAppointment";
 import Home from "./Components/Home/Home";
 import ProfileUpdate from "./Components/Profile/ProfileUpdate";
 import MedicalHistory from "./Components/Profile/MedicalHistory";
@@ -123,11 +124,8 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/register-patient" element={<PatientRegister />} />
-      <Route path="/book-appointment" element={
-        <ProtectedRoute>
-          <BookAppointment />
-        </ProtectedRoute>
-      } />
+        <Route path="/book-appointment" element={<BookAppointment />} />
+        <Route path="/check-appointment" element={<CheckAppointment />} />
       <Route path="/profile" element={
         <ProtectedRoute>
           <Profile />

@@ -17,6 +17,32 @@ const AppointmentSchema = new Schema(
       index: true 
     },
     
+    // Booking for someone else fields
+    isBookingForSomeoneElse: {
+      type: Boolean,
+      default: false
+    },
+    actualPatientName: {
+      type: String,
+      trim: true
+    },
+    actualPatientEmail: {
+      type: String,
+      trim: true
+    },
+    actualPatientPhone: {
+      type: String,
+      trim: true
+    },
+    actualPatientAge: {
+      type: Number
+    },
+    relationshipToPatient: {
+      type: String,
+      trim: true,
+      enum: ['Self', 'Spouse', 'Child', 'Parent', 'Sibling', 'Friend', 'Other']
+    },
+    
     // Date and time
     appointmentDate: { 
       type: Date, 
@@ -78,15 +104,15 @@ const AppointmentSchema = new Schema(
 
 // Indexes for better performance
 AppointmentSchema.index({ patientCode: 1, appointmentDate: 1 });
-AppointmentSchema.index({ dentistCode: 1, appointmentDate: 1 });
+// Removed the unique compound index that was causing duplicate key errors
 AppointmentSchema.index({ status: 1, appointmentDate: 1 });
 
 // Pre-save middleware to generate appointment code
 AppointmentSchema.pre('save', async function(next) {
   if (this.isNew && !this.appointmentCode) {
     try {
-      const counter = await Counter.findByIdAndUpdate(
-        { _id: 'appointmentCode' },
+      const counter = await Counter.findOneAndUpdate(
+        { scope: 'appointmentCode' },
         { $inc: { seq: 1 } },
         { new: true, upsert: true }
       );
@@ -154,4 +180,4 @@ AppointmentSchema.methods.canBeRescheduled = function() {
   return this.status === 'pending' || this.status === 'confirmed' && hoursUntilAppointment > 2;
 };
 
-module.exports = mongoose.model("Appointment", AppointmentSchema);
+module.exports = mongoose.model("Appointment", AppointmentSchema, "appointmentmodels");

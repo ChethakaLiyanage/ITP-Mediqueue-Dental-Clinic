@@ -168,4 +168,4 @@ ScheduleSchema.methods.freeSlot = function(lastModifiedBy) {
   return this.save();
 };
 
-module.exports = mongoose.model("ScheduleModel", ScheduleSchema);
+module.exports = mongoose.model("ScheduleModel", ScheduleSchema, "schedulemodels");

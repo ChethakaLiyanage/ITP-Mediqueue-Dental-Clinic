@@ -470,20 +470,9 @@ export default function Home() {
   }, [navigate, user]);
 
   const handleCheckAppointments = useCallback(() => {
-    // Only allow unregistered users to check appointments
-    if (isAuthenticated) {
-      return;
-    }
-    
-    setShowCheckAppointments(true);
-    // Scroll to the check appointments section
-    setTimeout(() => {
-      const checkSection = document.getElementById('check-appointments');
-      if (checkSection) {
-        checkSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 100);
-  }, [isAuthenticated]);
+    // Navigate to check appointment page
+    navigate('/check-appointment');
+  }, [navigate]);
 
   const handleCloseCheckAppointments = useCallback(() => {
     setShowCheckAppointments(false);
@@ -567,12 +556,10 @@ export default function Home() {
               <span>BOOK APPOINTMENT</span>
               <i className="fas fa-calendar-plus"></i>
             </Link>
-            {!isAuthenticated && (
-              <button onClick={handleCheckAppointments} className="btn-secondary">
-                <span>CHECK APPOINTMENTS</span>
-                <i className="fas fa-search"></i>
-              </button>
-            )}
+            <button onClick={handleCheckAppointments} className="btn-secondary">
+              <span>CHECK APPOINTMENTS</span>
+              <i className="fas fa-search"></i>
+            </button>
             <a href="#services" className="btn-secondary">
               <span>OUR SERVICES</span>
               <i className="fas fa-arrow-down"></i>
