@@ -16,7 +16,13 @@ function toDate(d) {
 function toTime(d) {
   try {
     const dt = new Date(d);
-    return dt.toISOString().slice(11, 16);
+    // Format time in local timezone (not UTC)
+    return dt.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Asia/Colombo'
+    });
   } catch {
     return '';
   }

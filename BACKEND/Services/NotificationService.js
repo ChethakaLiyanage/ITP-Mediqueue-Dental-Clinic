@@ -627,6 +627,13 @@ async function sendAppointmentConfirmed({ to, patientType, patientCode, dentistC
   if (PDFDocument) {
     try {
       const d = new Date(datetimeISO);
+      // Format time in local timezone (not UTC)
+      const localTime = d.toLocaleTimeString('en-US', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Colombo'
+      });
       pdfBuffer = await buildAppointmentPdf({
         patientType,
         patientCode,
@@ -634,7 +641,7 @@ async function sendAppointmentConfirmed({ to, patientType, patientCode, dentistC
         dentistCode,
         appointmentCode,
         date: d.toISOString().slice(0, 10),
-        time: d.toISOString().slice(11, 16),
+        time: localTime,
         reason,
         phone,
         email,

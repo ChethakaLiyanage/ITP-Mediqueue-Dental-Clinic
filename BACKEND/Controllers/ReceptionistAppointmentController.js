@@ -515,12 +515,18 @@ async function confirmAppointment(req, res) {
       console.log(`[confirmAppointment] Removed today's appointment from appointment table: ${appointmentCode}`);
     }
 
-    const timeStr = appt.appointment_date.toISOString().slice(11, 16);
+    // Format time in local timezone (not UTC)
+    const localTime = appt.appointment_date.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Asia/Colombo'
+    });
     await sendApptConfirmed(appt.patient_code, {
       appointmentCode,
       dentistCode: appt.dentist_code,
       date: dateStr,
-      time: timeStr,
+      time: localTime,
       receptionistCode: finalReceptionistCode,
     });
     await sendAppointmentPdf(appt.patient_code, {
@@ -528,7 +534,7 @@ async function confirmAppointment(req, res) {
       patientCode: appt.patient_code,
       dentistCode: appt.dentist_code,
       date: dateStr,
-      time: timeStr,
+      time: localTime,
       receptionistCode: finalReceptionistCode,
     });
     const remindAt = new Date(appt.appointment_date.getTime() - 24 * 60 * 60 * 1000);
@@ -536,7 +542,7 @@ async function confirmAppointment(req, res) {
       appointmentCode,
       dentistCode: appt.dentist_code,
       date: dateStr,
-      time: timeStr,
+      time: localTime,
     });
 
     return res.status(200).json({ appointment: appt, queue, receptionistCode: finalReceptionistCode });
@@ -804,11 +810,19 @@ async function confirmUpdateAppointment(req, res) {
     appt.pendingExpiresAt = null;
     await appt.save();
 
+    // Format time in local timezone (not UTC)
+    const localTime = appt.appointment_date.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Asia/Colombo'
+    });
+    
     await sendApptConfirmed(appt.patient_code, {
       appointmentCode,
       dentistCode: appt.dentist_code,
       date: appt.appointment_date.toISOString().slice(0, 10),
-      time: appt.appointment_date.toISOString().slice(11, 16),
+      time: localTime,
       patientType: appt.patientType,
       patientName: appt.patientSnapshot?.name,
       createdByCode: appt.createdByCode,
@@ -820,7 +834,7 @@ async function confirmUpdateAppointment(req, res) {
       patientCode: appt.patient_code,
       dentistCode: appt.dentist_code,
       date: appt.appointment_date.toISOString().slice(0, 10),
-      time: appt.appointment_date.toISOString().slice(11, 16),
+      time: localTime,
       createdByCode: appt.createdByCode,
       acceptedByCode: receptionistCode,
       patientName: appt.patientSnapshot?.name,
