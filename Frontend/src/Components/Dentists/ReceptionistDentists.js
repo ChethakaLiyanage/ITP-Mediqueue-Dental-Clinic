@@ -140,21 +140,14 @@ export default function ReceptionistDentists() {
         
         // Process dentist data to ensure proper photo URLs
         const processedItems = items.map(dentist => {
-          // Handle photo URL - use avatarUrl from receptionist endpoint or construct fallback
+          // Handle photo URL - use photo.url from receptionist endpoint or construct fallback
           let photoUrl = null;
-          if (dentist.avatarUrl && typeof dentist.avatarUrl === 'string' && dentist.avatarUrl.trim()) {
-            // If avatarUrl is a full URL, use it directly
-            if (dentist.avatarUrl.startsWith('http')) {
-              photoUrl = dentist.avatarUrl;
-                      } else {
-              // If avatarUrl is a path, make it a full URL
-              photoUrl = `${API_BASE}${dentist.avatarUrl.startsWith('/') ? '' : '/'}${dentist.avatarUrl}`;
-            }
-          } else if (dentist.photo?.url && typeof dentist.photo.url === 'string' && dentist.photo.url.trim()) {
-            // Fallback to photo.url if available
+          if (dentist.photo?.url && typeof dentist.photo.url === 'string' && dentist.photo.url.trim()) {
+            // If photo.url is a full URL, use it directly
             if (dentist.photo.url.startsWith('http')) {
               photoUrl = dentist.photo.url;
-                    } else {
+            } else {
+              // If photo.url is a path, make it a full URL
               photoUrl = `${API_BASE}${dentist.photo.url.startsWith('/') ? '' : '/'}${dentist.photo.url}`;
             }
           }
