@@ -18,4 +18,7 @@ apptRouter.patch('/:appointmentCode/update', ApptCtrl.updateByReceptionist);
 apptRouter.post('/:appointmentCode/confirm-update', ApptCtrl.confirmUpdateAppointment);
 apptRouter.post('/:appointmentCode/cancel-update', ApptCtrl.cancelUpdateAppointment);
 
+// Send missing notifications for already confirmed appointments
+apptRouter.post('/send-missing-notifications', ApptCtrl.sendMissingNotifications);
+
 module.exports = apptRouter;
