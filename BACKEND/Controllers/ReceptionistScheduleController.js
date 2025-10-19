@@ -69,6 +69,20 @@ async function getBookableSlots(req, res) {
     // Handle workingWindow - it might be an object or string
     let from, to;
     if (typeof workingWindow === 'string') {
+      // Check if it's 'Not Available' or similar
+      if (workingWindow.toLowerCase().includes('not') || workingWindow === '-') {
+        return res.status(200).json({
+          dentist: {
+            dentistCode: dentist.dentistCode,
+            name: dentist.userId?.name,
+            specialization: dentist.specialization,
+          },
+          date,
+          workingWindow: null,
+          slotMinutes: slot ? Number(slot) : 30,
+          slots: [],
+        });
+      }
       [from, to] = workingWindow.split("-");
     } else if (workingWindow && typeof workingWindow === 'object') {
       // If it's an object with start/end times
