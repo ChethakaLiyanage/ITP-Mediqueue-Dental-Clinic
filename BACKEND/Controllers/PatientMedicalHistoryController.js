@@ -1,10 +1,12 @@
 // Controllers/PatientMedicalHistoryController.js
 
 const mongoose = require("mongoose");
-const Treatmentplan = require("../Model/TreatmentplanModel");
 const Prescription = require("../Model/PrescriptionModel");
-const PatientModel = require("../Model/PatientModel");
-const DentistModel = require("../Model/DentistModel");
+const Treatmentplan = require("../Model/TreatmentplanModel");
+const Appointment = require("../Model/AppointmentModel");
+const Queue = require("../Model/QueueModel");
+const Dentist = require("../Model/DentistModel");
+const User = require("../Model/User");
 
 /* --------------------------------- Patient Medical History Controllers --------------------------------- */
 
@@ -19,195 +21,198 @@ const getMedicalHistory = async (req, res) => {
       });
     }
 
-    // Get query parameters for filtering
-    const { 
-      startDate, 
-      endDate, 
-      dentistCode, 
-      type, // 'all', 'treatments', 'prescriptions'
-      limit = 50,
-      page = 1 
-    } = req.query;
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const dateFilter = {};
-
+    const { type, startDate, endDate, dentistCode } = req.query;
+    
     // Build date filter
+    let dateFilter = {};
     if (startDate || endDate) {
-      dateFilter.created_date = {};
-      if (startDate) dateFilter.created_date.$gte = new Date(startDate);
-      if (endDate) dateFilter.created_date.$lte = new Date(endDate);
+      dateFilter = {};
+      if (startDate) {
+        dateFilter.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        dateFilter.$lte = new Date(endDate + "T23:59:59.999Z");
+      }
     }
-
-    // Build dentist filter
-    const dentistFilter = dentistCode ? { dentistCode: String(dentistCode).trim() } : {};
 
     let medicalHistory = [];
 
-    // Get treatments (only completed/archived ones for medical history)
-    if (type === 'all' || type === 'treatments' || !type) {
+    // Get treatments (completed treatment plans)
+    if (!type || type === 'all' || type === 'treatments') {
       const treatmentFilter = { 
-        patientCode, 
-        isDeleted: true,  // Only show archived/completed treatments
-        status: "archived",  // Only show archived status
-        ...dateFilter, 
-        ...dentistFilter 
+        patientCode,
+        deletedAt: { $exists: true } // Only completed treatments
       };
       
+      if (dentistCode) treatmentFilter.dentistCode = dentistCode;
+      if (Object.keys(dateFilter).length > 0) treatmentFilter.deletedAt = dateFilter;
+
       const treatments = await Treatmentplan.find(treatmentFilter)
-        .sort({ created_date: -1 })
-        .limit(parseInt(limit))
-        .skip(skip)
+        .populate('dentistCode', 'dentistCode')
         .lean();
 
-      // Enrich treatments with dentist info
-      const enrichedTreatments = await Promise.all(
-        treatments.map(async (treatment) => {
-          try {
-            const dentist = await DentistModel.findOne({ dentistCode: treatment.dentistCode }).lean();
-            return {
-              ...treatment,
-              type: 'treatment',
-              dentistName: dentist ? `${dentist.firstName} ${dentist.lastName}` : 'Unknown Dentist',
-              dentistSpecialty: dentist?.specialty || 'General Dentistry'
-            };
-          } catch (err) {
-            return {
-              ...treatment,
-              type: 'treatment',
-              dentistName: 'Unknown Dentist',
-              dentistSpecialty: 'General Dentistry'
-            };
-          }
-        })
-      );
+      // Get dentist names for treatments
+      const enrichedTreatments = await Promise.all(treatments.map(async (treatment) => {
+        let dentistName = 'Unknown Dentist';
+        try {
+          const dentist = await Dentist.findOne({ dentistCode: treatment.dentistCode })
+            .populate('userId', 'name')
+            .lean();
+          dentistName = dentist?.userId?.name || 'Unknown Dentist';
+        } catch (err) {
+          console.warn('Error fetching dentist name for treatment:', err);
+        }
+
+        return {
+          _id: treatment._id,
+          type: 'treatment',
+          diagnosis: treatment.diagnosis,
+          treatment_notes: treatment.treatment_notes,
+          planCode: treatment.planCode,
+          dentistName,
+          dentistCode: treatment.dentistCode,
+          created_date: treatment.deletedAt,
+          deleteReason: treatment.deleteReason
+        };
+      }));
 
       medicalHistory = [...medicalHistory, ...enrichedTreatments];
     }
 
     // Get prescriptions
-    if (type === 'all' || type === 'prescriptions' || !type) {
-      const prescriptionFilter = { 
-        patientCode, 
-        isActive: true, 
-        ...dateFilter, 
-        ...dentistFilter 
-      };
+    if (!type || type === 'all' || type === 'prescriptions') {
+      const prescriptionFilter = { patientCode };
       
+      if (dentistCode) prescriptionFilter.dentistCode = dentistCode;
+      if (Object.keys(dateFilter).length > 0) prescriptionFilter.issuedAt = dateFilter;
+
       const prescriptions = await Prescription.find(prescriptionFilter)
-        .sort({ issuedAt: -1 })
-        .limit(parseInt(limit))
-        .skip(skip)
+        .populate('plan_id', 'diagnosis planCode')
         .lean();
 
-      // Enrich prescriptions with dentist info
-      const enrichedPrescriptions = await Promise.all(
-        prescriptions.map(async (prescription) => {
-          try {
-            const dentist = await DentistModel.findOne({ dentistCode: prescription.dentistCode }).lean();
-            return {
-              ...prescription,
-              type: 'prescription',
-              dentistName: dentist ? `${dentist.firstName} ${dentist.lastName}` : 'Unknown Dentist',
-              dentistSpecialty: dentist?.specialty || 'General Dentistry',
-              medicineCount: prescription.medicines?.length || 0
-            };
-          } catch (err) {
-            return {
-              ...prescription,
-              type: 'prescription',
-              dentistName: 'Unknown Dentist',
-              dentistSpecialty: 'General Dentistry',
-              medicineCount: prescription.medicines?.length || 0
-            };
-          }
-        })
-      );
+      // Get dentist names for prescriptions
+      const enrichedPrescriptions = await Promise.all(prescriptions.map(async (prescription) => {
+        let dentistName = 'Unknown Dentist';
+        try {
+          const dentist = await Dentist.findOne({ dentistCode: prescription.dentistCode })
+            .populate('userId', 'name')
+            .lean();
+          dentistName = dentist?.userId?.name || 'Unknown Dentist';
+        } catch (err) {
+          console.warn('Error fetching dentist name for prescription:', err);
+        }
+
+        return {
+          _id: prescription._id,
+          type: 'prescription',
+          prescriptionCode: prescription.prescriptionCode,
+          medicines: prescription.medicines,
+          medicineCount: prescription.medicines?.length || 0,
+          dentistName,
+          dentistCode: prescription.dentistCode,
+          created_date: prescription.issuedAt,
+          diagnosis: prescription.plan_id?.diagnosis || 'General prescription'
+        };
+      }));
 
       medicalHistory = [...medicalHistory, ...enrichedPrescriptions];
     }
 
+    // Get appointments (both from appointments table and queue table)
+    if (!type || type === 'all' || type === 'appointments') {
+      // Get future appointments from appointments table
+      const appointmentFilter = { patientCode };
+      if (dentistCode) appointmentFilter.dentistCode = dentistCode;
+      if (Object.keys(dateFilter).length > 0) appointmentFilter.appointmentDate = dateFilter;
 
-    // Sort combined history by date (most recent first)
-    medicalHistory.sort((a, b) => {
-      const dateA = a.created_date || a.issuedAt;
-      const dateB = b.created_date || b.issuedAt;
-      return new Date(dateB) - new Date(dateA);
-    });
+      const appointments = await Appointment.find(appointmentFilter)
+        .lean();
 
-    // Get summary statistics
-    const summary = await getMedicalHistorySummary(patientCode);
+      // Get today's appointments from queue table
+      const queueFilter = { patientCode };
+      if (dentistCode) queueFilter.dentistCode = dentistCode;
+      if (Object.keys(dateFilter).length > 0) queueFilter.date = dateFilter;
+
+      const queueAppointments = await Queue.find(queueFilter)
+        .lean();
+
+      // Get dentist names for appointments
+      const enrichedAppointments = await Promise.all(appointments.map(async (appointment) => {
+        let dentistName = 'Unknown Dentist';
+        try {
+          const dentist = await Dentist.findOne({ dentistCode: appointment.dentistCode })
+            .populate('userId', 'name')
+            .lean();
+          dentistName = dentist?.userId?.name || 'Unknown Dentist';
+        } catch (err) {
+          console.warn('Error fetching dentist name for appointment:', err);
+        }
+
+        return {
+          _id: appointment._id,
+          type: 'appointment',
+          appointmentCode: appointment.appointmentCode,
+          appointment_date: appointment.appointmentDate,
+          status: appointment.status,
+          reason: appointment.reason,
+          notes: appointment.notes,
+          dentistName,
+          dentistCode: appointment.dentistCode,
+          created_date: appointment.appointmentDate
+        };
+      }));
+
+      // Get dentist names for queue appointments
+      const enrichedQueueAppointments = await Promise.all(queueAppointments.map(async (queueAppointment) => {
+        let dentistName = 'Unknown Dentist';
+        try {
+          const dentist = await Dentist.findOne({ dentistCode: queueAppointment.dentistCode })
+            .populate('userId', 'name')
+            .lean();
+          dentistName = dentist?.userId?.name || 'Unknown Dentist';
+        } catch (err) {
+          console.warn('Error fetching dentist name for queue appointment:', err);
+        }
+
+        return {
+          _id: queueAppointment._id,
+          type: 'appointment',
+          appointmentCode: queueAppointment.appointmentCode,
+          appointment_date: queueAppointment.date,
+          status: queueAppointment.status === 'waiting' ? 'confirmed' : queueAppointment.status,
+          reason: queueAppointment.reason,
+          notes: queueAppointment.notes,
+          dentistName,
+          dentistCode: queueAppointment.dentistCode,
+          created_date: queueAppointment.date
+        };
+      }));
+
+      medicalHistory = [...medicalHistory, ...enrichedAppointments, ...enrichedQueueAppointments];
+    }
+
+    // Sort by date (newest first)
+    medicalHistory.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
 
     return res.status(200).json({
       success: true,
       data: {
-        medicalHistory: medicalHistory.slice(0, parseInt(limit)),
-        summary,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: medicalHistory.length
-        }
+        medicalHistory,
+        total: medicalHistory.length
       }
     });
 
-  } catch (error) {
-    console.error("getMedicalHistory error:", error);
-    return res.status(500).json({
+  } catch (err) {
+    console.error("getMedicalHistory error:", err);
+    return res.status(500).json({ 
       success: false,
-      message: "Failed to retrieve medical history",
-      error: error.message
+      message: "Failed to fetch medical history" 
     });
   }
 };
 
 // GET /api/medical-history/summary - Get medical history summary statistics
-const getMedicalHistorySummary = async (patientCode) => {
-  try {
-    const [treatmentCount, prescriptionCount] = await Promise.all([
-      Treatmentplan.countDocuments({ patientCode, isDeleted: true, status: "archived" }), // Only completed treatments
-      Prescription.countDocuments({ patientCode, isActive: true })
-    ]);
-
-    // Get recent activity (last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const [recentTreatments, recentPrescriptions] = await Promise.all([
-      Treatmentplan.countDocuments({ 
-        patientCode, 
-        isDeleted: true, 
-        status: "archived",
-        created_date: { $gte: thirtyDaysAgo } 
-      }),
-      Prescription.countDocuments({ 
-        patientCode, 
-        isActive: true, 
-        issuedAt: { $gte: thirtyDaysAgo } 
-      })
-    ]);
-
-    return {
-      total: {
-        treatments: treatmentCount,
-        prescriptions: prescriptionCount
-      },
-      recent: {
-        treatments: recentTreatments,
-        prescriptions: recentPrescriptions
-      }
-    };
-  } catch (error) {
-    console.error("getMedicalHistorySummary error:", error);
-    return {
-      total: { treatments: 0, prescriptions: 0 },
-      recent: { treatments: 0, prescriptions: 0 }
-    };
-  }
-};
-
-// GET /api/medical-history/summary - Get summary endpoint
-const getSummary = async (req, res) => {
+const getMedicalHistorySummary = async (req, res) => {
   try {
     const patientCode = req.user?.patientCode;
     if (!patientCode) {
@@ -217,24 +222,61 @@ const getSummary = async (req, res) => {
       });
     }
 
-    const summary = await getMedicalHistorySummary(patientCode);
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Get total counts
+    const [totalTreatments, totalPrescriptions, totalAppointments] = await Promise.all([
+      Treatmentplan.countDocuments({ 
+        patientCode, 
+        deletedAt: { $exists: true } 
+      }),
+      Prescription.countDocuments({ patientCode }),
+      Appointment.countDocuments({ patientCode })
+    ]);
+
+    // Get recent counts (this month)
+    const [recentTreatments, recentPrescriptions, recentAppointments] = await Promise.all([
+      Treatmentplan.countDocuments({ 
+        patientCode, 
+        deletedAt: { $exists: true, $gte: thisMonth } 
+      }),
+      Prescription.countDocuments({ 
+        patientCode, 
+        issuedAt: { $gte: thisMonth } 
+      }),
+      Appointment.countDocuments({ 
+        patientCode, 
+        appointmentDate: { $gte: thisMonth } 
+      })
+    ]);
 
     return res.status(200).json({
       success: true,
-      data: summary
+      data: {
+        total: {
+          treatments: totalTreatments,
+          prescriptions: totalPrescriptions,
+          appointments: totalAppointments
+        },
+        recent: {
+          treatments: recentTreatments,
+          prescriptions: recentPrescriptions,
+          appointments: recentAppointments
+        }
+      }
     });
 
-  } catch (error) {
-    console.error("getSummary error:", error);
-    return res.status(500).json({
+  } catch (err) {
+    console.error("getMedicalHistorySummary error:", err);
+    return res.status(500).json({ 
       success: false,
-      message: "Failed to retrieve medical history summary",
-      error: error.message
+      message: "Failed to fetch medical history summary" 
     });
   }
 };
 
-// GET /api/medical-history/export - Export medical history (PDF/CSV)
+// GET /api/medical-history/export - Export medical history
 const exportMedicalHistory = async (req, res) => {
   try {
     const patientCode = req.user?.patientCode;
@@ -247,78 +289,68 @@ const exportMedicalHistory = async (req, res) => {
 
     const { format = 'json', startDate, endDate } = req.query;
     
-    // Get all medical history data
-    const dateFilter = {};
+    // Build date filter
+    let dateFilter = {};
     if (startDate || endDate) {
-      dateFilter.created_date = {};
-      if (startDate) dateFilter.created_date.$gte = new Date(startDate);
-      if (endDate) dateFilter.created_date.$lte = new Date(endDate);
+      if (startDate) dateFilter.$gte = new Date(startDate);
+      if (endDate) dateFilter.$lte = new Date(endDate + "T23:59:59.999Z");
     }
 
-    // Get patient info
-    const patient = await PatientModel.findOne({ patientCode }).lean();
-    if (!patient) {
-      return res.status(404).json({
-        success: false,
-        message: "Patient not found"
-      });
-    }
-
-    // Get comprehensive medical history
-    const [treatments, prescriptions] = await Promise.all([
-      Treatmentplan.find({ patientCode, isDeleted: true, status: "archived", ...dateFilter }).lean(),
-      Prescription.find({ patientCode, isActive: true, ...dateFilter }).lean()
+    // Get all medical history data
+    const [treatments, prescriptions, appointments] = await Promise.all([
+      Treatmentplan.find({ 
+        patientCode, 
+        deletedAt: { $exists: true },
+        ...(Object.keys(dateFilter).length > 0 ? { deletedAt: dateFilter } : {})
+      }).lean(),
+      Prescription.find({ 
+        patientCode,
+        ...(Object.keys(dateFilter).length > 0 ? { issuedAt: dateFilter } : {})
+      }).lean(),
+      Appointment.find({ 
+        patientCode,
+        ...(Object.keys(dateFilter).length > 0 ? { appointmentDate: dateFilter } : {})
+      }).lean()
     ]);
 
     const exportData = {
-      patient: {
-        name: `${patient.firstName} ${patient.lastName}`,
-        patientCode: patient.patientCode,
-        email: patient.email,
-        phone: patient.phone,
-        dateOfBirth: patient.dateOfBirth
-      },
+      patientCode,
       exportDate: new Date().toISOString(),
-      period: {
-        startDate: startDate || 'All time',
-        endDate: endDate || 'Present'
+      dateRange: { startDate, endDate },
+      summary: {
+        totalTreatments: treatments.length,
+        totalPrescriptions: prescriptions.length,
+        totalAppointments: appointments.length
       },
-      medicalHistory: {
-        treatments: treatments.map(t => ({
-          ...t,
-          type: 'treatment'
-        })),
-        prescriptions: prescriptions.map(p => ({
-          ...p,
-          type: 'prescription'
-        }))
+      data: {
+        treatments,
+        prescriptions,
+        appointments
       }
     };
 
     if (format === 'json') {
       res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="medical-history-${patientCode}.json"`);
+      res.setHeader('Content-Disposition', `attachment; filename="medical-history-${new Date().toISOString().split('T')[0]}.json"`);
       return res.json(exportData);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Only JSON format is currently supported"
+      });
     }
 
-    // For other formats, you can implement CSV or PDF generation here
-    return res.status(400).json({
+  } catch (err) {
+    console.error("exportMedicalHistory error:", err);
+    return res.status(500).json({ 
       success: false,
-      message: "Only JSON format is currently supported"
-    });
-
-  } catch (error) {
-    console.error("exportMedicalHistory error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to export medical history",
-      error: error.message
+      message: "Failed to export medical history" 
     });
   }
 };
 
 module.exports = {
   getMedicalHistory,
-  getSummary,
+  getMedicalHistorySummary,
   exportMedicalHistory
 };
