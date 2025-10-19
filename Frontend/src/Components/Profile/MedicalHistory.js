@@ -52,7 +52,7 @@ export default function MedicalHistory() {
       if (filters.endDate) params.append('endDate', filters.endDate);
       if (filters.dentistCode) params.append('dentistCode', filters.dentistCode);
 
-      const response = await api.get(`/medical-history?${params}`);
+      const response = await api.get(`/api/medical-history?${params}`);
 
       if (response.data.success) {
         setMedicalHistory(response.data.data.medicalHistory);
@@ -69,7 +69,7 @@ export default function MedicalHistory() {
 
   const fetchSummary = async () => {
     try {
-      const response = await api.get('/medical-history/summary');
+      const response = await api.get('/api/medical-history/summary');
 
       if (response.data.success) {
         setSummary(response.data.data);
@@ -100,7 +100,7 @@ export default function MedicalHistory() {
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
 
-      const response = await api.get(`/medical-history/export?${params}`, {
+      const response = await api.get(`/api/medical-history/export?${params}`, {
         responseType: 'blob'
       });
 
