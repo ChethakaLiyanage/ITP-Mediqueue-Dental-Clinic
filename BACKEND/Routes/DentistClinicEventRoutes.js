@@ -4,6 +4,18 @@ const Events = require("../Controllers/DentistClinicEventControllers");
 const { uploadEventImage, handleUploadError } = require("../middleware/uploadEventImage");
 const requireAuth = require("../middleware/requireAuth");
 
+// Public route for home page
+event_router.get("/public", Events.getPublicClinicEvents);
+
+// Fix image URL route
+event_router.post("/fix-image", Events.fixEventImage);
+
+// Auto-fix all event images
+event_router.post("/auto-fix-images", Events.autoFixEventImages);
+
+// Assign images chronologically
+event_router.post("/assign-images", Events.assignImagesChronologically);
+
 // list
 event_router.get("/", requireAuth, Events.getAllEvents);
 

@@ -1,9 +1,14 @@
 ﻿// src/Components/Home.js
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../Contexts/AuthContext";
 import PremiumFeedbackForm from "../Feedback/Feedback";
+import { Calendar, Clock, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import api from "../../services/apiService";
 import "./home.css";
+
+// Get API base URL for images
+const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
 // import "../../utils/homePageTest"; // Disabled - just a test utility
 
 const serviceDetails = {
@@ -218,6 +223,9 @@ export default function Home() {
   const [showCheckAppointments, setShowCheckAppointments] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [authTrigger, setAuthTrigger] = useState(0); // Force re-render on auth changes
+  const [clinicEvents, setClinicEvents] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [currentEventIndex, setCurrentEventIndex] = useState(0);
   const navigate = useNavigate();
   const showProfileButton = Boolean(user && isAuthenticated);
 
@@ -271,6 +279,9 @@ export default function Home() {
       loading?.classList.add("hidden");
       setIsLoading(false);
     }, 1200);
+
+    // Fetch clinic events
+    fetchClinicEvents();
 
     // Optimized scroll handlers
     let ticking = false;
@@ -477,6 +488,91 @@ export default function Home() {
   const handleCloseCheckAppointments = useCallback(() => {
     setShowCheckAppointments(false);
   }, []);
+
+  // Fetch clinic events - optimized
+  const fetchClinicEvents = useCallback(async () => {
+    try {
+      setEventsLoading(true);
+      const response = await api.get('/events/public?limit=12&upcoming=true');
+      
+      if (response.data.success && response.data.data.events.length > 0) {
+        setClinicEvents(response.data.data.events);
+        setCurrentEventIndex(0);
+      } else {
+        setClinicEvents([]);
+      }
+    } catch (err) {
+      console.error('Error fetching clinic events:', err);
+      setClinicEvents([]);
+    } finally {
+      setEventsLoading(false);
+    }
+  }, []);
+
+  // Format date helper
+  const formatEventDate = useCallback((dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }, []);
+
+  // Format time helper
+  const formatEventTime = useCallback((dateString) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, []);
+
+  // Get event status - memoized for performance
+  const getEventStatus = useCallback((startDate, endDate) => {
+    const now = new Date();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    const statuses = {
+      upcoming: { status: 'upcoming', color: 'blue', text: 'Upcoming' },
+      ongoing: { status: 'ongoing', color: 'green', text: 'Ongoing' },
+      ended: { status: 'ended', color: 'gray', text: 'Ended' }
+    };
+    
+    if (now < start) return statuses.upcoming;
+    if (now >= start && now <= end) return statuses.ongoing;
+    return statuses.ended;
+  }, []);
+
+  // Navigation functions - simplified with better state management
+  const goToPreviousEvent = useCallback(() => {
+    setCurrentEventIndex(prev => 
+      prev === 0 ? clinicEvents.length - 1 : prev - 1
+    );
+  }, [clinicEvents.length]);
+
+  const goToNextEvent = useCallback(() => {
+    setCurrentEventIndex(prev => 
+      prev === clinicEvents.length - 1 ? 0 : prev + 1
+    );
+  }, [clinicEvents.length]);
+
+  const goToEvent = useCallback((index) => {
+    if (index >= 0 && index < clinicEvents.length) {
+      setCurrentEventIndex(index);
+    }
+  }, [clinicEvents.length]);
+
+  // Optional: Memoize event card rendering
+  const renderEventCard = useMemo(() => {
+    if (!clinicEvents.length || !clinicEvents[currentEventIndex]) {
+      return null;
+    }
+    
+    const event = clinicEvents[currentEventIndex];
+    const eventStatus = getEventStatus(event.startDate, event.endDate);
+    
+    return { event, eventStatus };
+  }, [clinicEvents, currentEventIndex, getEventStatus]);
   return (
     <div id="home-root" key={`home-${user?.email || 'anonymous'}-${authTrigger}`}>
       {/* ... */}
@@ -722,6 +818,166 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* Clinic Events Section */}
+      <section className="clinic-events" id="events" data-consistent="true">
+        <div className="container">
+          <div className="section-title">
+            <h2>Upcoming Clinic Events</h2>
+            <p>Stay updated with our latest dental health events and workshops</p>
+          </div>
+
+          {eventsLoading ? (
+            <div className="events-loading">
+              <div className="loading-spinner"></div>
+              <p>Loading events...</p>
+            </div>
+          ) : clinicEvents.length === 0 ? (
+            <div className="events-empty">
+              <Calendar size={48} />
+              <h3>No Events Scheduled</h3>
+              <p>Check back soon for upcoming dental health events and workshops.</p>
+            </div>
+          ) : (
+             <div className="events-container">
+               <div className="events-navigation">
+                 <button 
+                   className="nav-arrow nav-arrow-left" 
+                   onClick={goToPreviousEvent}
+                   aria-label="Previous event"
+                 >
+                   <ChevronLeft size={24} />
+                 </button>
+                 
+                 <div className="events-grid">
+                   {clinicEvents.length > 0 && clinicEvents[currentEventIndex] && (
+                     <div className="event-card">
+                       {(() => {
+                         const event = clinicEvents[currentEventIndex];
+                         console.log('Displaying event:', currentEventIndex, event.title);
+                         const eventStatus = getEventStatus(event.startDate, event.endDate);
+                         
+                         return (
+                           <>
+                             <div className="event-image">
+                               {event.imageUrl ? (
+                                 <img 
+                                   src={`${API_BASE}${event.imageUrl}`} 
+                                   alt={event.title}
+                                   onError={(e) => {
+                                     console.log('Image failed to load:', event.imageUrl);
+                                     // Try to find the correct image file
+                                     const baseName = event.imageUrl.split('/').pop();
+                                     const fileName = baseName.split('.')[0];
+                                     const extension = baseName.split('.').pop();
+                                     
+                                     // Try different possible filenames
+                                     const possibleUrls = [
+                                       event.imageUrl,
+                                       `/uploads/events/${fileName}.jpg`,
+                                       `/uploads/events/${fileName}.jpeg`,
+                                       `/uploads/events/${fileName}.png`,
+                                       `/uploads/events/${fileName}.webp`
+                                     ];
+                                     
+                                     let currentIndex = 0;
+                                     const tryNextImage = () => {
+                                       if (currentIndex < possibleUrls.length) {
+                                         e.target.src = `${API_BASE}${possibleUrls[currentIndex]}`;
+                                         currentIndex++;
+                                       } else {
+                                         // If all attempts fail, show placeholder
+                                         e.target.style.display = 'none';
+                                         e.target.nextElementSibling.style.display = 'flex';
+                                       }
+                                     };
+                                     
+                                     e.target.onerror = tryNextImage;
+                                   }}
+                                 />
+                               ) : null}
+                               
+                               {/* Fallback placeholder */}
+                               <div 
+                                 className="event-placeholder" 
+                                 style={{ display: event.imageUrl ? 'none' : 'flex' }}
+                               >
+                                 <Calendar size={32} />
+                               </div>
+                               
+                               <div className={`event-status ${eventStatus.status}`}>
+                                 {eventStatus.text}
+                               </div>
+                             </div>
+                             
+                             <div className="event-content">
+                               <div className="event-header">
+                                 <h3>{event.title}</h3>
+                               </div>
+                               
+                               {event.description && (
+                                 <p className="event-description">{event.description}</p>
+                               )}
+                               
+                               <div className="event-details">
+                                 <div className="event-detail">
+                                   <Calendar size={16} />
+                                   <span>{formatEventDate(event.startDate)}</span>
+                                 </div>
+                                 
+                                 {!event.allDay && (
+                                   <div className="event-detail">
+                                     <Clock size={16} />
+                                     <span>
+                                       {formatEventTime(event.startDate)} - {formatEventTime(event.endDate)}
+                                     </span>
+                                   </div>
+                                 )}
+                                 
+                                 {event.allDay && (
+                                   <div className="event-detail">
+                                     <Clock size={16} />
+                                     <span>All Day Event</span>
+                                   </div>
+                                 )}
+                               </div>
+                             </div>
+                           </>
+                         );
+                       })()}
+                     </div>
+                   )}
+                 </div>
+                 
+                 <button 
+                   className="nav-arrow nav-arrow-right" 
+                   onClick={goToNextEvent}
+                   aria-label="Next event"
+                 >
+                   <ChevronRight size={24} />
+                 </button>
+               </div>
+              
+               {/* Event indicators */}
+               {clinicEvents.length > 1 && (
+                 <div className="event-indicators">
+                   <div className="event-counter">
+                     Event {currentEventIndex + 1} of {clinicEvents.length}
+                   </div>
+                   {clinicEvents.map((_, index) => (
+                     <button
+                       key={index}
+                       className={`indicator ${index === currentEventIndex ? 'active' : ''}`}
+                       onClick={() => goToEvent(index)}
+                       aria-label={`Go to event ${index + 1}`}
+                     />
+                   ))}
+                 </div>
+               )}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Enhanced Why Choose Us - Same content for all users */}
       <section className="why-choose" id="why-choose" data-consistent="true">

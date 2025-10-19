@@ -9,7 +9,6 @@ import {
   User, 
   Clock, 
   Filter, 
-  Download, 
   Search,
   ChevronDown,
   ChevronUp,
@@ -17,7 +16,10 @@ import {
   TrendingUp,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Eye,
+  X,
+  FileDown
 } from 'lucide-react';
 import api from '../../services/apiService';
 import './medical-history.css';
@@ -25,6 +27,7 @@ import './medical-history.css';
 export default function MedicalHistory() {
   const navigate = useNavigate();
   const [medicalHistory, setMedicalHistory] = useState([]);
+  const [patientInfo, setPatientInfo] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,6 +39,8 @@ export default function MedicalHistory() {
   });
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   useEffect(() => {
     fetchMedicalHistory();
@@ -52,10 +57,11 @@ export default function MedicalHistory() {
       if (filters.endDate) params.append('endDate', filters.endDate);
       if (filters.dentistCode) params.append('dentistCode', filters.dentistCode);
 
-      const response = await api.get(`/medical-history?${params}`);
+      const response = await api.get(`/api/medical-history?${params}`);
 
       if (response.data.success) {
         setMedicalHistory(response.data.data.medicalHistory);
+        setPatientInfo(response.data.data.patientInfo);
       } else {
         setError(response.data.message);
       }
@@ -69,7 +75,7 @@ export default function MedicalHistory() {
 
   const fetchSummary = async () => {
     try {
-      const response = await api.get('/medical-history/summary');
+      const response = await api.get('/api/medical-history/summary');
 
       if (response.data.success) {
         setSummary(response.data.data);
@@ -93,28 +99,38 @@ export default function MedicalHistory() {
     setExpandedItems(newExpanded);
   };
 
-  const exportHistory = async () => {
+  const exportToPDF = async () => {
     try {
       const params = new URLSearchParams();
-      params.append('format', 'json');
+      params.append('format', 'pdf');
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
 
-      const response = await api.get(`/medical-history/export?${params}`, {
+      const response = await api.get(`/api/medical-history/export?${params}`, {
         responseType: 'blob'
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `medical-history-${new Date().toISOString().split('T')[0]}.json`);
+      link.setAttribute('download', `medical-history-${new Date().toISOString().split('T')[0]}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (err) {
-      console.error('Error exporting medical history:', err);
-      alert('Failed to export medical history');
+      console.error('Error exporting medical history to PDF:', err);
+      alert('Failed to export medical history to PDF');
     }
+  };
+
+  const showItemDetails = (item) => {
+    setSelectedItem(item);
+    setShowDetailModal(true);
+  };
+
+  const closeDetailModal = () => {
+    setSelectedItem(null);
+    setShowDetailModal(false);
   };
 
   const getItemIcon = (type) => {
@@ -204,11 +220,70 @@ export default function MedicalHistory() {
             View your complete medical history including completed treatments, prescriptions, and appointments
           </p>
         </div>
-        <button onClick={exportHistory} className="btn-secondary">
-          <Download size={16} />
-          Export History
+        <button onClick={exportToPDF} className="btn-primary">
+          <FileDown size={16} />
+          Export PDF
         </button>
       </div>
+
+      {/* Patient Information */}
+      {patientInfo && (
+        <div className="patient-info-card">
+          <div className="patient-info-header">
+            <div className="patient-info-title-section">
+              <h3 className="patient-info-title">
+                <User size={20} />
+                Patient Information
+              </h3>
+              <div className="patient-status">
+                <span className="status-indicator active">Active Patient</span>
+              </div>
+            </div>
+          </div>
+          <div className="patient-details">
+            <div className="patient-detail-item primary">
+              <span className="detail-label">Full Name</span>
+              <span className="detail-value patient-name">{patientInfo.name}</span>
+            </div>
+            
+            <div className="patient-detail-row">
+              {patientInfo.age && (
+                <div className="patient-detail-item">
+                  <span className="detail-label">Age</span>
+                  <div className="detail-value-container">
+                    <span className="detail-value age-value">{patientInfo.age} years old</span>
+                    <span className={`age-indicator ${
+                      patientInfo.age < 18 ? 'child' : 
+                      patientInfo.age < 65 ? 'adult' : 'senior'
+                    }`}>
+                      {patientInfo.age < 18 ? 'Child' : 
+                       patientInfo.age < 65 ? 'Adult' : 'Senior'}
+                    </span>
+                  </div>
+                </div>
+              )}
+              
+              <div className="patient-detail-item">
+                <span className="detail-label">Gender</span>
+                <span className="detail-value gender-value">{patientInfo.gender}</span>
+              </div>
+            </div>
+            
+            {patientInfo.dob && (
+              <div className="patient-detail-item">
+                <span className="detail-label">Date of Birth</span>
+                <span className="detail-value dob-value">
+                  {new Date(patientInfo.dob).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       {summary && (
@@ -313,7 +388,7 @@ export default function MedicalHistory() {
             const status = getItemStatus(item);
             
             return (
-              <div key={`${item.type}-${item._id}`} className="history-item">
+              <div key={`${item.type}-${item._id}`} className={`history-item ${item.type}`}>
                 <div className="history-item-header" onClick={() => toggleExpanded(item._id)}>
                   <div className="item-main-info">
                     <div className="item-icon">
@@ -413,17 +488,10 @@ export default function MedicalHistory() {
                     
                     <div className="item-actions">
                       <button 
-                        className="btn-outline small"
-                        onClick={() => {
-                          if (item.type === 'treatment') {
-                            navigate(`/profile/treatments/${item._id}`);
-                          } else if (item.type === 'prescription') {
-                            navigate(`/profile/prescriptions/${item._id}`);
-                          } else if (item.type === 'appointment') {
-                            navigate(`/profile/appointments/${item._id}`);
-                          }
-                        }}
+                        className="btn-primary small"
+                        onClick={() => showItemDetails(item)}
                       >
+                        <Eye size={14} />
                         View Details
                       </button>
                     </div>
@@ -434,6 +502,118 @@ export default function MedicalHistory() {
           })
         )}
       </div>
+
+      {/* Detailed View Modal */}
+      {showDetailModal && selectedItem && (
+        <div className="modal-overlay" onClick={closeDetailModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">
+                {getItemIcon(selectedItem.type)}
+                {selectedItem.type === 'treatment' && `Treatment Details`}
+                {selectedItem.type === 'prescription' && `Prescription Details`}
+                {selectedItem.type === 'appointment' && `Appointment Details`}
+              </h3>
+              <button className="modal-close" onClick={closeDetailModal}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="detail-grid">
+                <div className="detail-item">
+                  <label>Date</label>
+                  <span>{formatDate(selectedItem.created_date || selectedItem.issuedAt || selectedItem.appointment_date || selectedItem.appointmentDate)}</span>
+                </div>
+                
+                <div className="detail-item">
+                  <label>Dentist</label>
+                  <span>Dr. {selectedItem.dentistName}</span>
+                </div>
+                
+                {selectedItem.type === 'treatment' && (
+                  <>
+                    <div className="detail-item full-width">
+                      <label>Diagnosis</label>
+                      <span>{selectedItem.diagnosis}</span>
+                    </div>
+                    {selectedItem.treatment_notes && (
+                      <div className="detail-item full-width">
+                        <label>Treatment Notes</label>
+                        <span>{selectedItem.treatment_notes}</span>
+                      </div>
+                    )}
+                    <div className="detail-item">
+                      <label>Plan Code</label>
+                      <span>{selectedItem.planCode}</span>
+                    </div>
+                    {selectedItem.deleteReason && (
+                      <div className="detail-item">
+                        <label>Completion Reason</label>
+                        <span>{selectedItem.deleteReason}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                
+                {selectedItem.type === 'prescription' && (
+                  <>
+                    <div className="detail-item">
+                      <label>Prescription Code</label>
+                      <span>{selectedItem.prescriptionCode}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>Medicine Count</label>
+                      <span>{selectedItem.medicineCount} medicines</span>
+                    </div>
+                    <div className="detail-item full-width">
+                      <label>Medicines</label>
+                      <div className="medicines-detailed">
+                        {selectedItem.medicines?.map((medicine, idx) => (
+                          <div key={idx} className="medicine-detailed">
+                            <strong>{medicine.name}</strong>
+                            <span>{medicine.dosage}</span>
+                            {medicine.instructions && <p>{medicine.instructions}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                {selectedItem.type === 'appointment' && (
+                  <>
+                    <div className="detail-item">
+                      <label>Status</label>
+                      <span className={`status-badge ${selectedItem.status}`}>
+                        {selectedItem.status}
+                      </span>
+                    </div>
+                    {selectedItem.reason && (
+                      <div className="detail-item">
+                        <label>Reason</label>
+                        <span>{selectedItem.reason}</span>
+                      </div>
+                    )}
+                    {selectedItem.notes && (
+                      <div className="detail-item full-width">
+                        <label>Notes</label>
+                        <span>{selectedItem.notes}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            
+            <div className="modal-footer">
+              <button className="btn-primary" onClick={closeDetailModal}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
