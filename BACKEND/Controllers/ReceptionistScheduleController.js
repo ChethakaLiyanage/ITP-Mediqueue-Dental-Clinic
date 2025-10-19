@@ -66,6 +66,16 @@ async function getBookableSlots(req, res) {
       });
     }
 
+    // Ensure slots exist in ScheduleModel
+    try {
+      const ScheduleService = require('../Services/ScheduleService');
+      await ScheduleService.ensureSlotsExist(dentistCode, date);
+      console.log(`✅ Ensured slots exist for ${dentistCode} on ${date}`);
+    } catch (slotError) {
+      console.error('Error ensuring slots exist:', slotError);
+      // Continue anyway
+    }
+
     // Handle workingWindow - it might be an object or string
     let from, to;
     if (typeof workingWindow === 'string') {

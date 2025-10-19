@@ -2,6 +2,7 @@ const Appointment = require("../Model/AppointmentModel");
 const DentistModel = require("../Model/DentistModel");
 const PatientModel = require("../Model/PatientModel");
 const ScheduleModel = require("../Model/ScheduleModel");
+const { getDayNameUTC } = require("../utils/time");
 const crypto = require('crypto');
 
 // In-memory OTP storage (in production, use Redis or database)
@@ -42,39 +43,87 @@ const verifyOTPHelper = (patientCode, inputOTP) => {
 // Helper function to check if a specific slot is available in ScheduleModel
 const isSlotAvailable = async (dentistCode, appointmentDate) => {
   try {
-    // Use UTC time to match the slot times
-    const appointmentHour = appointmentDate.getUTCHours();
-    const appointmentMin = appointmentDate.getUTCMinutes();
+    console.log(`🔍 Checking slot availability for ${dentistCode} at ${appointmentDate.toISOString()}`);
     
-    const dateStr = appointmentDate.toISOString().slice(0, 10);
-    const startOfDay = new Date(dateStr + 'T00:00:00.000Z');
-    const endOfDay = new Date(dateStr + 'T23:59:59.999Z');
+    // Get dentist info
+    const dentist = await DentistModel.findOne({ dentistCode })
+      .populate('userId', 'name isActive');
+    if (!dentist) {
+      return { available: false, reason: "Dentist not found" };
+    }
     
-    // Find the slot that contains this appointment time
-    const slots = await ScheduleModel.find({
+    if (!dentist.userId?.isActive) {
+      return { available: false, reason: "Dentist not active" };
+    }
+    
+    // Get day name and working hours
+    const dateStr = appointmentDate.toISOString().slice(0, 10); // Get YYYY-MM-DD format
+    const dayName = getDayNameUTC(dateStr);
+    const workingHours = dentist.availability_schedule?.[dayName];
+    
+    console.log(`🔍 Day: ${dayName}, Working hours: ${workingHours}`);
+    
+    // Check if dentist is available on this day
+    if (!workingHours || workingHours === 'Not Available' || workingHours === '-') {
+      return { available: false, reason: "Dentist not available on this day" };
+    }
+    
+    // Parse working hours
+    const [startTime, endTime] = workingHours.split('-');
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+    
+    // Check if appointment time is within working hours (using LOCAL time)
+    const appointmentHour = appointmentDate.getHours();
+    const appointmentMin = appointmentDate.getMinutes();
+    const appointmentMinutes = appointmentHour * 60 + appointmentMin;
+    const workingStartMinutes = startHour * 60 + startMinute;
+    const workingEndMinutes = endHour * 60 + endMinute;
+    
+    console.log(`🔍 Appointment: ${appointmentHour}:${appointmentMin} (${appointmentMinutes} min)`);
+    console.log(`🔍 Working: ${startHour}:${startMinute} - ${endHour}:${endMinute} (${workingStartMinutes}-${workingEndMinutes} min)`);
+    
+    if (appointmentMinutes < workingStartMinutes || appointmentMinutes >= workingEndMinutes) {
+      return { available: false, reason: "Appointment time is outside working hours" };
+    }
+    
+    // Check if slot is blocked in ScheduleModel (using local time)
+    const startOfDay = new Date(appointmentDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(appointmentDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    // Find blocked slots for this time
+    const blockedSlots = await ScheduleModel.find({
       dentistCode,
       date: { $gte: startOfDay, $lte: endOfDay },
-      status: 'available',
-      isAvailable: true
+      status: { $in: ['booked', 'blocked_leave', 'blocked_event', 'blocked_maintenance'] }
     });
     
-    for (const slot of slots) {
-      const [startTime, endTime] = slot.timeSlot.split('-');
-      const [startHour, startMin] = startTime.split(':').map(Number);
-      const [endHour, endMin] = endTime.split(':').map(Number);
+    console.log(`🔍 Found ${blockedSlots.length} blocked slots`);
+    
+    // Check if the requested time slot is blocked
+    for (const blockedSlot of blockedSlots) {
+      const [blockedStart, blockedEnd] = blockedSlot.timeSlot.split('-');
+      const [blockedStartHour, blockedStartMin] = blockedStart.split(':').map(Number);
+      const [blockedEndHour, blockedEndMin] = blockedEnd.split(':').map(Number);
       
-      const slotStartMinutes = startHour * 60 + startMin;
-      const slotEndMinutes = endHour * 60 + endMin;
-      const appointmentMinutes = appointmentHour * 60 + appointmentMin;
+      const blockedStartMinutes = blockedStartHour * 60 + blockedStartMin;
+      const blockedEndMinutes = blockedEndHour * 60 + blockedEndMin;
       
-      if (appointmentMinutes >= slotStartMinutes && appointmentMinutes < slotEndMinutes) {
-        return { available: true, slot: slot };
+      if (appointmentMinutes >= blockedStartMinutes && appointmentMinutes < blockedEndMinutes) {
+        console.log(`🚫 Slot is blocked: ${blockedSlot.timeSlot} (${blockedSlot.status})`);
+        return { available: false, reason: `Time slot is ${blockedSlot.status}` };
       }
     }
     
-    return { available: false, reason: "Time slot not available" };
+    console.log(`✅ Slot is available`);
+    return { available: true };
+    
   } catch (error) {
-    console.error("Error checking slot availability:", error);
+    console.error("❌ ERROR in isSlotAvailable:", error);
+    console.error("❌ Error stack:", error.stack);
+    console.error("❌ Error message:", error.message);
     return { available: false, reason: "Error checking availability" };
   }
 };
@@ -181,104 +230,135 @@ const getAvailableSlots = async (req, res) => {
       });
     }
 
-    // Parse working hours (format: "09:00-17:00")
+    // Create date range for ScheduleModel query (using local time)
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // SIMPLE LOGIC: Check dentist availability + filter schedule table
+    console.log(`🔍 Checking dentist availability for ${dentistCode} on ${date}`);
+    
+    // 1. Check if dentist is available on this day (from DentistModel)
+    if (!workingHours || workingHours === 'Not Available' || workingHours === '-') {
+      return res.status(200).json({
+        success: true,
+        slots: [],
+        message: "Dentist not available on this day"
+      });
+    }
+
+    // 2. Generate time slots based on working hours
+    const slotDuration = parseInt(duration);
     const [startTime, endTime] = workingHours.split('-');
     const [startHour, startMinute] = startTime.split(':').map(Number);
     const [endHour, endMinute] = endTime.split(':').map(Number);
 
-    // Create date range for ScheduleModel query
-    const startOfDay = new Date(targetDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    // Generate all possible slots for the working period
+    const allPossibleSlots = [];
+    let currentHour = startHour;
+    let currentMin = startMinute;
+    
+    while (currentHour < endHour || (currentHour === endHour && currentMin < endMinute)) {
+      const slotStart = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
+      
+      currentMin += slotDuration;
+      if (currentMin >= 60) {
+        currentHour += Math.floor(currentMin / 60);
+        currentMin = currentMin % 60;
+      }
+      
+      const slotEnd = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
+      
+      // Only add slot if it doesn't go beyond working hours
+      if (currentHour < endHour || (currentHour === endHour && currentMin <= endMinute)) {
+        allPossibleSlots.push({
+          timeSlot: `${slotStart}-${slotEnd}`,
+          startTime: slotStart,
+          endTime: slotEnd,
+          startMinutes: currentHour * 60 + currentMin - slotDuration,
+          endMinutes: currentHour * 60 + currentMin
+        });
+      }
+    }
 
-    // Query ScheduleModel for available slots ONLY
-    // ScheduleModel already handles leaves, events, and appointments via status field
-    const availableSlots = await ScheduleModel.find({
+    console.log(`🔍 Generated ${allPossibleSlots.length} possible slots for working hours ${workingHours}`);
+
+    // 3. Check ScheduleModel for blocked/booked slots
+    const blockedSlots = await ScheduleModel.find({
       dentistCode: dentistCode,
       date: { $gte: startOfDay, $lte: endOfDay },
-      status: 'available',
-      isAvailable: true
-    }).sort({ timeSlot: 1 });
+      status: { $in: ['booked', 'blocked_leave', 'blocked_event', 'blocked_maintenance'] }
+    });
 
-    console.log(`🔍 Found ${availableSlots.length} available slots in ScheduleModel for ${dentistCode} on ${date}`);
-    console.log(`🔍 Working hours: ${workingHours}`);
+    console.log(`🔍 Found ${blockedSlots.length} blocked slots in ScheduleModel`);
 
-    // Get existing appointments for this dentist on this date to avoid double booking
+    // 3.5. Check AppointmentModel for existing appointments (queue table)
     const existingAppointments = await Appointment.find({
       dentistCode: dentistCode,
       appointmentDate: { $gte: startOfDay, $lte: endOfDay },
-      status: { $in: ['pending', 'confirmed'] }
+      status: { $ne: 'cancelled' } // Exclude cancelled appointments
     });
 
-    console.log(`🔍 Found ${existingAppointments.length} existing appointments for ${dentistCode} on ${date}`);
+    console.log(`🔍 Found ${existingAppointments.length} existing appointments in AppointmentModel`);
 
-    // Filter slots based on dentist's working hours and duration
-    const slotDuration = parseInt(duration);
-    const filteredSlots = [];
-
-    for (const slot of availableSlots) {
-      const [slotStart, slotEnd] = slot.timeSlot.split('-');
-      const [slotStartHour, slotStartMin] = slotStart.split(':').map(Number);
-      const [slotEndHour, slotEndMin] = slotEnd.split(':').map(Number);
-
-      // Check if slot is within working hours
-      const slotStartMinutes = slotStartHour * 60 + slotStartMin;
-      const slotEndMinutes = slotEndHour * 60 + slotEndMin;
-      const workingStartMinutes = startHour * 60 + startMinute;
-      const workingEndMinutes = endHour * 60 + endMinute;
-
-      // Check if slot fits within working hours and duration
-      if (slotStartMinutes >= workingStartMinutes && 
-          slotEndMinutes <= workingEndMinutes &&
-          (slotEndMinutes - slotStartMinutes) >= slotDuration) {
-        
-        // Create slot time for the response (using UTC to avoid timezone issues)
+    // 4. Filter out blocked slots, existing appointments, AND past time slots
+    const availableSlots = [];
+    const currentTime = new Date();
+    
+    for (const slot of allPossibleSlots) {
+      // Create slot time for comparison (using LOCAL time, not UTC)
         const slotTime = new Date(targetDate);
-        slotTime.setUTCHours(slotStartHour, slotStartMin, 0, 0);
+      slotTime.setHours(parseInt(slot.startTime.split(':')[0]), parseInt(slot.startTime.split(':')[1]), 0, 0);
+      
+      // Check if this slot is in the past
+      const isPastSlot = slotTime <= currentTime;
+      
+      // Check if this slot is blocked in ScheduleModel
+      const isBlocked = blockedSlots.some(blockedSlot => {
+        return blockedSlot.timeSlot === slot.timeSlot;
+      });
 
-        // Check if this slot is already booked by checking existing appointments
-        const isSlotBooked = existingAppointments.some(appointment => {
-          const appointmentTime = new Date(appointment.appointmentDate);
-          // Convert appointment time to local time for comparison
-          const appointmentHour = appointmentTime.getHours();
-          const appointmentMinute = appointmentTime.getMinutes();
-          const appointmentStartMinutes = appointmentHour * 60 + appointmentMinute;
-          
-          // Check if appointment time overlaps with this slot
-          const hasConflict = appointmentStartMinutes >= slotStartMinutes && 
-                             appointmentStartMinutes < slotEndMinutes;
-          
-          if (hasConflict) {
-            console.log(`🚫 CONFLICT: Slot ${slot.timeSlot} conflicts with appointment ${appointment.appointmentCode} at ${appointmentTime.toISOString()}`);
-            console.log(`   Appointment: ${appointmentStartMinutes} minutes (${appointmentHour}:${appointmentMinute})`);
-            console.log(`   Slot: ${slotStartMinutes}-${slotEndMinutes} minutes (${slotStart}-${slotEnd})`);
-          }
-          
-          return hasConflict;
-        });
+      // Check if this slot has an existing appointment (using local time)
+      const hasExistingAppointment = existingAppointments.some(appointment => {
+        const appointmentHour = appointment.appointmentDate.getHours();
+        const appointmentMin = appointment.appointmentDate.getMinutes();
+        const slotStartHour = parseInt(slot.startTime.split(':')[0]);
+        const slotStartMin = parseInt(slot.startTime.split(':')[1]);
+        
+        // Check if appointment time matches slot start time
+        return appointmentHour === slotStartHour && appointmentMin === slotStartMin;
+      });
 
-        // Only add slot if it's not already booked
-        if (!isSlotBooked) {
-          filteredSlots.push({
+      if (!isPastSlot && !isBlocked && !hasExistingAppointment) {
+        availableSlots.push({
             time: slotTime.toISOString(),
             available: true,
             timeSlot: slot.timeSlot,
-            duration: slot.slotDuration,
-            displayTime: slotStart
+          duration: slotDuration,
+          displayTime: slot.startTime
           });
         } else {
-          console.log(`🚫 Slot ${slot.timeSlot} is already booked, skipping`);
+        if (isPastSlot) {
+          console.log(`🚫 Slot ${slot.timeSlot} is in the past, skipping`);
+        }
+        if (isBlocked) {
+          console.log(`🚫 Slot ${slot.timeSlot} is blocked in ScheduleModel, skipping`);
+        }
+        if (hasExistingAppointment) {
+          console.log(`🚫 Slot ${slot.timeSlot} has existing appointment, skipping`);
         }
       }
     }
 
-    console.log(`✅ Returning ${filteredSlots.length} filtered slots for ${dentistCode} on ${date}`);
-    console.log(`✅ Slots: ${filteredSlots.map(s => s.displayTime).join(', ')}`);
+    console.log(`🔍 Found ${availableSlots.length} available slots after filtering blocked slots`);
+
+    console.log(`✅ Returning ${availableSlots.length} available slots for ${dentistCode} on ${date}`);
+    console.log(`✅ Slots: ${availableSlots.map(s => s.displayTime).join(', ')}`);
 
     res.status(200).json({
       success: true,
-      slots: filteredSlots,
+      slots: availableSlots,
       dentist: {
         dentistCode: dentist.dentistCode,
         name: dentist.userId?.name || 'Unknown',
@@ -326,8 +406,8 @@ const getAvailableSlots = async (req, res) => {
     let patientCode;
     
     if (req.user) {
-      // Authenticated user
-      patientCode = req.user.patientCode;
+      // Authenticated user - check if patientCode is provided in request body first
+      patientCode = req.body.patientCode || req.user.patientCode;
       
       // If user doesn't have a patientCode, check if they have a patient record
       if (!patientCode) {
@@ -369,53 +449,142 @@ const getAvailableSlots = async (req, res) => {
       });
     }
 
-        // Create appointment
-        const appointmentData = {
-          patientCode,
-          dentistCode,
-          appointmentDate: appointmentDateTime,
-          duration: parseInt(duration),
-          reason: reason || '',
-          notes: notes || '',
-          createdBy: patientCode,
-          isBookingForSomeoneElse,
-          relationshipToPatient
-        };
+        // Check if appointment is for today - if so, auto-confirm
+        const today = new Date();
+        const appointmentDateObj = new Date(appointmentDateTime);
+        const isToday = appointmentDateObj.toDateString() === today.toDateString();
+        
+        if (isToday) {
+          console.log(`✅ Today's appointment - going directly to queue: ${appointmentDateTime.toISOString()}`);
+        } else {
+          console.log(`📅 Future appointment - storing in AppointmentModel: ${appointmentDateTime.toISOString()}`);
+        }
+        
+        let appointment = null;
+        let appointmentCode = null;
+        
+        if (isToday) {
+          // For today's appointments, skip AppointmentModel and go directly to QueueModel
+          console.log(`🚀 Today's appointment - skipping AppointmentModel, going to QueueModel`);
+          
+          // Generate appointment code manually for today's appointments
+          const Counter = require("../Model/Counter");
+          const { pad } = require("../utils/seq");
+          const counter = await Counter.findOneAndUpdate(
+            { scope: 'appointmentCode' },
+            { $inc: { seq: 1 } },
+            { new: true, upsert: true }
+          );
+          appointmentCode = `AP-${pad(counter.seq, 4)}`;
+          
+        } else {
+          // For future appointments, create in AppointmentModel as usual
+          const appointmentData = {
+            patientCode,
+            dentistCode,
+            appointmentDate: appointmentDateTime,
+            duration: parseInt(duration),
+            reason: reason || '',
+            notes: notes || '',
+            createdBy: patientCode,
+            isBookingForSomeoneElse,
+            relationshipToPatient,
+            status: 'pending'
+          };
 
-        // Add actual patient details if booking for someone else OR if unregistered user
-        if (isBookingForSomeoneElse || !req.user) {
-          appointmentData.actualPatientName = actualPatientName;
-          appointmentData.actualPatientEmail = actualPatientEmail;
-          appointmentData.actualPatientPhone = actualPatientPhone;
-          appointmentData.actualPatientAge = actualPatientAge ? parseInt(actualPatientAge) : null;
+          // Add actual patient details if booking for someone else OR if unregistered user
+          if (isBookingForSomeoneElse || !req.user) {
+            appointmentData.actualPatientName = actualPatientName;
+            appointmentData.actualPatientEmail = actualPatientEmail;
+            appointmentData.actualPatientPhone = actualPatientPhone;
+            appointmentData.actualPatientAge = actualPatientAge ? parseInt(actualPatientAge) : null;
+          }
+
+          appointment = new Appointment(appointmentData);
+          await appointment.save();
+          appointmentCode = appointment.appointmentCode;
+          console.log(`✅ Future appointment saved to AppointmentModel: ${appointmentCode}`);
         }
 
-        const appointment = new Appointment(appointmentData);
-
-    await appointment.save();
-    console.log(`✅ Appointment saved to AppointmentModel: ${appointment.appointmentCode}`);
-
-    // Also save to ScheduleModel
+    // Also save to ScheduleModel to block the slot
     try {
-      if (availability.slot) {
-        const slot = availability.slot;
-        slot.status = 'booked';
-        slot.isAvailable = false;
-        slot.appointmentId = appointment.appointmentCode;
-        slot.patientCode = patientCode;
-        slot.reason = reason || 'Appointment';
-        slot.lastModifiedBy = patientCode;
+      // Create a new slot entry to mark this time as booked
+      const slotData = {
+        dentistCode: dentistCode,
+        date: appointmentDateTime,
+        timeSlot: `${appointmentDateTime.getUTCHours().toString().padStart(2, '0')}:${appointmentDateTime.getUTCMinutes().toString().padStart(2, '0')}-${(appointmentDateTime.getUTCHours() + Math.floor(duration/60)).toString().padStart(2, '0')}:${((appointmentDateTime.getUTCMinutes() + duration%60) % 60).toString().padStart(2, '0')}`,
+        status: 'booked',
+        isAvailable: false,
+        appointmentId: appointmentCode,
+        patientCode: patientCode,
+        reason: reason || 'Appointment',
+        lastModifiedBy: patientCode
+      };
+      
+      const slot = new ScheduleModel(slotData);
         await slot.save();
-        console.log(`✅ Appointment also saved to ScheduleModel: ${appointment.appointmentCode}`);
-      }
+      console.log(`✅ Appointment slot saved to ScheduleModel: ${appointmentCode}`);
     } catch (scheduleError) {
-      console.warn("Could not update schedule model:", scheduleError.message);
+      console.warn("Could not save to schedule model:", scheduleError.message);
+    }
+
+    // For today's appointments, also add to QueueModel
+    if (isToday) {
+      try {
+        const Queue = require("../Model/QueueModel");
+        
+        // Get the highest position number for today
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+        
+        const lastQueue = await Queue.findOne({ 
+          date: { $gte: todayStart, $lte: todayEnd },
+          dentistCode: dentistCode
+        }).sort({ position: -1 }).limit(1);
+        
+        const nextPosition = lastQueue ? lastQueue.position + 1 : 1;
+
+        const queueData = {
+          appointmentCode: appointmentCode,
+          patientCode: patientCode,
+          dentistCode: dentistCode,
+          date: appointmentDateTime,
+          position: nextPosition,
+          status: 'waiting',
+          reason: reason || 'General consultation',
+          duration: parseInt(duration),
+          notes: notes || '',
+          
+          // For someone else booking details
+          isBookingForSomeoneElse: isBookingForSomeoneElse || false,
+          actualPatientName: actualPatientName || null,
+          actualPatientEmail: actualPatientEmail || null,
+          actualPatientPhone: actualPatientPhone || null,
+          actualPatientAge: actualPatientAge ? parseInt(actualPatientAge) : null,
+          relationshipToPatient: relationshipToPatient || null
+        };
+
+        const queue = new Queue(queueData);
+        await queue.save();
+        console.log(`✅ Today's appointment added to QueueModel: ${appointmentCode} (position: ${nextPosition})`);
+      } catch (queueError) {
+        console.warn("Could not save to queue model:", queueError.message);
+      }
     }
 
     res.status(201).json({
       success: true,
-      message: "Appointment created successfully",
-      appointment
+      message: isToday ? "Today's appointment added to queue successfully" : "Appointment created successfully",
+      appointment: appointment || {
+        appointmentCode: appointmentCode,
+        patientCode: patientCode,
+        dentistCode: dentistCode,
+        appointmentDate: appointmentDateTime,
+        status: 'confirmed',
+        isTodayAppointment: true
+      }
     });
   } catch (error) {
     console.error("Error creating appointment:", error);
@@ -512,9 +681,27 @@ const cancelAppointment = async (req, res) => {
 
     // Check if appointment can be cancelled
     if (!appointment.canBeCancelled()) {
+      const appointmentDate = new Date(appointment.appointmentDate);
+      const today = new Date();
+      const isToday = appointmentDate.toDateString() === today.toDateString();
+      
+      if (appointment.status !== 'pending') {
       return res.status(400).json({
         success: false,
-        message: "Appointment cannot be cancelled (less than 24 hours notice required)"
+          message: "Only pending appointments can be cancelled"
+        });
+      }
+      
+      if (isToday) {
+        return res.status(400).json({
+          success: false,
+          message: "Today's appointments cannot be cancelled (they are auto-confirmed)"
+        });
+      }
+      
+      return res.status(400).json({
+        success: false,
+        message: "Appointment cannot be cancelled"
       });
     }
 
@@ -807,6 +994,76 @@ const verifyOTP = async (req, res) => {
       }
     };
 
+
+    // POST /appointments/:id/request-change - Request change for confirmed appointment
+    const requestAppointmentChange = async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { requestedChanges, reason, preferredDate, preferredTime } = req.body;
+        
+        const appointment = await Appointment.findById(id);
+        if (!appointment) {
+          return res.status(404).json({
+            success: false,
+            message: "Appointment not found"
+          });
+        }
+        
+        // Check if user can request changes
+        if (appointment.status !== 'confirmed') {
+          return res.status(400).json({
+            success: false,
+            message: "Only confirmed appointments can have change requests"
+          });
+        }
+        
+        // Check if appointment is not too close (less than 2 hours)
+        const appointmentDate = new Date(appointment.appointmentDate);
+        const now = new Date();
+        const hoursUntilAppointment = (appointmentDate - now) / (1000 * 60 * 60);
+        
+        if (hoursUntilAppointment < 2) {
+          return res.status(400).json({
+            success: false,
+            message: "Cannot request changes less than 2 hours before appointment"
+          });
+        }
+        
+        // Create change request
+        const changeRequest = {
+          requestedBy: req.user.id,
+          requestedAt: new Date(),
+          requestedChanges,
+          reason,
+          preferredDate,
+          preferredTime,
+          status: 'pending'
+        };
+        
+        // Add change request to appointment
+        if (!appointment.changeRequests) {
+          appointment.changeRequests = [];
+        }
+        appointment.changeRequests.push(changeRequest);
+        
+        await appointment.save();
+        
+        res.status(200).json({
+          success: true,
+          message: "Change request submitted successfully",
+          changeRequest
+        });
+        
+      } catch (error) {
+        console.error('Error requesting appointment change:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Failed to request appointment change',
+          error: error.message
+        });
+      }
+    };
+
     module.exports = {
       getAppointments,
       getAvailableSlots,
@@ -816,5 +1073,6 @@ const verifyOTP = async (req, res) => {
       getAppointment,
       sendOTP,
       verifyOTP,
-      checkAppointments
+      checkAppointments,
+      requestAppointmentChange
     };

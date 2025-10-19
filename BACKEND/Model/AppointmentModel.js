@@ -184,11 +184,18 @@ AppointmentSchema.statics.findAvailableSlots = function(dentistCode, date, durat
 
 // Instance method to check if appointment can be cancelled
 AppointmentSchema.methods.canBeCancelled = function() {
-  const now = new Date();
-  const appointmentTime = new Date(this.appointmentDate);
-  const hoursUntilAppointment = (appointmentTime - now) / (1000 * 60 * 60);
+  // Only pending appointments can be cancelled
+  if (this.status !== 'pending') {
+    return false;
+  }
   
-  return this.status === 'pending' || this.status === 'confirmed' && hoursUntilAppointment > 24;
+  // Check if appointment is for today (auto-confirmed appointments)
+  const appointmentDate = new Date(this.appointmentDate);
+  const today = new Date();
+  const isToday = appointmentDate.toDateString() === today.toDateString();
+  
+  // Cannot cancel today's appointments (they are auto-confirmed)
+  return !isToday;
 };
 
 // Instance method to check if appointment can be rescheduled

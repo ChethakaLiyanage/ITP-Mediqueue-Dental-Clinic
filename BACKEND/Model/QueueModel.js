@@ -13,6 +13,24 @@ const QueueSchema = new Schema({
   position: { type: Number, required: true },
   status: { type: String, enum: ['waiting','called','in_treatment','completed','no_show'], default: 'waiting', index: true },
   reason: { type: String, trim: true, default: 'General consultation' },
+  
+  // For someone else booking details
+  isBookingForSomeoneElse: { type: Boolean, default: false },
+  actualPatientName: { type: String, trim: true },
+  actualPatientEmail: { type: String, trim: true },
+  actualPatientPhone: { type: String, trim: true },
+  actualPatientAge: { type: Number },
+  relationshipToPatient: { 
+    type: String, 
+    trim: true, 
+    enum: ['Self', 'Spouse', 'Child', 'Parent', 'Sibling', 'Friend', 'Other'] 
+  },
+  
+  // Additional appointment details
+  duration: { type: Number, default: 30 }, // minutes
+  notes: { type: String, trim: true },
+  
+  // Tracking fields
   calledAt: Date,
   startedAt: Date,
   completedAt: Date,
