@@ -127,7 +127,13 @@ export default function DentistSchedulesPage() {
     if (!item) return false;
     // treat non-empty string or positive number as available slots
     if (typeof item.slots === 'number') return item.slots > 0;
-    if (typeof item.slots === 'string') return item.slots.trim() !== '' && item.slots.trim() !== '-';
+    if (typeof item.slots === 'string') {
+      const trimmedSlots = item.slots.trim();
+      return trimmedSlots !== '' && 
+             trimmedSlots !== '-' && 
+             !trimmedSlots.toLowerCase().includes('not available') &&
+             !trimmedSlots.toLowerCase().includes('notavailable');
+    }
     if (Array.isArray(item.slots)) return item.slots.length > 0;
     return false;
   };
