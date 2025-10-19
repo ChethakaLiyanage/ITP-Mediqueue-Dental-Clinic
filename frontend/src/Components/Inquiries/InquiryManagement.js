@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../Contexts/AuthContext";
 import { 
   ArrowLeft, 
@@ -84,13 +84,13 @@ function InquiryCard({ inquiry, onView, onEdit, onDelete, canEdit, canDelete }) 
       </div>
       
       <div className="inquiry-actions">
-        <button 
+        <Link 
+          to={`/profile/inquiries/${inquiry._id}/chat`}
           className="action-btn view"
-          onClick={() => onView(inquiry)}
         >
-          <Eye size={16} />
-          View
-        </button>
+          <MessageSquare size={16} />
+          Chat
+        </Link>
         {canEdit && (
           <button 
             className="action-btn edit"

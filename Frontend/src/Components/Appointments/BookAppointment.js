@@ -273,6 +273,8 @@ const BookAppointment = () => {
             duration: selectedDuration,
             reason: reason.trim(),
             notes: notes.trim(),
+            // Include patient code for authenticated users
+            ...(isAuthenticated && { patientCode: user.patientCode }),
             // Include booking for someone else data if applicable
             isBookingForSomeoneElse: isBookingForSomeoneElse,
             // Include patient details for unregistered users OR when booking for someone else
