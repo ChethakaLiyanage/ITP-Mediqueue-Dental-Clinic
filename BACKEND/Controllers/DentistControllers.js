@@ -148,6 +148,20 @@ const updateDentist = async (req, res) => {
     }).lean();
 
     if (!dentist) return res.status(404).json({ message: "Dentist not found" });
+    
+    // If availability schedule was updated, generate schedule slots
+    if (updateData.availability_schedule && dentist.dentistCode) {
+      try {
+        const { generateSlotsForNext30Days } = require('../utils/scheduleGenerator');
+        console.log(`🔧 Availability updated for dentist ${dentist.dentistCode}, generating slots...`);
+        await generateSlotsForNext30Days(dentist.dentistCode);
+        console.log(`✅ Generated schedule slots for dentist ${dentist.dentistCode}`);
+      } catch (slotError) {
+        console.error('Error generating schedule slots:', slotError);
+        // Don't fail the update if slot generation fails
+      }
+    }
+    
     res.status(200).json(dentist);
   } catch (err) {
     console.error("updateDentist error:", err);
@@ -173,6 +187,20 @@ const updateDentistByCode = async (req, res) => {
     ).lean();
 
     if (!dentist) return res.status(404).json({ message: "Dentist not found" });
+    
+    // If availability schedule was updated, generate schedule slots
+    if (updateData.availability_schedule && dentist.dentistCode) {
+      try {
+        const { generateSlotsForNext30Days } = require('../utils/scheduleGenerator');
+        console.log(`🔧 Availability updated for dentist ${dentist.dentistCode}, generating slots...`);
+        await generateSlotsForNext30Days(dentist.dentistCode);
+        console.log(`✅ Generated schedule slots for dentist ${dentist.dentistCode}`);
+      } catch (slotError) {
+        console.error('Error generating schedule slots:', slotError);
+        // Don't fail the update if slot generation fails
+      }
+    }
+    
     res.status(200).json(dentist);
   } catch (err) {
     console.error("updateDentistByCode error:", err);

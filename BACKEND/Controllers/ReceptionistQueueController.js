@@ -44,28 +44,43 @@ async function listQueue(req, res) {
     
     const enrichedItems = await Promise.all(items.map(async (item) => {
       let patientName = 'Unknown Patient';
+      let patientDetails = {};
       
-      // Handle guest patients (GUEST- prefix)
-      if (item.patientCode.startsWith('GUEST-')) {
-        patientName = 'Guest Patient';
+      // Check if this is a "for someone else" booking
+      if (item.isBookingForSomeoneElse && item.actualPatientName) {
+        patientName = item.actualPatientName;
+        patientDetails = {
+          name: item.actualPatientName,
+          email: item.actualPatientEmail,
+          phone: item.actualPatientPhone,
+          age: item.actualPatientAge,
+          relationship: item.relationshipToPatient,
+          isBookingForSomeoneElse: true
+        };
       } else {
-        // Handle registered patients
-        try {
-          const patient = await Patient.findOne({ patientCode: item.patientCode })
-            .populate('userId', 'name')
-            .lean();
-          
-          if (patient?.userId?.name) {
-            patientName = patient.userId.name;
+        // Handle guest patients (GUEST- prefix)
+        if (item.patientCode.startsWith('GUEST-')) {
+          patientName = 'Guest Patient';
+        } else {
+          // Handle registered patients
+          try {
+            const patient = await Patient.findOne({ patientCode: item.patientCode })
+              .populate('userId', 'name')
+              .lean();
+            
+            if (patient?.userId?.name) {
+              patientName = patient.userId.name;
+            }
+          } catch (error) {
+            console.error(`[listQueue] Error fetching patient name for ${item.patientCode}:`, error);
           }
-        } catch (error) {
-          console.error(`[listQueue] Error fetching patient name for ${item.patientCode}:`, error);
         }
       }
       
       return {
         ...item,
-        patientName
+        patientName,
+        patientDetails
       };
     }));
 

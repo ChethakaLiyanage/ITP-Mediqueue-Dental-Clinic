@@ -102,7 +102,7 @@ const createInquiry = async (req, res) => {
       });
     }
 
-    const { subject, message } = req.body;
+    const { subject, message, appointmentCode, messageType = "text", metadata } = req.body;
 
     // Validate required fields
     if (!subject || !subject.trim()) {
@@ -119,14 +119,18 @@ const createInquiry = async (req, res) => {
       });
     }
 
-    const inquiryData = {
+    // Create new inquiry with chat support
+    const inquiry = new Inquiry({
       patientCode,
+      patientName: req.user?.name || 'Patient',
       subject: subject.trim(),
-      message: message.trim(),
+      initialMessage: message.trim(),
       status: "open"
-    };
-
-    const inquiry = new Inquiry(inquiryData);
+    });
+    
+    // Add the first message to the chat
+    inquiry.addMessage("patient", patientCode, req.user?.name || 'Patient', message.trim(), messageType, appointmentCode, metadata);
+    
     await inquiry.save();
 
     return res.status(201).json({ 
@@ -328,11 +332,103 @@ const getMyInquiryStats = async (req, res) => {
   }
 };
 
+// ➤ Get Inquiry with Chat Messages
+const getInquiryWithMessages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const patientCode = req.user?.patientCode;
+    
+    if (!patientCode) {
+      return res.status(401).json({ 
+        success: false,
+        message: "Patient code not found. Please log in again." 
+      });
+    }
+
+    const inquiry = await Inquiry.findOne({ 
+      _id: id, 
+      patientCode 
+    });
+
+    if (!inquiry) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Inquiry not found" 
+      });
+    }
+
+    return res.status(200).json({ 
+      success: true,
+      inquiry 
+    });
+  } catch (err) {
+    console.error("getInquiryWithMessages error:", err);
+    return res.status(500).json({ 
+      success: false,
+      message: "Failed to fetch inquiry with messages" 
+    });
+  }
+};
+
+// ➤ Add Message to Inquiry
+const addMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+    const patientCode = req.user?.patientCode;
+    const patientName = req.user?.name || 'Patient';
+    
+    if (!patientCode) {
+      return res.status(401).json({ 
+        success: false,
+        message: "Patient code not found. Please log in again." 
+      });
+    }
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Message is required" 
+      });
+    }
+
+    const inquiry = await Inquiry.findOne({ 
+      _id: id, 
+      patientCode 
+    });
+
+    if (!inquiry) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Inquiry not found" 
+      });
+    }
+
+    // Add message to chat
+    const newMessage = inquiry.addMessage("patient", patientCode, patientName, message.trim());
+    await inquiry.save();
+
+    return res.status(201).json({ 
+      success: true,
+      message: "Message added successfully",
+      newMessage 
+    });
+  } catch (err) {
+    console.error("addMessage error:", err);
+    return res.status(500).json({ 
+      success: false,
+      message: "Failed to add message" 
+    });
+  }
+};
+
 module.exports = {
   getMyInquiries,
   getMyInquiryById,
   createInquiry,
   updateMyInquiry,
   deleteMyInquiry,
-  getMyInquiryStats
+  getMyInquiryStats,
+  getInquiryWithMessages,
+  addMessage
 };

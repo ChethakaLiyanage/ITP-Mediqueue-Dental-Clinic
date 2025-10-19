@@ -25,4 +25,10 @@ router.put("/:id", patientInquiryController.updateMyInquiry);
 // DELETE /api/inquiries/:id - Delete inquiry (patient can only delete their own)
 router.delete("/:id", patientInquiryController.deleteMyInquiry);
 
+// GET /api/inquiries/:id/messages - Get inquiry with chat messages
+router.get("/:id/messages", patientInquiryController.getInquiryWithMessages);
+
+// POST /api/inquiries/:id/messages - Add message to inquiry
+router.post("/:id/messages", patientInquiryController.addMessage);
+
 module.exports = router;

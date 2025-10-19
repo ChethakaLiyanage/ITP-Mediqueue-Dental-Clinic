@@ -8,7 +8,8 @@ const {
   getAppointment,
   sendOTP,
   verifyOTP,
-  checkAppointments
+  checkAppointments,
+  requestAppointmentChange
 } = require("../Controllers/AppointmentController");
 const requireAuth = require("../middleware/requireAuth");
 const requireRole = require("../middleware/requireRole");
@@ -21,11 +22,11 @@ router.get("/check", checkAppointments);
 // GET /appointments/available-slots - Get available time slots (no auth required for booking)
 router.get("/available-slots", getAvailableSlots);
 
-// POST /appointments - Create appointment (allow both authenticated and unregistered users)
-router.post("/", createAppointment);
-
 // All other routes require authentication
 router.use(requireAuth);
+
+// POST /appointments - Create appointment (authenticated users only)
+router.post("/", createAppointment);
 
 // GET /appointments - Get appointments (for patients, dentists, admins)
 router.get("/", getAppointments);
@@ -44,5 +45,8 @@ router.put("/:id", updateAppointment);
 
 // DELETE /appointments/:id - Cancel an appointment
 router.delete("/:id", cancelAppointment);
+
+// POST /appointments/:id/request-change - Request change for confirmed appointment
+router.post("/:id/request-change", requestAppointmentChange);
 
 module.exports = router;

@@ -62,8 +62,15 @@ class ScheduleService {
       
       // Get working hours from dentist's availability_schedule
       if (dentist.availability_schedule) {
-        // Try both abbreviated format (Fri) and lowercase format (friday)
+        // Try abbreviated format first (Sun, Mon, etc.) then lowercase format (sunday, monday, etc.)
         const daySchedule = dentist.availability_schedule[dayName] || dentist.availability_schedule[dbDayName];
+        
+        console.log(`🔍 Looking for schedule for ${dayName} (${dbDayName}):`, {
+          dayName,
+          dbDayName,
+          daySchedule,
+          availabilityKeys: Object.keys(dentist.availability_schedule)
+        });
         
         if (daySchedule) {
           // Check if it's the new object format: { start: '09:00', end: '17:00', available: true }
