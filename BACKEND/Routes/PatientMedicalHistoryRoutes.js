@@ -1,24 +1,20 @@
 // Routes/PatientMedicalHistoryRoutes.js
 
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const {
-  getMedicalHistory,
-  getSummary,
-  exportMedicalHistory
-} = require("../Controllers/PatientMedicalHistoryController");
-const requireAuth = require("../middleware/requireAuth");
+const patientMedicalHistoryController = require('../Controllers/PatientMedicalHistoryController');
+const { verifyToken } = require('../middleware/requireAuth');
 
-// Apply authentication middleware to all routes
-router.use(requireAuth);
+// Apply authentication to all routes
+router.use(verifyToken);
 
 // GET /api/medical-history - Get comprehensive medical history
-router.get("/", getMedicalHistory);
+router.get('/', patientMedicalHistoryController.getMedicalHistory);
 
 // GET /api/medical-history/summary - Get medical history summary
-router.get("/summary", getSummary);
+router.get('/summary', patientMedicalHistoryController.getMedicalHistorySummary);
 
 // GET /api/medical-history/export - Export medical history
-router.get("/export", exportMedicalHistory);
+router.get('/export', patientMedicalHistoryController.exportMedicalHistory);
 
 module.exports = router;
