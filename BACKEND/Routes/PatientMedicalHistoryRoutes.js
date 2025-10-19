@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const patientMedicalHistoryController = require('../Controllers/PatientMedicalHistoryController');
-const { verifyToken } = require('../middleware/requireAuth');
+const verifyToken = require('../middleware/requireAuth');
 
 // Apply authentication to all routes
 router.use(verifyToken);
