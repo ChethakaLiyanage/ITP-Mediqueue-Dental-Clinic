@@ -1,12 +1,14 @@
 // Controllers/PatientMedicalHistoryController.js
 
 const mongoose = require("mongoose");
+const PDFDocument = require("pdfkit");
 const Prescription = require("../Model/PrescriptionModel");
 const Treatmentplan = require("../Model/TreatmentplanModel");
 const Appointment = require("../Model/AppointmentModel");
 const Queue = require("../Model/QueueModel");
 const Dentist = require("../Model/DentistModel");
 const User = require("../Model/User");
+const PatientModel = require("../Model/PatientModel");
 
 /* --------------------------------- Patient Medical History Controllers --------------------------------- */
 
@@ -19,6 +21,29 @@ const getMedicalHistory = async (req, res) => {
         success: false,
         message: "Patient code not found. Please log in again." 
       });
+    }
+
+    // Get patient information including age
+    const patient = await PatientModel.findOne({ patientCode }).populate('userId', 'name').lean();
+    
+    const patientInfo = {
+      name: patient?.userId?.name || 'Unknown Patient',
+      dob: patient?.dob || null,
+      gender: patient?.gender || 'Unknown',
+      age: null
+    };
+
+    // Calculate age if DOB is available
+    if (patientInfo.dob) {
+      const today = new Date();
+      const birthDate = new Date(patientInfo.dob);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      patientInfo.age = age;
     }
 
     const { type, startDate, endDate, dentistCode } = req.query;
@@ -197,6 +222,7 @@ const getMedicalHistory = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: {
+        patientInfo,
         medicalHistory,
         total: medicalHistory.length
       }
@@ -289,6 +315,29 @@ const exportMedicalHistory = async (req, res) => {
 
     const { format = 'json', startDate, endDate } = req.query;
     
+    // Get patient information
+    const patient = await PatientModel.findOne({ patientCode }).populate('userId', 'name').lean();
+    
+    const patientInfo = {
+      name: patient?.userId?.name || 'Unknown Patient',
+      dob: patient?.dob || null,
+      gender: patient?.gender || 'Unknown',
+      age: null
+    };
+
+    // Calculate age if DOB is available
+    if (patientInfo.dob) {
+      const today = new Date();
+      const birthDate = new Date(patientInfo.dob);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      patientInfo.age = age;
+    }
+    
     // Build date filter
     let dateFilter = {};
     if (startDate || endDate) {
@@ -296,24 +345,52 @@ const exportMedicalHistory = async (req, res) => {
       if (endDate) dateFilter.$lte = new Date(endDate + "T23:59:59.999Z");
     }
 
-    // Get all medical history data
+    // Get all medical history data with dentist names
     const [treatments, prescriptions, appointments] = await Promise.all([
       Treatmentplan.find({ 
         patientCode, 
         deletedAt: { $exists: true },
         ...(Object.keys(dateFilter).length > 0 ? { deletedAt: dateFilter } : {})
-      }).lean(),
+      }).populate('dentistCode', 'dentistCode').lean(),
       Prescription.find({ 
         patientCode,
         ...(Object.keys(dateFilter).length > 0 ? { issuedAt: dateFilter } : {})
-      }).lean(),
+      }).populate('dentistCode', 'dentistCode').lean(),
       Appointment.find({ 
         patientCode,
         ...(Object.keys(dateFilter).length > 0 ? { appointmentDate: dateFilter } : {})
-      }).lean()
+      }).populate('dentistCode', 'dentistCode').lean()
     ]);
 
+    // Get dentist names for all records
+    const getDentistName = async (dentistCode) => {
+      try {
+        const dentist = await Dentist.findOne({ dentistCode })
+          .populate('userId', 'name')
+          .lean();
+        return dentist?.userId?.name || 'Unknown Dentist';
+      } catch (err) {
+        return 'Unknown Dentist';
+      }
+    };
+
+    const enrichedTreatments = await Promise.all(treatments.map(async (treatment) => ({
+      ...treatment,
+      dentistName: await getDentistName(treatment.dentistCode)
+    })));
+
+    const enrichedPrescriptions = await Promise.all(prescriptions.map(async (prescription) => ({
+      ...prescription,
+      dentistName: await getDentistName(prescription.dentistCode)
+    })));
+
+    const enrichedAppointments = await Promise.all(appointments.map(async (appointment) => ({
+      ...appointment,
+      dentistName: await getDentistName(appointment.dentistCode)
+    })));
+
     const exportData = {
+      patientInfo,
       patientCode,
       exportDate: new Date().toISOString(),
       dateRange: { startDate, endDate },
@@ -323,9 +400,9 @@ const exportMedicalHistory = async (req, res) => {
         totalAppointments: appointments.length
       },
       data: {
-        treatments,
-        prescriptions,
-        appointments
+        treatments: enrichedTreatments,
+        prescriptions: enrichedPrescriptions,
+        appointments: enrichedAppointments
       }
     };
 
@@ -333,10 +410,124 @@ const exportMedicalHistory = async (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="medical-history-${new Date().toISOString().split('T')[0]}.json"`);
       return res.json(exportData);
+    } else if (format === 'pdf') {
+      // Generate PDF
+      const doc = new PDFDocument();
+      const filename = `medical-history-${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      doc.pipe(res);
+      
+      // PDF Header
+      doc.fontSize(20).text('Medical History Report', 50, 50);
+      doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`, 50, 80);
+      doc.text(`Patient: ${patientInfo.name}`, 50, 100);
+      if (patientInfo.age) {
+        doc.text(`Age: ${patientInfo.age} years old`, 50, 120);
+      }
+      doc.text(`Gender: ${patientInfo.gender}`, 50, 140);
+      
+      let yPosition = 180;
+      
+      // Patient Summary
+      doc.fontSize(16).text('Summary', 50, yPosition);
+      yPosition += 30;
+      doc.fontSize(12).text(`Total Treatments: ${exportData.summary.totalTreatments}`, 50, yPosition);
+      yPosition += 20;
+      doc.text(`Total Prescriptions: ${exportData.summary.totalPrescriptions}`, 50, yPosition);
+      yPosition += 20;
+      doc.text(`Total Appointments: ${exportData.summary.totalAppointments}`, 50, yPosition);
+      yPosition += 40;
+      
+      // Treatments Section
+      if (enrichedTreatments.length > 0) {
+        doc.fontSize(16).text('Completed Treatments', 50, yPosition);
+        yPosition += 30;
+        
+        enrichedTreatments.forEach((treatment, index) => {
+          if (yPosition > 700) {
+            doc.addPage();
+            yPosition = 50;
+          }
+          
+          doc.fontSize(14).text(`${index + 1}. ${treatment.diagnosis}`, 50, yPosition);
+          yPosition += 20;
+          doc.fontSize(10).text(`Dentist: Dr. ${treatment.dentistName}`, 70, yPosition);
+          yPosition += 15;
+          doc.text(`Completed: ${new Date(treatment.deletedAt).toLocaleDateString()}`, 70, yPosition);
+          yPosition += 15;
+          if (treatment.treatment_notes) {
+            doc.text(`Notes: ${treatment.treatment_notes}`, 70, yPosition);
+            yPosition += 15;
+          }
+          yPosition += 20;
+        });
+      }
+      
+      // Prescriptions Section
+      if (enrichedPrescriptions.length > 0) {
+        if (yPosition > 600) {
+          doc.addPage();
+          yPosition = 50;
+        }
+        
+        doc.fontSize(16).text('Prescriptions', 50, yPosition);
+        yPosition += 30;
+        
+        enrichedPrescriptions.forEach((prescription, index) => {
+          if (yPosition > 700) {
+            doc.addPage();
+            yPosition = 50;
+          }
+          
+          doc.fontSize(14).text(`${index + 1}. Prescription ${prescription.prescriptionCode}`, 50, yPosition);
+          yPosition += 20;
+          doc.fontSize(10).text(`Dentist: Dr. ${prescription.dentistName}`, 70, yPosition);
+          yPosition += 15;
+          doc.text(`Issued: ${new Date(prescription.issuedAt).toLocaleDateString()}`, 70, yPosition);
+          yPosition += 15;
+          doc.text(`Medicines: ${prescription.medicines?.length || 0}`, 70, yPosition);
+          yPosition += 20;
+        });
+      }
+      
+      // Appointments Section
+      if (enrichedAppointments.length > 0) {
+        if (yPosition > 600) {
+          doc.addPage();
+          yPosition = 50;
+        }
+        
+        doc.fontSize(16).text('Appointments', 50, yPosition);
+        yPosition += 30;
+        
+        enrichedAppointments.forEach((appointment, index) => {
+          if (yPosition > 700) {
+            doc.addPage();
+            yPosition = 50;
+          }
+          
+          doc.fontSize(14).text(`${index + 1}. Appointment with Dr. ${appointment.dentistName}`, 50, yPosition);
+          yPosition += 20;
+          doc.fontSize(10).text(`Date: ${new Date(appointment.appointmentDate).toLocaleDateString()}`, 70, yPosition);
+          yPosition += 15;
+          doc.text(`Status: ${appointment.status}`, 70, yPosition);
+          yPosition += 15;
+          if (appointment.reason) {
+            doc.text(`Reason: ${appointment.reason}`, 70, yPosition);
+            yPosition += 15;
+          }
+          yPosition += 20;
+        });
+      }
+      
+      doc.end();
     } else {
       return res.status(400).json({
         success: false,
-        message: "Only JSON format is currently supported"
+        message: "Supported formats: json, pdf"
       });
     }
 

@@ -2,6 +2,44 @@ const ClinicEvent = require("../Model/ClinicEventModel");
 const Dentist = require("../Model/DentistModel");
 const ScheduleService = require("../Services/ScheduleService");
 
+// GET /api/clinic-events/public - Get published clinic events for public display
+const getPublicClinicEvents = async (req, res) => {
+  try {
+    const { limit = 6, upcoming = true } = req.query;
+    
+    const filter = {
+      isDeleted: false,
+      isPublished: true
+    };
+
+    // If upcoming is true, only show future events
+    if (upcoming === 'true') {
+      filter.startDate = { $gte: new Date() };
+    }
+
+    const events = await ClinicEvent.find(filter)
+      .select('eventCode title description startDate endDate allDay imageUrl')
+      .sort({ startDate: 1 })
+      .limit(parseInt(limit))
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        events,
+        total: events.length
+      }
+    });
+
+  } catch (err) {
+    console.error("getPublicClinicEvents error:", err);
+    return res.status(500).json({ 
+      success: false,
+      message: "Failed to fetch clinic events" 
+    });
+  }
+};
+
 // ➤ Add Clinic Event
 const addClinicEvent = async (req, res) => {
   try {
@@ -189,6 +227,7 @@ const deleteClinicEvent = async (req, res) => {
   }
 };
 
+exports.getPublicClinicEvents = getPublicClinicEvents;
 exports.addClinicEvent = addClinicEvent;
 exports.getAllClinicEvents = getAllClinicEvents;
 exports.getById = getById;
