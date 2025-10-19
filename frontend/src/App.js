@@ -52,6 +52,7 @@ import ProfilePrescriptionDetail from "./Components/Profile/ProfilePrescriptionD
 import ProfileTreatments from "./Components/Profile/ProfileTreatments";
 import ProfileTreatmentDetail from "./Components/Profile/ProfileTreatmentDetail";
 import ProfileInquiries from "./Components/Profile/ProfileInquiries";
+import InquiryChat from "./Components/Inquiries/InquiryChat";
 import PatientReviews from "./Components/Review/MyReviews";
 import ReceptionistLeave from "./Components/Leave/ReceptionistLeave";
 import ReceptionistNotifications from "./Components/Notification/ReceptionistNotifications";
@@ -60,6 +61,7 @@ import CheckAppointment from "./Components/Appointments/CheckAppointment";
 import Home from "./Components/Home/Home";
 import ProfileUpdate from "./Components/Profile/ProfileUpdate";
 import MedicalHistory from "./Components/Profile/MedicalHistory";
+import ProfileAppointments from "./Components/Profile/ProfileAppointments";
 import ProtectedRoute from "./Components/Auth/ProtectedRoute";
 
 
@@ -171,9 +173,19 @@ export default function App() {
           <ProfileInquiries />
         </ProtectedRoute>
       } />
+      <Route path="/profile/inquiries/:id/chat" element={
+        <ProtectedRoute>
+          <InquiryChat />
+        </ProtectedRoute>
+      } />
       <Route path="/profile/medical-history" element={
         <ProtectedRoute>
           <MedicalHistory />
+        </ProtectedRoute>
+      } />
+      <Route path="/profile/appointments" element={
+        <ProtectedRoute>
+          <ProfileAppointments />
         </ProtectedRoute>
       } />
     </Routes>

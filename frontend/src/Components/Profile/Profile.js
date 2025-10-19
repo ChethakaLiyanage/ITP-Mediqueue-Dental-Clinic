@@ -128,7 +128,7 @@ export default function Profile() {
 
       // Fetch appointments count
       try {
-        const apptRes = await fetch(`http://localhost:5000/appointments${patientCode ? `?patient_code=${encodeURIComponent(patientCode)}` : ''}`, {
+        const apptRes = await fetch(`http://localhost:5000/appointments${patientCode ? `?patientCode=${encodeURIComponent(patientCode)}` : ''}`, {
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -137,7 +137,9 @@ export default function Profile() {
         
         if (apptRes.ok) {
           const data = await apptRes.json();
-          counts.appointments = data.items?.length || 0;
+          console.log("Appointments API response:", data);
+          counts.appointments = data.items?.length || data.appointments?.length || 0;
+          console.log("Appointments count set to:", counts.appointments);
         } else {
           console.warn("Appointments endpoint not available, using default count");
         }
@@ -491,16 +493,6 @@ export default function Profile() {
 
               <div className="medical-records-grid">
                 <MedicalRecordCard
-                  icon={Calendar}
-                  title="Book Appointment"
-                  description="Schedule a new dental appointment"
-                  onClick={() => {
-                    console.log('Book Appointment clicked - navigating to /book-appointment');
-                    navigate("/book-appointment");
-                  }}
-                  color="green"
-                />
-                <MedicalRecordCard
                   icon={Pill}
                   title="Prescriptions"
                   description="View your prescription history and medications"
@@ -529,7 +521,7 @@ export default function Profile() {
                   title="Appointments"
                   description="View and manage your appointment history"
                   count={medicalCounts.appointments}
-                  onClick={() => navigate("/history")}
+                  onClick={() => navigate("/profile/appointments")}
                   color="purple"
                 />
                 <MedicalRecordCard

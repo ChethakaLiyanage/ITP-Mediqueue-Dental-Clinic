@@ -556,10 +556,12 @@ export default function Home() {
               <span>BOOK APPOINTMENT</span>
               <i className="fas fa-calendar-plus"></i>
             </Link>
-            <button onClick={handleCheckAppointments} className="btn-secondary">
-              <span>CHECK APPOINTMENTS</span>
-              <i className="fas fa-search"></i>
-            </button>
+            {!isAuthenticated && (
+              <button onClick={handleCheckAppointments} className="btn-secondary">
+                <span>CHECK APPOINTMENTS</span>
+                <i className="fas fa-search"></i>
+              </button>
+            )}
             <a href="#services" className="btn-secondary">
               <span>OUR SERVICES</span>
               <i className="fas fa-arrow-down"></i>
