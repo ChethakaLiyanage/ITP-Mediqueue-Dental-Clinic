@@ -1,54 +1,48 @@
 const express = require("express");
-const router = express.Router();
-const requireAuth = require("../middleware/requireAuth");
-
 const {
-  bookAppointment,
-  bookGuestAppointment,
-  listAppointments,
-  updateAppointment,
-  deleteAppointment,
-  confirmAppointment,
-  sendAppointmentOtp,
-  verifyAppointmentOtp,
+  getAppointments,
   getAvailableSlots,
-} = require("../Controllers/AppointmentControllers");
+  createAppointment,
+  updateAppointment,
+  cancelAppointment,
+  getAppointment,
+  sendOTP,
+  verifyOTP,
+  checkAppointments
+} = require("../Controllers/AppointmentController");
+const requireAuth = require("../middleware/requireAuth");
+const requireRole = require("../middleware/requireRole");
 
-// Registered user routes (require authentication)
-router.post("/", requireAuth, bookAppointment);
+const router = express.Router();
 
-// Public routes (no authentication required)
-router.get("/", listAppointments);
+// GET /appointments/check - Check appointments for unregistered users (no auth required)
+router.get("/check", checkAppointments);
 
-// Guest user routes (no authentication required)
-router.post("/guest", bookGuestAppointment);
-
-// Management routes (require authentication for patient operations)
-router.put("/:id", requireAuth, updateAppointment);
-router.patch("/:id", requireAuth, updateAppointment);
-router.delete("/:id", requireAuth, deleteAppointment);
-
-// Convenience route for receptionists to confirm pending appointments
-router.patch("/:id/confirm", confirmAppointment);
-
-// OTP routes (for registered users)
-router.post("/send-otp", requireAuth, sendAppointmentOtp);
-router.post("/verify-otp", requireAuth, verifyAppointmentOtp);
-
-// Public routes
+// GET /appointments/available-slots - Get available time slots (no auth required for booking)
 router.get("/available-slots", getAvailableSlots);
 
-// Additional endpoints for frontend compatibility
-router.get("/booked", (req, res) => {
-  // Return empty array for now - this should check for booked appointments
-  res.json([]);
-});
+// POST /appointments - Create appointment (allow both authenticated and unregistered users)
+router.post("/", createAppointment);
 
-router.get("/occupied", (req, res) => {
-  // Return empty array for now - this should check for occupied slots
-  res.json([]);
-});
+// All other routes require authentication
+router.use(requireAuth);
 
-router.get("/availability", getAvailableSlots); // Frontend compatibility endpoint
+// GET /appointments - Get appointments (for patients, dentists, admins)
+router.get("/", getAppointments);
+
+// OTP routes for appointment booking
+router.post("/send-otp", requireRole(["Patient"]), sendOTP);
+router.post("/verify-otp", requireRole(["Patient"]), verifyOTP);
+
+// GET /appointments/:id - Get a specific appointment
+router.get("/:id", getAppointment);
+
+// POST /appointments - Create a new appointment (patients only) - moved above auth middleware
+
+// PUT /appointments/:id - Update an appointment
+router.put("/:id", updateAppointment);
+
+// DELETE /appointments/:id - Cancel an appointment
+router.delete("/:id", cancelAppointment);
 
 module.exports = router;

@@ -15,19 +15,43 @@ const BookAppointment = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [availableSlots, setAvailableSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState('');
+  const [selectedDuration, setSelectedDuration] = useState(30);
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
+  const [preferredTimeLabel, setPreferredTimeLabel] = useState('All Times');
+  const [workingWindow, setWorkingWindow] = useState(''); // e.g., "15:00-17:00"
+  
+  // Book for someone else state
+  const [isBookingForSomeoneElse, setIsBookingForSomeoneElse] = useState(false);
+  const [actualPatientName, setActualPatientName] = useState('');
+  const [actualPatientEmail, setActualPatientEmail] = useState('');
+  const [actualPatientPhone, setActualPatientPhone] = useState('');
+  const [actualPatientAge, setActualPatientAge] = useState('');
+  const [relationshipToPatient, setRelationshipToPatient] = useState('Self');
+  
+  // OTP state
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
   
   // UI state
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1: Select dentist, 2: Select date, 3: Select time, 4: Confirm
+  const [step, setStep] = useState(1); // 1: All-in-one booking form
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Check authentication
+  // Check authentication - allow both registered and unregistered users
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'Patient') {
+    console.log('BookAppointment - Auth check:', { isAuthenticated, user, role: user?.role });
+    // Allow both authenticated patients and unregistered users
+    if (isAuthenticated && user?.role !== 'Patient') {
+      console.log('Redirecting to login - not a patient');
       navigate('/login');
+    }
+    // If user is not authenticated, show unregistered user interface
+    if (!isAuthenticated) {
+      console.log('User not authenticated - showing unregistered booking interface');
     }
   }, [isAuthenticated, user, navigate]);
 
@@ -49,40 +73,173 @@ const BookAppointment = () => {
     }
   };
 
-  const fetchAvailableSlots = async (dentistCode, date) => {
+  const fetchAvailableSlots = async (dentistCode, date, duration = 30) => {
     try {
+      console.log('🔍 fetchAvailableSlots called with:', { dentistCode, date, duration });
       setLoading(true);
       const response = await api.get('/appointments/available-slots', {
-        params: { dentistCode, date }
+        params: { dentistCode, date, duration }
       });
-      setAvailableSlots(response.data.slots || []);
+      // Backend already filters slots by working hours, so use them directly
+      const apiSlots = response.data?.slots || [];
+      setAvailableSlots(apiSlots);
+      return apiSlots;
     } catch (error) {
       console.error('Error fetching available slots:', error);
       setError('Failed to load available time slots. Please try again.');
       setAvailableSlots([]);
+      return [];
     } finally {
       setLoading(false);
     }
   };
 
+  const sendOTP = async () => {
+    // Only send OTP for authenticated users
+    if (!isAuthenticated) {
+      setError('Please login to send OTP');
+      return;
+    }
+
+    try {
+      setOtpLoading(true);
+      setError('');
+      
+      // Debug: Check authentication state
+      console.log('🔍 Current user:', user);
+      console.log('🔍 Is authenticated:', isAuthenticated);
+      console.log('🔍 User role:', user?.role);
+      
+      console.log('🔍 Making request to /appointments/send-otp');
+      const response = await api.post('/appointments/send-otp');
+      setOtpSent(true);
+      
+      // Display OTP in console and show to user
+      const otp = response.data.otp;
+      console.log('🔐 OTP for testing:', otp);
+      setSuccess(`OTP sent successfully! Your OTP is: ${otp} (check console for details)`);
+      console.log('OTP Response:', response.data);
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      const errorMessage = error.response?.data?.message || 'Failed to send OTP. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const verifyOTP = async () => {
+    // Only verify OTP for authenticated users
+    if (!isAuthenticated) {
+      setError('Please login to verify OTP');
+      return;
+    }
+
+    if (!otp || otp.length !== 6) {
+      setError('Please enter a valid 6-digit OTP.');
+      return;
+    }
+
+    try {
+      setOtpLoading(true);
+      setError('');
+      const response = await api.post('/appointments/verify-otp', { otp });
+      setOtpVerified(true);
+      setSuccess('OTP verified successfully! You can now book your appointment.');
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to verify OTP. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
   const handleDentistSelect = (dentistCode) => {
     setSelectedDentist(dentistCode);
-    setStep(2);
     setError('');
+    updateWorkingWindow(dentistCode, selectedDate);
+    // Auto-fetch slots if date and duration are already selected
+    if (selectedDate && selectedDuration) {
+      fetchAvailableSlots(dentistCode, selectedDate, selectedDuration);
+    }
   };
 
   const handleDateSelect = (date) => {
     setSelectedDate(date);
-    if (selectedDentist) {
-      fetchAvailableSlots(selectedDentist, date);
-    }
-    setStep(3);
     setError('');
+    updateWorkingWindow(selectedDentist, date);
+    // Auto-fetch slots if dentist and duration are already selected
+    if (selectedDentist && selectedDuration) {
+      fetchAvailableSlots(selectedDentist, date, selectedDuration);
+    }
+  };
+
+  const handleDurationSelect = (duration) => {
+    setSelectedDuration(duration);
+    setError('');
+    // Auto-fetch slots if dentist and date are already selected
+    if (selectedDentist && selectedDate) {
+      fetchAvailableSlots(selectedDentist, selectedDate, duration);
+    }
+  };
+
+  // Compute dentist working window for selected date and set preferred time dropdown label
+  const updateWorkingWindow = (dentistCode, date) => {
+    if (!dentistCode || !date) {
+      setWorkingWindow('');
+      setPreferredTimeLabel('All Times');
+        return;
+      }
+    try {
+      const d = dentists.find(x => x.dentistCode === dentistCode);
+      if (!d || !d.availability_schedule) {
+        setWorkingWindow('');
+        setPreferredTimeLabel('All Times');
+        return; 
+      }
+      const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
+      const win = d.availability_schedule[dayName];
+      if (typeof win === 'string' && /\d{2}:\d{2}-\d{2}:\d{2}/.test(win)) {
+        setWorkingWindow(win);
+        setPreferredTimeLabel(`All Times (${win})`);
+      } else {
+        setWorkingWindow('');
+        setPreferredTimeLabel('All Times');
+      }
+    } catch (_) {
+      setWorkingWindow('');
+      setPreferredTimeLabel('All Times');
+    }
+  };
+
+  const filterSlotsByWorkingWindow = (slots) => {
+    if (!workingWindow) return slots;
+    const [s, e] = workingWindow.split('-');
+    const [sh, sm] = s.split(':').map(Number);
+    const [eh, em] = e.split(':').map(Number);
+    const startM = sh * 60 + sm;
+    const endM = eh * 60 + em;
+    return (slots || []).filter((slot) => {
+      const dt = new Date(slot.time);
+      const m = dt.getHours() * 60 + dt.getMinutes();
+      return m >= startM && m + selectedDuration <= endM;
+    });
+  };
+
+  const handleSearch = async () => {
+    if (!selectedDentist || !selectedDate) {
+      setError('Please select dentist and date');
+      return;
+    }
+    setError('');
+    await fetchAvailableSlots(selectedDentist, selectedDate, selectedDuration);
   };
 
   const handleSlotSelect = (slotTime) => {
     setSelectedSlot(slotTime);
-    setStep(4);
     setError('');
   };
 
@@ -94,16 +251,39 @@ const BookAppointment = () => {
       return;
     }
 
+    // For unregistered users, require patient details for searching appointments later
+    if (!isAuthenticated && (!actualPatientName || !actualPatientEmail || !actualPatientPhone)) {
+      setError('Please provide your name, email, and phone number. This information is required to search for your appointments later.');
+      return;
+    }
+
+    // Only require OTP verification for authenticated users
+    if (isAuthenticated && !otpVerified) {
+      setError('Please verify your OTP before booking the appointment.');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
       
-      const appointmentData = {
-        dentistCode: selectedDentist,
-        appointmentDate: selectedSlot,
-        reason: reason.trim(),
-        notes: notes.trim()
-      };
+          const appointmentData = {
+            dentistCode: selectedDentist,
+            appointmentDate: selectedSlot,
+            duration: selectedDuration,
+            reason: reason.trim(),
+            notes: notes.trim(),
+            // Include booking for someone else data if applicable
+            isBookingForSomeoneElse: isBookingForSomeoneElse,
+            // Include patient details for unregistered users OR when booking for someone else
+            ...((!isAuthenticated || isBookingForSomeoneElse) && {
+              actualPatientName: actualPatientName.trim(),
+              actualPatientEmail: actualPatientEmail.trim(),
+              actualPatientPhone: actualPatientPhone.trim(),
+              actualPatientAge: actualPatientAge ? parseInt(actualPatientAge) : null,
+              relationshipToPatient: relationshipToPatient
+            })
+          };
 
       const response = await api.post('/appointments', appointmentData);
       
@@ -128,8 +308,18 @@ const BookAppointment = () => {
     setReason('');
     setNotes('');
     setStep(1);
+    setOtp('');
+    setOtpSent(false);
+    setOtpVerified(false);
     setError('');
     setSuccess('');
+    // Reset booking for someone else fields
+    setIsBookingForSomeoneElse(false);
+    setActualPatientName('');
+    setActualPatientEmail('');
+    setActualPatientPhone('');
+    setActualPatientAge('');
+    setRelationshipToPatient('Self');
   };
 
   const getSelectedDentistInfo = () => {
@@ -138,7 +328,17 @@ const BookAppointment = () => {
 
   const formatTime = (timeString) => {
     const date = new Date(timeString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Extract the time portion from the ISO string to avoid timezone conversion
+    // The backend sends times like "2025-10-29T09:00:00.000Z" for 09:00
+    const timeOnly = timeString.split('T')[1].split('.')[0]; // Get "09:00:00"
+    return timeOnly.substring(0, 5); // Return "09:00"
+  };
+
+  const formatEndTime = (timeString, duration) => {
+    const date = new Date(timeString);
+    const endTime = new Date(date.getTime() + duration * 60000); // Add duration in milliseconds
+    const timeOnly = endTime.toISOString().split('T')[1].split('.')[0]; // Get "09:30:00"
+    return timeOnly.substring(0, 5); // Return "09:30"
   };
 
   const formatDate = (dateString) => {
@@ -151,7 +351,8 @@ const BookAppointment = () => {
     });
   };
 
-  if (!isAuthenticated || user?.role !== 'Patient') {
+  // Allow both authenticated patients and unregistered users
+  if (isAuthenticated && user?.role !== 'Patient') {
     return null;
   }
 
@@ -159,14 +360,18 @@ const BookAppointment = () => {
     <div className="book-appointment-container">
       <div className="book-appointment-header">
         <h1>Book an Appointment</h1>
-        <p>Schedule your dental appointment with our qualified dentists</p>
+        {isAuthenticated ? (
+          <p>Schedule your dental appointment with our qualified dentists</p>
+        ) : (
+          <p>Book your dental appointment as a guest - no registration required!</p>
+        )}
       </div>
 
       {success && (
         <div className="success-message">
           <CheckCircle className="success-icon" />
           <span>{success}</span>
-        </div>
+      </div>
       )}
 
       {error && (
@@ -176,203 +381,467 @@ const BookAppointment = () => {
         </div>
       )}
 
-      <div className="booking-steps">
-        <div className={`step ${step >= 1 ? 'active' : ''}`}>
-          <div className="step-number">1</div>
-          <div className="step-label">Select Dentist</div>
-        </div>
-        <div className={`step ${step >= 2 ? 'active' : ''}`}>
-          <div className="step-number">2</div>
-          <div className="step-label">Select Date</div>
-        </div>
-        <div className={`step ${step >= 3 ? 'active' : ''}`}>
-          <div className="step-number">3</div>
-          <div className="step-label">Select Time</div>
-        </div>
-        <div className={`step ${step >= 4 ? 'active' : ''}`}>
-          <div className="step-number">4</div>
-          <div className="step-label">Confirm</div>
-        </div>
-      </div>
-
       <div className="booking-content">
-        {step === 1 && (
-          <div className="step-content">
-            <h2>Select a Dentist</h2>
-            {loading ? (
-              <div className="loading">
-                <Loader2 className="spinner" />
-                <span>Loading dentists...</span>
-              </div>
-            ) : (
-              <div className="dentists-grid">
-                {dentists.map((dentist) => (
-                  <div 
-                    key={dentist.dentistCode}
-                    className={`dentist-card ${selectedDentist === dentist.dentistCode ? 'selected' : ''}`}
-                    onClick={() => handleDentistSelect(dentist.dentistCode)}
-                  >
-                    <div className="dentist-avatar">
-                      <User size={24} />
-                    </div>
-                    <div className="dentist-info">
-                      <h3>{dentist.userId?.name || 'Dr. Unknown'}</h3>
-                      <p className="specialization">{dentist.specialization || 'General Dentistry'}</p>
-                      <p className="dentist-code">{dentist.dentistCode}</p>
-                    </div>
-                  </div>
+        <div className="booking-form">
+          {/* Compact controls row */}
+          <div className="controls-row">
+            <div className="control">
+              <label>Choose Doctor</label>
+                  <select
+                className="control-select"
+                value={selectedDentist}
+                onChange={(e) => handleDentistSelect(e.target.value)}
+              >
+                <option value="">Select a dentist</option>
+                {dentists.map(d => (
+                  <option key={d.dentistCode} value={d.dentistCode}>
+                    {d.userId?.name || 'Dr. Unknown'}
+                          </option>
                 ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="step-content">
-            <h2>Select a Date</h2>
-            <div className="date-picker">
-              <input
-                type="date"
+                  </select>
+                </div>
+            <div className="control">
+              <label>Preferred Date</label>
+                  <input
+                    type="date"
+                className="control-input"
                 value={selectedDate}
                 onChange={(e) => handleDateSelect(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="date-input"
-              />
+                  />
+                </div>
+            <div className="control">
+              <label>Duration</label>
+                  <select
+                className="control-select"
+                value={selectedDuration}
+                onChange={(e) => handleDurationSelect(parseInt(e.target.value, 10))}
+              >
+                <option value={30}>30 minutes</option>
+                <option value={60}>60 minutes</option>
+                <option value={90}>90 minutes</option>
+                <option value={120}>120 minutes</option>
+                  </select>
+                </div>
+            <div className="control">
+              <label>Preferred Time</label>
+              <select className="control-select" value={workingWindow || ''} onChange={() => { /* single option for now */ }}>
+                <option value={workingWindow || ''}>{preferredTimeLabel}</option>
+                  </select>
+                </div>
+            <div className="control control-button">
+              <button type="button" className="search-button" onClick={handleSearch} disabled={loading}>
+                {loading ? <Loader2 className="spinner" /> : 'Search Slots'}
+              </button>
             </div>
-            {selectedDate && (
-              <div className="selected-date">
-                <Calendar className="date-icon" />
-                <span>{formatDate(selectedDate)}</span>
-              </div>
-            )}
           </div>
-        )}
 
-        {step === 3 && (
-          <div className="step-content">
-            <h2>Select a Time Slot</h2>
+          {/* Available Time Slots */}
+          {selectedDentist && selectedDate && (
+            <div className="form-section">
+              <h3>Available Time Slots</h3>
             {loading ? (
-              <div className="loading">
-                <Loader2 className="spinner" />
-                <span>Loading available slots...</span>
+                <div className="loading">
+                  <Loader2 className="spinner" />
+                  <span>Loading available slots...</span>
               </div>
-            ) : availableSlots.length > 0 ? (
-              <div className="time-slots">
-                {availableSlots.map((slot, index) => (
-                  <button
-                    key={index}
-                    className={`time-slot ${selectedSlot === slot.time ? 'selected' : ''}`}
-                    onClick={() => handleSlotSelect(slot.time)}
-                  >
-                    <Clock className="time-icon" />
-                    <span>{formatTime(slot.time)}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="no-slots">
-                <AlertCircle className="no-slots-icon" />
-                <p>No available time slots for this date.</p>
-                <button onClick={() => setStep(2)} className="back-button">
-                  Choose Different Date
-                </button>
+              ) : availableSlots.length > 0 ? (
+                <div className="time-slots">
+                  {availableSlots.map((slot, index) => (
+                    <button
+                      key={index}
+                      className={`time-slot ${selectedSlot === slot.time ? 'selected' : ''}`}
+                      onClick={() => handleSlotSelect(slot.time)}
+                    >
+                      <Clock className="time-icon" />
+                      <span>{slot.displayTime || formatTime(slot.time)}</span>
+                    </button>
+                  ))}
+                      </div>
+              ) : (
+                <div className="no-slots">
+                  <AlertCircle className="no-slots-icon" />
+                  <p>No available time slots for the selected date and duration.</p>
+                      </div>
+                      )}
               </div>
             )}
-          </div>
-        )}
 
-        {step === 4 && (
-          <div className="step-content">
-            <h2>Confirm Your Appointment</h2>
-            <div className="appointment-summary">
-              <div className="summary-item">
-                <User className="summary-icon" />
-                <div>
-                  <label>Dentist:</label>
-                  <span>{getSelectedDentistInfo()?.userId?.name || 'Unknown'}</span>
+          {/* Appointment Details Form */}
+          {selectedSlot && (
+            <div className="form-section">
+              <h3>Appointment Details</h3>
+              <div className="appointment-summary">
+                <div className="summary-header">
+                  <h4>Appointment Summary</h4>
+                  <div className="appointment-status pending">
+                    <div className="status-dot"></div>
+                    <span>Pending Confirmation</span>
+                  </div>
+                </div>
+                
+                <div className="summary-grid">
+                  <div className="summary-card">
+                    <div className="card-header">
+                      <User className="card-icon" />
+                      <h5>Dentist Information</h5>
+                    </div>
+                    <div className="card-content">
+                      <div className="info-row">
+                        <span className="label">Name:</span>
+                        <span className="value">{getSelectedDentistInfo()?.userId?.name || 'Unknown'}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="label">Specialization:</span>
+                        <span className="value">{getSelectedDentistInfo()?.specialization || 'General Dentistry'}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="label">Code:</span>
+                        <span className="value">{selectedDentist}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="summary-card">
+                    <div className="card-header">
+                      <Calendar className="card-icon" />
+                      <h5>Appointment Details</h5>
+                    </div>
+                    <div className="card-content">
+                      <div className="info-row">
+                        <span className="label">Date:</span>
+                        <span className="value">{formatDate(selectedDate)}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="label">Time:</span>
+                        <span className="value time-highlight">{formatTime(selectedSlot)}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="label">Duration:</span>
+                        <span className="value">{selectedDuration} minutes</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="label">End Time:</span>
+                        <span className="value">{formatEndTime(selectedSlot, selectedDuration)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                      <div className="summary-card">
+                        <div className="card-header">
+                          <Clock className="card-icon" />
+                          <h5>Patient Information</h5>
+                        </div>
+                        <div className="card-content">
+                          <div className="info-row">
+                            <span className="label">Name:</span>
+                            <span className="value">
+                              {isAuthenticated 
+                                ? (user?.name || 'Unknown')
+                                : (actualPatientName || 'Please fill in your details below')
+                              }
+                            </span>
+                          </div>
+                          <div className="info-row">
+                            <span className="label">Email:</span>
+                            <span className="value">
+                              {isAuthenticated 
+                                ? (user?.email || 'Unknown')
+                                : (actualPatientEmail || 'Please fill in your details below')
+                              }
+                            </span>
+                          </div>
+                          <div className="info-row">
+                            <span className="label">Phone:</span>
+                            <span className="value">
+                              {isAuthenticated 
+                                ? (user?.phone || 'Unknown')
+                                : (actualPatientPhone || 'Please fill in your details below')
+                              }
+                            </span>
+                          </div>
+                          {isAuthenticated && (
+                            <div className="info-row">
+                              <span className="label">Patient Code:</span>
+                              <span className="value">{user?.patientCode || 'P-0001'}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                 </div>
               </div>
-              <div className="summary-item">
-                <Calendar className="summary-icon" />
-                <div>
-                  <label>Date:</label>
-                  <span>{formatDate(selectedDate)}</span>
-                </div>
-              </div>
-              <div className="summary-item">
-                <Clock className="summary-icon" />
-                <div>
-                  <label>Time:</label>
-                  <span>{formatTime(selectedSlot)}</span>
-                </div>
-              </div>
+
+                  <form onSubmit={handleSubmit} className="appointment-form">
+                    {/* Book for Someone Else Toggle - Only for authenticated users */}
+                    {isAuthenticated && (
+                      <div className="form-section">
+                        <div className="booking-toggle">
+                          <label className="toggle-label">
+                            <input
+                              type="checkbox"
+                              checked={isBookingForSomeoneElse}
+                              onChange={(e) => setIsBookingForSomeoneElse(e.target.checked)}
+                              className="toggle-input"
+                            />
+                            <span className="toggle-text">
+                              <User className="toggle-icon" />
+                              Book for someone else (family member, friend, etc.)
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Patient Details Form - Show for unregistered users or when booking for someone else */}
+                    {(!isAuthenticated || isBookingForSomeoneElse) && (
+                        <div className="patient-details-form">
+                          <h4>
+                            {!isAuthenticated ? 'Your Details' : 'Patient Details'}
+                          </h4>
+                          {!isAuthenticated && (
+                            <p className="form-description">
+                              Please provide your information for the appointment booking.
+                            </p>
+                          )}
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label htmlFor="actualPatientName">
+                                {!isAuthenticated ? 'Your Name *' : 'Patient Name *'}
+                              </label>
+                              <input
+                                type="text"
+                                id="actualPatientName"
+                                value={actualPatientName}
+                                onChange={(e) => setActualPatientName(e.target.value)}
+                                placeholder={!isAuthenticated ? "Enter your full name" : "Enter patient's full name"}
+                                className="form-input"
+                                required
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label htmlFor="actualPatientAge">Age</label>
+                              <input
+                                type="number"
+                                id="actualPatientAge"
+                                value={actualPatientAge}
+                                onChange={(e) => setActualPatientAge(e.target.value)}
+                                placeholder="Age"
+                                className="form-input"
+                                min="1"
+                                max="120"
+                              />
+                            </div>
+                          </div>
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label htmlFor="actualPatientEmail">
+                                {!isAuthenticated ? 'Your Email *' : 'Email'}
+                              </label>
+                              <input
+                                type="email"
+                                id="actualPatientEmail"
+                                value={actualPatientEmail}
+                                onChange={(e) => setActualPatientEmail(e.target.value)}
+                                placeholder={!isAuthenticated ? "your@email.com" : "patient@email.com"}
+                                className="form-input"
+                                required={!isAuthenticated}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label htmlFor="actualPatientPhone">
+                                {!isAuthenticated ? 'Your Phone *' : 'Phone'}
+                              </label>
+                              <input
+                                type="tel"
+                                id="actualPatientPhone"
+                                value={actualPatientPhone}
+                                onChange={(e) => setActualPatientPhone(e.target.value)}
+                                placeholder="+94 77 123 4567"
+                                className="form-input"
+                                required={!isAuthenticated}
+                              />
+                            </div>
+                          </div>
+                          {isAuthenticated && (
+                            <div className="form-group">
+                              <label htmlFor="relationshipToPatient">Your Relationship to Patient</label>
+                              <select
+                                id="relationshipToPatient"
+                                value={relationshipToPatient}
+                                onChange={(e) => setRelationshipToPatient(e.target.value)}
+                                className="form-select"
+                              >
+                                <option value="Self">Self</option>
+                                <option value="Spouse">Spouse</option>
+                                <option value="Child">Child</option>
+                                <option value="Parent">Parent</option>
+                                <option value="Sibling">Sibling</option>
+                                <option value="Friend">Friend</option>
+                                <option value="Other">Other</option>
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                    <div className="form-group">
+                      <label htmlFor="reason">Reason for Visit (Optional)</label>
+                      <input
+                        type="text"
+                        id="reason"
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="e.g., Regular checkup, tooth pain, cleaning"
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="notes">Additional Notes (Optional)</label>
+                      <textarea
+                        id="notes"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Any specific concerns or requests..."
+                        className="form-textarea"
+                        rows="3"
+                      />
+                    </div>
+
+                {/* OTP Verification Section - Only for authenticated users */}
+                {isAuthenticated && (
+                  <div className="otp-section">
+                    <h4>Verify Your Identity</h4>
+                    <p>Please verify your identity with an OTP to complete the booking.</p>
+                    
+                    {!otpSent ? (
+                      <div className="otp-send">
+                        <button 
+                          type="button" 
+                          className="otp-send-button" 
+                          onClick={sendOTP}
+                          disabled={otpLoading}
+                        >
+                          {otpLoading ? (
+                            <>
+                              <Loader2 className="spinner" />
+                              Sending OTP...
+                            </>
+                          ) : (
+                            'Send OTP'
+                          )}
+                        </button>
+                      </div>
+                    ) : !otpVerified ? (
+                      <div className="otp-verify">
+                        <div className="form-group">
+                          <label htmlFor="otp">Enter 6-digit OTP</label>
+                          <input
+                            type="text"
+                            id="otp"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            placeholder="123456"
+                            className="form-input otp-input"
+                            maxLength="6"
+                          />
+                        </div>
+                        <div className="otp-actions">
+                          <button 
+                            type="button" 
+                            className="otp-verify-button" 
+                            onClick={verifyOTP}
+                            disabled={otpLoading || otp.length !== 6}
+                          >
+                            {otpLoading ? (
+                              <>
+                                <Loader2 className="spinner" />
+                                Verifying...
+                              </>
+                            ) : (
+                              'Verify OTP'
+                            )}
+                          </button>
+                          <button 
+                            type="button" 
+                            className="otp-resend-button" 
+                            onClick={sendOTP}
+                            disabled={otpLoading}
+                          >
+                            Resend OTP
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="otp-success">
+                        <CheckCircle className="success-icon" />
+                        <span>OTP verified successfully!</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Unregistered User Notice */}
+                {!isAuthenticated && (
+                  <div className="unregistered-notice">
+                    <h4>Booking as Guest</h4>
+                    <p>You're booking as a guest. Your contact information (name, email, phone) is required so you can search for your appointments later using the "Check Appointments" feature on the home page.</p>
+                    <div className="guest-benefits">
+                      <div className="benefit-item">
+                        <CheckCircle className="benefit-icon" />
+                        <span>No registration required</span>
+                      </div>
+                      <div className="benefit-item">
+                        <CheckCircle className="benefit-icon" />
+                        <span>Search appointments by email/phone</span>
+                      </div>
+                      <div className="benefit-item">
+                        <CheckCircle className="benefit-icon" />
+                        <span>Quick and easy booking</span>
+                      </div>
+                    </div>
+                    <div className="guest-actions">
+                      <button 
+                        type="button" 
+                        onClick={() => navigate('/register-patient')} 
+                        className="register-btn"
+                      >
+                        Create Account for Better Experience
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => navigate('/login')} 
+                        className="login-btn"
+                      >
+                        Already Have Account? Login
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="form-actions">
+                  <button type="submit" className="submit-button" disabled={loading || (isAuthenticated && !otpVerified)}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="spinner" />
+                        Booking...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="button-icon" />
+                    Book Appointment
+                      </>
+                    )}
+                  </button>
+                  <button type="button" onClick={() => navigate('/profile')} className="cancel-button">
+                    Cancel
+                  </button>
+                        </div>
+              </form>
             </div>
-
-            <form onSubmit={handleSubmit} className="appointment-form">
-              <div className="form-group">
-                <label htmlFor="reason">Reason for Visit (Optional)</label>
-                <input
-                  type="text"
-                  id="reason"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="e.g., Regular checkup, tooth pain, cleaning"
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="notes">Additional Notes (Optional)</label>
-                <textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Any special requirements or concerns..."
-                  rows={3}
-                  className="form-textarea"
-                />
-              </div>
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="cancel-button"
-                  disabled={loading}
-                >
-                  Start Over
-                </button>
-                <button
-                  type="submit"
-                  className="submit-button"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="spinner" />
-                      Booking...
-                    </>
-                  ) : (
-                    'Book Appointment'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {step > 1 && (
-        <div className="navigation-buttons">
-          <button
-            onClick={() => setStep(step - 1)}
-            className="back-button"
-            disabled={loading}
-          >
-            Back
-          </button>
-        </div>
-      )}
     </div>
   );
 };

@@ -16,7 +16,13 @@ function toDate(d) {
 function toTime(d) {
   try {
     const dt = new Date(d);
-    return dt.toISOString().slice(11, 16);
+    // Format time in local timezone (not UTC)
+    return dt.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Asia/Colombo'
+    });
   } catch {
     return '';
   }
@@ -25,12 +31,11 @@ function toTime(d) {
 /* ---------------- Auto-confirm expired pending appointments ---------------- */
 async function autoConfirmExpiredPending() {
   const now = new Date();
-
+  console.log(`[autoConfirmExpiredPending] Running at ${now.toISOString()}`);
 
   // Find appointments with pendingExpiresAt field
   const expired = await Appointment.find({
     status: 'pending',
-    isActive: true,
     pendingExpiresAt: { $lte: now },
   }).limit(200).lean();
 
@@ -38,7 +43,6 @@ async function autoConfirmExpiredPending() {
   const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000);
   const expiredByTime = await Appointment.find({
     status: 'pending',
-    isActive: true,
     $or: [
       { pendingExpiresAt: { $exists: false } },
       { pendingExpiresAt: null }
@@ -47,13 +51,26 @@ async function autoConfirmExpiredPending() {
   }).limit(200).lean();
 
   const allExpired = [...expired, ...expiredByTime];
+  console.log(`[autoConfirmExpiredPending] Found ${allExpired.length} expired appointments:`, 
+    allExpired.map(a => ({ 
+      appointmentCode: a.appointmentCode, 
+      status: a.status, 
+      createdAt: a.createdAt,
+      fourHoursAgo: fourHoursAgo.toISOString()
+    }))
+  );
 
-  if (!allExpired.length) return;
+  if (!allExpired.length) {
+    console.log(`[autoConfirmExpiredPending] No expired appointments found`);
+    return;
+  }
 
   for (const appt of allExpired) {
     try {
+      console.log(`[autoConfirmExpiredPending] Processing appointment ${appt.appointmentCode}`);
+      
       // Auto-confirm the appointment instead of cancelling
-      await Appointment.updateOne(
+      const updateResult = await Appointment.updateOne(
         { _id: appt._id, status: 'pending' },
         {
           $set: {
@@ -65,6 +82,8 @@ async function autoConfirmExpiredPending() {
           $unset: { pendingExpiresAt: '' },
         }
       );
+      
+      console.log(`[autoConfirmExpiredPending] Update result for ${appt.appointmentCode}:`, updateResult);
 
       // Send enhanced confirmation notification to patient
       if (appt.patient_code || appt.guestInfo?.phone) {

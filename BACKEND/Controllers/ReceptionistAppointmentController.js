@@ -515,12 +515,23 @@ async function confirmAppointment(req, res) {
       console.log(`[confirmAppointment] Removed today's appointment from appointment table: ${appointmentCode}`);
     }
 
-    const timeStr = appt.appointment_date.toISOString().slice(11, 16);
+    // Format time in local timezone (not UTC)
+    const localTime = appt.appointment_date.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Asia/Colombo'
+    });
+
+    // Get patient age information
+    const contactInfo = await Notify.getPatientContact(appt.patient_code);
+    const patientAge = contactInfo?.age || (appt.isGuestBooking && appt.guestInfo?.age) || (appt.otherPersonDetails?.age);
+
     await sendApptConfirmed(appt.patient_code, {
       appointmentCode,
       dentistCode: appt.dentist_code,
       date: dateStr,
-      time: timeStr,
+      time: localTime,
       receptionistCode: finalReceptionistCode,
     });
     await sendAppointmentPdf(appt.patient_code, {
@@ -528,7 +539,8 @@ async function confirmAppointment(req, res) {
       patientCode: appt.patient_code,
       dentistCode: appt.dentist_code,
       date: dateStr,
-      time: timeStr,
+      time: localTime,
+      patientAge: patientAge,
       receptionistCode: finalReceptionistCode,
     });
     const remindAt = new Date(appt.appointment_date.getTime() - 24 * 60 * 60 * 1000);
@@ -536,7 +548,7 @@ async function confirmAppointment(req, res) {
       appointmentCode,
       dentistCode: appt.dentist_code,
       date: dateStr,
-      time: timeStr,
+      time: localTime,
     });
 
     return res.status(200).json({ appointment: appt, queue, receptionistCode: finalReceptionistCode });
@@ -804,11 +816,23 @@ async function confirmUpdateAppointment(req, res) {
     appt.pendingExpiresAt = null;
     await appt.save();
 
+    // Format time in local timezone (not UTC)
+    const localTime = appt.appointment_date.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Asia/Colombo'
+    });
+
+    // Get patient age information
+    const contactInfo = await Notify.getPatientContact(appt.patient_code);
+    const patientAge = contactInfo?.age || (appt.isGuestBooking && appt.guestInfo?.age) || (appt.otherPersonDetails?.age);
+    
     await sendApptConfirmed(appt.patient_code, {
       appointmentCode,
       dentistCode: appt.dentist_code,
       date: appt.appointment_date.toISOString().slice(0, 10),
-      time: appt.appointment_date.toISOString().slice(11, 16),
+      time: localTime,
       patientType: appt.patientType,
       patientName: appt.patientSnapshot?.name,
       createdByCode: appt.createdByCode,
@@ -820,7 +844,8 @@ async function confirmUpdateAppointment(req, res) {
       patientCode: appt.patient_code,
       dentistCode: appt.dentist_code,
       date: appt.appointment_date.toISOString().slice(0, 10),
-      time: appt.appointment_date.toISOString().slice(11, 16),
+      time: localTime,
+      patientAge: patientAge,
       createdByCode: appt.createdByCode,
       acceptedByCode: receptionistCode,
       patientName: appt.patientSnapshot?.name,
@@ -894,4 +919,89 @@ module.exports = {
   updateByReceptionist,
   confirmUpdateAppointment,
   cancelUpdateAppointment,
+  sendMissingNotifications,
 };
+
+// Send missing notifications for already confirmed appointments
+async function sendMissingNotifications(req, res) {
+  try {
+    // Find confirmed appointments that don't have WhatsApp/PDF sent
+    const confirmedAppointments = await Appointment.find({
+      status: 'confirmed',
+      $or: [
+        { 'confirmationStatus.whatsappSent': { $ne: true } },
+        { 'confirmationStatus.pdfSent': { $ne: true } },
+        { 'confirmationStatus': { $exists: false } }
+      ]
+    }).lean();
+
+    console.log(`[sendMissingNotifications] Found ${confirmedAppointments.length} appointments needing notifications`);
+
+    let successCount = 0;
+    for (const appt of confirmedAppointments) {
+      try {
+        // Get patient contact information
+        let contactInfo = null;
+        if (appt.patient_code) {
+          const Notify = require('../Services/NotificationService');
+          contactInfo = await Notify.getPatientContact(appt.patient_code);
+        } else if (appt.guestInfo) {
+          contactInfo = {
+            phone: appt.guestInfo.phone,
+            email: appt.guestInfo.email,
+            name: appt.guestInfo.name
+          };
+        }
+
+        if (contactInfo?.phone) {
+          // Send WhatsApp + PDF notification
+          const Notify = require('../Services/NotificationService');
+          const result = await Notify.sendAppointmentConfirmed({
+            to: contactInfo.phone,
+            patientType: appt.patientType || (appt.isGuestBooking ? 'unregistered' : 'registered'),
+            patientCode: appt.patient_code,
+            dentistCode: appt.dentist_code,
+            appointmentCode: appt.appointmentCode,
+            datetimeISO: appt.appointment_date,
+            reason: appt.reason,
+            patientName: contactInfo.name || appt.patientSnapshot?.name || appt.guestInfo?.name,
+            phone: contactInfo.phone,
+            email: contactInfo.email,
+            nic: contactInfo.nic || appt.patientSnapshot?.nic,
+            passport: contactInfo.passport || appt.patientSnapshot?.passport
+          });
+
+          // Update confirmation status
+          await Appointment.updateOne(
+            { _id: appt._id },
+            {
+              $set: {
+                'confirmationStatus.whatsappSent': result.whatsapp.status === 'success',
+                'confirmationStatus.whatsappSentAt': result.whatsapp.status === 'success' ? new Date() : null,
+                'confirmationStatus.whatsappError': result.whatsapp.status === 'failed' ? result.whatsapp.error : null,
+                'confirmationStatus.pdfSent': result.pdf.status === 'success',
+                'confirmationStatus.pdfSentAt': result.pdf.status === 'success' ? new Date() : null,
+                'confirmationStatus.pdfError': result.pdf.status === 'failed' ? result.pdf.error : null,
+                'confirmationStatus.confirmationMessage': result.message
+              }
+            }
+          );
+
+          successCount++;
+          console.log(`[sendMissingNotifications] Sent notifications for ${appt.appointmentCode}`);
+        }
+      } catch (e) {
+        console.error(`[sendMissingNotifications] Error for ${appt.appointmentCode}:`, e);
+      }
+    }
+
+    return res.status(200).json({ 
+      message: `Missing notifications sent. ${successCount} appointments processed.`,
+      successCount,
+      totalFound: confirmedAppointments.length
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: e.message || 'Failed to send missing notifications' });
+  }
+}

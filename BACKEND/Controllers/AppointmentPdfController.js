@@ -52,14 +52,33 @@ const getAppointmentPdf = async (req, res) => {
     const appointmentDate = new Date(appointment.appointment_date);
     const contactInfo = await Notify.getPatientContact(appointment.patient_code);
     
+    // Format time in local timezone (not UTC)
+    const localTime = appointmentDate.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Asia/Colombo'
+    });
+
+    // Get patient age
+    let patientAge = null;
+    if (appointment.isGuestBooking && appointment.guestInfo?.age) {
+      patientAge = appointment.guestInfo.age;
+    } else if (appointment.otherPersonDetails?.age) {
+      patientAge = appointment.otherPersonDetails.age;
+    } else if (contactInfo?.age) {
+      patientAge = contactInfo.age;
+    }
+    
     const pdfBuffer = await Notify.buildAppointmentPdf({
       patientType: appointment.patientType || (appointment.isGuestBooking ? 'unregistered' : 'registered'),
       patientCode: appointment.patient_code,
       patientName: contactInfo?.name || appointment.patientSnapshot?.name || appointment.guestInfo?.name,
+      patientAge: patientAge,
       dentistCode: appointment.dentist_code,
       appointmentCode: appointment.appointmentCode,
       date: appointmentDate.toISOString().slice(0, 10),
-      time: appointmentDate.toISOString().slice(11, 16),
+      time: localTime,
       reason: appointment.reason,
       phone: contactInfo?.phone || appointment.guestInfo?.phone,
       email: contactInfo?.email || appointment.guestInfo?.email,

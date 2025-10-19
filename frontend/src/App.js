@@ -32,9 +32,10 @@ import ManagerNav from "./Components/Nav/ManagerNav";
 import ManagerDashboard from "./Components/Dashboard/ManagerDashboard";
 import Inventory from "./Components/Inventory/Inventory";
 import InventoryRequestReading from "./Components/Inventory/Inventoryrequestreading";
-import Reports from "./Components/Pages/Reports";
 import AdminFeedbackPage from "./Components/Feedback/AdminFeedbackPage";
 import ManagerProfilePage from "./Components/Profile/ManagerProfilePage";
+import SupplierManagement from "./Components/Suppliers/SupplierManagement";
+import ManagerReports from "./Components/Pages/ManagerReports";
 import ReceptionistDashboard from "./Components/Dashboard/ReceptionistDashboard";
 import ReceptionistEvents from "./Components/Events/ReceptionistEvents";
 import ReceptionistSchedule from "./Components/Schedules/ReceptionistSchedule";
@@ -55,6 +56,7 @@ import PatientReviews from "./Components/Review/MyReviews";
 import ReceptionistLeave from "./Components/Leave/ReceptionistLeave";
 import ReceptionistNotifications from "./Components/Notification/ReceptionistNotifications";
 import BookAppointment from "./Components/Appointments/BookAppointment";
+import CheckAppointment from "./Components/Appointments/CheckAppointment";
 import Home from "./Components/Home/Home";
 import ProfileUpdate from "./Components/Profile/ProfileUpdate";
 import MedicalHistory from "./Components/Profile/MedicalHistory";
@@ -101,7 +103,8 @@ export default function App() {
         <Route path="dashboard" element={<ManagerDashboard />} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="inventory-request" element={<InventoryRequestReading />} />
-        <Route path="reports" element={<Reports />} />
+        <Route path="suppliers" element={<SupplierManagement />} />
+        <Route path="reports" element={<ManagerReports />} />
         <Route path="feedback" element={<AdminFeedbackPage />} />
         <Route path="profile" element={<ManagerProfilePage />} />
       </Route>
@@ -125,11 +128,8 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/register-patient" element={<PatientRegister />} />
-      <Route path="/book-appointment" element={
-        <ProtectedRoute>
-          <BookAppointment />
-        </ProtectedRoute>
-      } />
+        <Route path="/book-appointment" element={<BookAppointment />} />
+        <Route path="/check-appointment" element={<CheckAppointment />} />
       <Route path="/profile" element={
         <ProtectedRoute>
           <Profile />

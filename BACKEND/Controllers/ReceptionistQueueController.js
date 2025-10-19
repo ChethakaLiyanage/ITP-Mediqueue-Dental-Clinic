@@ -243,11 +243,20 @@ async function switchTime(req, res) {
 
     // ✅ Send WhatsApp notification (per queue_part4.txt)
     try {
+      // Format time in local timezone (not UTC)
+      const newTimeDate = new Date(newTime);
+      const localTime = newTimeDate.toLocaleTimeString('en-US', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Colombo'
+      });
+      
       await sendApptConfirmed(item.patientCode, {
         appointmentCode: item.appointmentCode,
         dentistCode: item.dentistCode,
-        date: new Date(newTime).toISOString().slice(0, 10),
-        time: new Date(newTime).toISOString().slice(11, 16),
+        date: newTimeDate.toISOString().slice(0, 10),
+        time: localTime,
       });
     } catch (e) {
       console.error("[switchTime:notify]", e);
@@ -321,11 +330,19 @@ async function cancelAppointment(req, res) {
 
     // ✅ Send WhatsApp cancellation notification (per queue_part3.txt)
     try {
+      // Format time in local timezone (not UTC)
+      const localTime = item.date.toLocaleTimeString('en-US', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Colombo'
+      });
+      
       await sendApptCanceled(item.patientCode, {
         appointmentCode: item.appointmentCode,
         dentistCode: item.dentistCode,
         date: item.date.toISOString().slice(0, 10),
-        time: item.date.toISOString().slice(11, 16),
+        time: localTime,
         reason: reason || "Appointment cancelled",
       });
     } catch (e) {

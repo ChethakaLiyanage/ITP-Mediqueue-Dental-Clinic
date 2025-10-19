@@ -112,6 +112,31 @@ export default function ReceptionistNotifications() {
 
   // Manual acceptance function removed - appointments now auto-confirm after 4 hours
 
+  // Send missing notifications function
+  const sendMissingNotifications = async () => {
+    try {
+      setError('');
+      const response = await authenticatedFetch(`${API_BASE}/receptionist/appointments/send-missing-notifications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        alert(`✅ ${result.message}`);
+        load(); // Refresh the data
+      } else {
+        const error = await response.json();
+        setError(`Failed to send missing notifications: ${error.message}`);
+      }
+    } catch (err) {
+      console.error('Send missing notifications error:', err);
+      setError(`Failed to send missing notifications: ${err.message}`);
+    }
+  };
+
   // Download PDF function
   const downloadPdf = async (appointmentCode) => {
     try {
@@ -516,6 +541,16 @@ export default function ReceptionistNotifications() {
               <span className="notif-count-badge">
                 {autoConfirmed.length} confirmed
               </span>
+            </div>
+            <div className="notif-section-actions">
+              <button 
+                className="notif-send-notifications-btn" 
+                onClick={sendMissingNotifications}
+                disabled={loading}
+                title="Send missing WhatsApp and PDF notifications"
+              >
+                📱 Send Missing Notifications
+              </button>
             </div>
           </div>
           

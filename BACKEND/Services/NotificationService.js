@@ -47,10 +47,15 @@ async function getPatientContact(patientCode) {
     .populate({ path: 'userId', select: 'name email contact_no' })
     .lean();
   if (p) {
+    // Calculate age from date of birth
+    const age = p.dob ? Math.floor((new Date() - new Date(p.dob)) / (365.25 * 24 * 60 * 60 * 1000)) : null;
     return {
       name: p.userId?.name || 'Patient',
       email: p.userId?.email || null,
       phone: p.userId?.contact_no || null,
+      age: age,
+      nic: p.nic || null,
+      passport: p.passport || null
     };
   }
 
@@ -60,6 +65,7 @@ async function getPatientContact(patientCode) {
       name: up.name || 'Patient',
       email: up.email || null,
       phone: up.phone || null,
+      age: up.age || null,
     };
   }
 
@@ -360,8 +366,8 @@ function buildAccountPdf(meta = {}) {
   });
 }
 
-function buildAppointmentPdf(meta) {
-  return new Promise((resolve, reject) => {
+async function buildAppointmentPdf(meta) {
+  return new Promise(async (resolve, reject) => {
     if (!PDFDocument) {
       return reject(new Error('pdfkit not available'));
     }
@@ -423,12 +429,17 @@ function buildAppointmentPdf(meta) {
     // Main content area
     let yPosition = 150;
 
+    // Get dentist name and patient age
+    const dentistName = await getDentistName(meta.dentistCode);
+    const patientAge = meta.patientAge || (meta.patientType === 'registered' && meta.nic ? 'Registered Patient' : null);
+
     // Appointment details table
     const tableData = [
-      { field: 'Doctor', value: meta.dentistName || meta.dentistCode || '-' },
+      { field: 'Doctor', value: dentistName },
       { field: 'Date', value: meta.date || '-' },
       { field: 'Time', value: meta.time || '-' },
       { field: 'Patient Name', value: meta.patientName || '-' },
+      { field: 'Patient Age', value: patientAge || '-' },
       { field: 'Phone', value: meta.phone || '-' },
       { field: 'Email', value: meta.email || '-' }
     ];
@@ -627,14 +638,26 @@ async function sendAppointmentConfirmed({ to, patientType, patientCode, dentistC
   if (PDFDocument) {
     try {
       const d = new Date(datetimeISO);
+      // Format time in local timezone (not UTC)
+      const localTime = d.toLocaleTimeString('en-US', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Colombo'
+      });
+
+      // Get patient contact info including age
+      const contactInfo = await getPatientContact(patientCode);
+      
       pdfBuffer = await buildAppointmentPdf({
         patientType,
         patientCode,
         patientName,
+        patientAge: contactInfo?.age,
         dentistCode,
         appointmentCode,
         date: d.toISOString().slice(0, 10),
-        time: d.toISOString().slice(11, 16),
+        time: localTime,
         reason,
         phone,
         email,

@@ -5,48 +5,80 @@ const { pad } = require("../utils/seq");
 
 const AppointmentSchema = new Schema(
   {
-    // store codes (strings) instead of ObjectId refs
-    patient_code:   { type: String, required: function() { return !this.isGuestBooking && !this.isBookingForSomeoneElse; }, index: true },
-    dentist_code:   { type: String, required: true, index: true },
-
-    appointment_date: { type: Date, required: true, index: true }, // full date & time
-    reason:           { type: String, trim: true },
-
+    // Basic appointment info
+    patientCode: { 
+      type: String, 
+      required: true, 
+      index: true 
+    },
+    dentistCode: { 
+      type: String, 
+      required: true, 
+      index: true 
+    },
+    
+    // Booking for someone else fields
+    isBookingForSomeoneElse: {
+      type: Boolean,
+      default: false
+    },
+    actualPatientName: {
+      type: String,
+      trim: true
+    },
+    actualPatientEmail: {
+      type: String,
+      trim: true
+    },
+    actualPatientPhone: {
+      type: String,
+      trim: true
+    },
+    actualPatientAge: {
+      type: Number
+    },
+    relationshipToPatient: {
+      type: String,
+      trim: true,
+      enum: ['Self', 'Spouse', 'Child', 'Parent', 'Sibling', 'Friend', 'Other']
+    },
+    
+    // Date and time
+    appointmentDate: { 
+      type: Date, 
+      required: true, 
+      index: true 
+    },
+    duration: { 
+      type: Number, 
+      default: 30 // minutes
+    },
+    
+    // Appointment details
+    reason: { 
+      type: String, 
+      trim: true 
+    },
+    notes: { 
+      type: String, 
+      trim: true 
+    },
+    
+    // Status tracking
     status: {
       type: String,
-      enum: ["pending", "confirmed", "completed", "cancelled"],
+      enum: ["pending", "confirmed", "completed", "cancelled", "no-show"],
       default: "pending",
+      index: true
     },
-
-    queue_no: { type: Number },
-
-    // human-readable code: AP-0001, AP-0002, ...
-    appointmentCode: { type: String, unique: true, sparse: true },
-
-    // Guest booking support
-    isGuestBooking: { type: Boolean, default: false },
-    guestInfo: {
-      name: { type: String, trim: true },
-      phone: { type: String, trim: true },
-      email: { type: String, trim: true },
-      address: { type: String, trim: true },
-      age: { type: Number },
-      gender: { type: String, enum: ['male', 'female', 'other'], required: false }
+    
+    // Unique appointment code
+    appointmentCode: { 
+      type: String, 
+      unique: true, 
+      sparse: true 
     },
-
-    // "Book for someone else" support
-    isBookingForSomeoneElse: { type: Boolean, default: false },
-    bookerPatientCode: { type: String, trim: true, index: true }, // The patient who made the booking
-    appointmentForPatientCode: { type: String, trim: true, index: true }, // The patient the appointment is for (if registered)
-    otherPersonDetails: {
-      name: { type: String, trim: true },
-      contact: { type: String, trim: true },
-      age: { type: Number },
-      gender: { type: String, enum: ['male', 'female', 'other', ''] },
-      relation: { type: String, trim: true }, // Relation to booker (e.g., 'son', 'daughter', 'spouse', 'parent', 'friend')
-      notes: { type: String, trim: true }
-    },
-
+    
     // Tracking fields
     createdByCode: { type: String, trim: true },
     acceptedByCode: { type: String, trim: true },
@@ -83,50 +115,89 @@ const AppointmentSchema = new Schema(
       pdfError: { type: String },
       pdfUrl: { type: String }, // For patient access
       confirmationMessage: { type: String }, // Store the sent message
-    },
+    }
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
 );
 
-// unique per dentist per exact time (by code)
-AppointmentSchema.index({ dentist_code: 1, appointment_date: 1 }, { unique: true });
+// Indexes for better performance
+AppointmentSchema.index({ patientCode: 1, appointmentDate: 1 });
+// Removed the unique compound index that was causing duplicate key errors
+AppointmentSchema.index({ status: 1, appointmentDate: 1 });
 
-// Custom validation for guest bookings and booking for someone else
-AppointmentSchema.pre("validate", function(next) {
-  if (this.isGuestBooking) {
-    // For guest bookings, ensure guest info is provided
-    if (!this.guestInfo || !this.guestInfo.name || !this.guestInfo.phone || !this.guestInfo.email) {
-      return next(new Error("Guest information (name, phone, email) is required for guest bookings"));
-    }
-  } else if (this.isBookingForSomeoneElse) {
-    // For "booking for someone else", ensure booker code is provided
-    if (!this.bookerPatientCode) {
-      return next(new Error("bookerPatientCode is required when booking for someone else"));
-    }
-    // Ensure other person's details are provided
-    if (!this.otherPersonDetails || !this.otherPersonDetails.name || !this.otherPersonDetails.contact) {
-      return next(new Error("Other person's name and contact are required when booking for someone else"));
-    }
-  } else {
-    // For regular registered user bookings, ensure patient_code is provided
-    if (!this.patient_code) {
-      return next(new Error("patient_code is required for registered user bookings"));
-    }
-  }
-  next();
-});
-
-// auto-generate AP-0001 style codes
-AppointmentSchema.pre("save", async function (next) {
+// Pre-save middleware to generate appointment code
+AppointmentSchema.pre('save', async function(next) {
   if (this.isNew && !this.appointmentCode) {
-    const c = await Counter.findOneAndUpdate(
-      { scope: "appointment" },
-      { $inc: { seq: 1 } },
-      { upsert: true, new: true }
-    );
-    this.appointmentCode = `AP-${pad(c.seq, 4)}`; // AP-0001
+    try {
+      const counter = await Counter.findOneAndUpdate(
+        { scope: 'appointmentCode' },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+      this.appointmentCode = `AP-${pad(counter.seq, 4)}`;
+    } catch (error) {
+      console.error('Error generating appointment code:', error);
+      this.appointmentCode = `AP-${Date.now()}`;
+    }
   }
+  
+  // Update the updatedAt field
+  this.updatedAt = new Date();
   next();
 });
 
-module.exports = mongoose.model("AppointmentModel", AppointmentSchema);
+// Static method to find appointments by date range
+AppointmentSchema.statics.findByDateRange = function(startDate, endDate, dentistCode = null) {
+  const query = {
+    appointmentDate: {
+      $gte: startDate,
+      $lte: endDate
+    }
+  };
+  
+  if (dentistCode) {
+    query.dentistCode = dentistCode;
+  }
+  
+  return this.find(query).sort({ appointmentDate: 1 });
+};
+
+// Static method to find available time slots
+AppointmentSchema.statics.findAvailableSlots = function(dentistCode, date, duration = 30) {
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  return this.find({
+    dentistCode,
+    appointmentDate: {
+      $gte: startOfDay,
+      $lte: endOfDay
+    },
+    status: { $in: ['pending', 'confirmed'] }
+  }).sort({ appointmentDate: 1 });
+};
+
+// Instance method to check if appointment can be cancelled
+AppointmentSchema.methods.canBeCancelled = function() {
+  const now = new Date();
+  const appointmentTime = new Date(this.appointmentDate);
+  const hoursUntilAppointment = (appointmentTime - now) / (1000 * 60 * 60);
+  
+  return this.status === 'pending' || this.status === 'confirmed' && hoursUntilAppointment > 24;
+};
+
+// Instance method to check if appointment can be rescheduled
+AppointmentSchema.methods.canBeRescheduled = function() {
+  const now = new Date();
+  const appointmentTime = new Date(this.appointmentDate);
+  const hoursUntilAppointment = (appointmentTime - now) / (1000 * 60 * 60);
+  
+  return this.status === 'pending' || this.status === 'confirmed' && hoursUntilAppointment > 2;
+};
+
+module.exports = mongoose.model("Appointment", AppointmentSchema, "appointmentmodels");

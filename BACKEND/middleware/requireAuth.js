@@ -72,12 +72,19 @@ module.exports = async function requireAuth(req, res, next) {
     // 🔹 If patient, attach patientCode
     if (user.role === "Patient") {
       const PatientModel = require("../Model/PatientModel");
-      const patient = await PatientModel.findOne({ userId: user._id }).select(
-        "patientCode"
-      );
-      if (patient) {
-        req.user.patientCode = patient.patientCode;
-        console.log('Patient code attached:', patient.patientCode);
+      try {
+        const patient = await PatientModel.findOne({ userId: user._id }).select(
+          "patientCode"
+        );
+        if (patient) {
+          req.user.patientCode = patient.patientCode;
+          console.log('Patient code attached:', patient.patientCode);
+        } else {
+          console.log('No patient record found for user:', user._id);
+        }
+      } catch (error) {
+        console.error('Error fetching patient record:', error);
+        // Don't fail authentication if patient record doesn't exist
       }
     }
 

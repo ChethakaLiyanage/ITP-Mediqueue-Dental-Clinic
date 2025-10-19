@@ -35,7 +35,6 @@ const Patient_router = require("./Routes/PatientRoutes");
 const Prescription_router = require("./Routes/DentistPrescriptionRoutes");
 const Feedback_router = require("./Routes/FeedbackRoutes");
 const Appointment_router = require("./Routes/AppointmentRoutes");
-const GuestAppointment_router = require("./Routes/GuestAppointmentRoutes");
 const auth_router = require("./Routes/DentistauthRoutes");
 const { login, registerPatient, forgotPassword, resetPassword } = require("./Controllers/DentistAuthControllers");
 const User_router = require("./Routes/UserRoutes");
@@ -56,7 +55,6 @@ const receptionist_router = require("./Routes/ReceptionistRoutes");
 const receptionistAuth_router = require("./Routes/ReceptionistAuthRoutes");
 const receptionistSchedule_router = require("./Routes/ReceptionistScheduleRoutes");
 const receptionistPatient_router = require("./Routes/ReceptionistPatientRoutes");
-const receptionistAppointment_router = require("./Routes/ReceptionistAppointmentRoutes");
 const receptionistUnregisteredPatient_router = require("./Routes/ReceptionistUnregisteredPatientRoutes");
 const receptionistQueue_router = require("./Routes/ReceptionistQueueRoutes");
 const receptionistDentist_router = require("./Routes/ReceptionistDentistRoutes");
@@ -66,6 +64,7 @@ const patientInquiry_router = require("./Routes/PatientInquiryRoutes");
 const profile_router = require("./routes/profileRoutes");
 const managerReport_router = require("./Routes/managerReportRoutes");
 const appointmentPdf_router = require("./Routes/appointmentPdfRoutes");
+const supplier_router = require("./Routes/SupplierRoutes");
 
 const app = express();
 
@@ -108,7 +107,6 @@ app.use("/prescriptions", Prescription_router);
 app.use("/feedbacks", Feedback_router);
 app.use("/api/appointments", appointmentPdf_router);
 app.use("/appointments", Appointment_router);
-app.use("/api/guest-appointments", GuestAppointment_router);
 app.use("/users", User_router);
 app.use("/inventory", Inventory_router);
 app.use("/events", event_router);
@@ -126,13 +124,27 @@ app.use("/api/receptionist", receptionist_router);
 app.use("/receptionist/schedule", receptionistSchedule_router);
 app.use("/receptionist/patients", receptionistPatient_router);
 app.use("/receptionist/dentists", receptionistDentist_router);
-app.use("/receptionist/appointments", receptionistAppointment_router);
 app.use("/receptionist/unregistered-patients", receptionistUnregisteredPatient_router);
 app.use("/receptionist/queue", receptionistQueue_router);
 app.use("/receptionist/inquiries", receptionistInquiry_router);
 app.use("/receptionist/notifications", receptionistNotification_router);
 app.use("/api/inquiries", patientInquiry_router);
+app.use("/api/suppliers", supplier_router);
+
+// Manager Reports Routes
 app.use("/api/manager/reports", managerReport_router);
+app.get("/api/manager/reports/test", (req, res) => {
+  res.json({ message: "Manager reports route is working!" });
+});
+
+// Simple test route without authentication
+app.get("/api/manager/reports/simple-test", (req, res) => {
+  res.json({ message: "Simple test route is working!", timestamp: new Date().toISOString() });
+});
+
+// Manager report routes are now handled by the managerReportRoutes router
+
+// Test endpoint removed - backend validation is working correctly
 
 if (!global.__listeners_bound) {
   process.on("unhandledRejection", (e) => {
