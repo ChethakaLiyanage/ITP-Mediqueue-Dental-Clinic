@@ -6,6 +6,7 @@ import PremiumFeedbackForm from "../Feedback/Feedback";
 import { Calendar, Clock, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "../../services/apiService";
 import "./home.css";
+import "./enhanced-events.css";
 
 // Get API base URL for images
 const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
@@ -819,22 +820,28 @@ export default function Home() {
         </section>
       )}
 
-      {/* Clinic Events Section */}
+      {/* Clinic Events Section - Enhanced */}
       <section className="clinic-events" id="events" data-consistent="true">
         <div className="container">
           <div className="section-title">
+            <div className="title-icon">
+              <Calendar size={32} className="title-icon-svg" />
+            </div>
             <h2>Upcoming Clinic Events</h2>
-            <p>Stay updated with our latest dental health events and workshops</p>
+            <p>Stay updated with our latest dental health events, workshops, and community programs</p>
+            <div className="title-decoration"></div>
           </div>
 
           {eventsLoading ? (
             <div className="events-loading">
               <div className="loading-spinner"></div>
-              <p>Loading events...</p>
+              <p>Loading amazing events for you...</p>
             </div>
           ) : clinicEvents.length === 0 ? (
             <div className="events-empty">
-              <Calendar size={48} />
+              <div className="empty-icon-wrapper">
+                <Calendar size={64} />
+              </div>
               <h3>No Events Scheduled</h3>
               <p>Check back soon for upcoming dental health events and workshops.</p>
             </div>
@@ -845,72 +852,91 @@ export default function Home() {
                    className="nav-arrow nav-arrow-left" 
                    onClick={goToPreviousEvent}
                    aria-label="Previous event"
+                   disabled={clinicEvents.length <= 1}
                  >
-                   <ChevronLeft size={24} />
+                   <ChevronLeft size={28} />
                  </button>
                  
                  <div className="events-grid">
                    {clinicEvents.length > 0 && clinicEvents[currentEventIndex] && (
-                     <div className="event-card">
+                     <div className="event-card" key={currentEventIndex}>
                        {(() => {
                          const event = clinicEvents[currentEventIndex];
-                         console.log('Displaying event:', currentEventIndex, event.title);
                          const eventStatus = getEventStatus(event.startDate, event.endDate);
                          
                          return (
                            <>
-                             <div className="event-image">
-                               {event.imageUrl ? (
-                                 <img 
-                                   src={`${API_BASE}${event.imageUrl}`} 
-                                   alt={event.title}
-                                   onError={(e) => {
-                                     console.log('Image failed to load:', event.imageUrl);
-                                     // Try to find the correct image file
-                                     const baseName = event.imageUrl.split('/').pop();
-                                     const fileName = baseName.split('.')[0];
-                                     const extension = baseName.split('.').pop();
-                                     
-                                     // Try different possible filenames
-                                     const possibleUrls = [
-                                       event.imageUrl,
-                                       `/uploads/events/${fileName}.jpg`,
-                                       `/uploads/events/${fileName}.jpeg`,
-                                       `/uploads/events/${fileName}.png`,
-                                       `/uploads/events/${fileName}.webp`
-                                     ];
-                                     
-                                     let currentIndex = 0;
-                                     const tryNextImage = () => {
-                                       if (currentIndex < possibleUrls.length) {
-                                         e.target.src = `${API_BASE}${possibleUrls[currentIndex]}`;
-                                         currentIndex++;
-                                       } else {
-                                         // If all attempts fail, show placeholder
-                                         e.target.style.display = 'none';
-                                         e.target.nextElementSibling.style.display = 'flex';
-                                       }
-                                     };
-                                     
-                                     e.target.onerror = tryNextImage;
-                                   }}
-                                 />
-                               ) : null}
-                               
-                               {/* Fallback placeholder */}
-                               <div 
-                                 className="event-placeholder" 
-                                 style={{ display: event.imageUrl ? 'none' : 'flex' }}
-                               >
-                                 <Calendar size={32} />
-                               </div>
-                               
-                               <div className={`event-status ${eventStatus.status}`}>
-                                 {eventStatus.text}
+                             <div className="event-image-wrapper">
+                               <div className="event-image">
+                                 {event.imageUrl ? (
+                                   <img 
+                                     src={`${API_BASE}${event.imageUrl}`} 
+                                     alt={event.title}
+                                     className="event-img"
+                                     onError={(e) => {
+                                       const baseName = event.imageUrl.split('/').pop();
+                                       const fileName = baseName.split('.')[0];
+                                       
+                                       const possibleUrls = [
+                                         event.imageUrl,
+                                         `/uploads/events/${fileName}.jpg`,
+                                         `/uploads/events/${fileName}.jpeg`,
+                                         `/uploads/events/${fileName}.png`,
+                                         `/uploads/events/${fileName}.webp`
+                                       ];
+                                       
+                                       let currentIndex = 0;
+                                       const tryNextImage = () => {
+                                         if (currentIndex < possibleUrls.length) {
+                                           e.target.src = `${API_BASE}${possibleUrls[currentIndex]}`;
+                                           currentIndex++;
+                                         } else {
+                                           e.target.style.display = 'none';
+                                           e.target.nextElementSibling.style.display = 'flex';
+                                         }
+                                       };
+                                       e.target.onerror = tryNextImage;
+                                     }}
+                                   />
+                                 ) : null}
+                                 
+                                 <div 
+                                   className="event-placeholder" 
+                                   style={{ display: event.imageUrl ? 'none' : 'flex' }}
+                                 >
+                                   <Calendar size={48} />
+                                   <span>No Image Available</span>
+                                 </div>
+                                 
+                                 <div className="event-overlay"></div>
+                                 
+                                 <div className={`event-status-badge ${eventStatus.status}`}>
+                                   <span className="status-dot"></span>
+                                   {eventStatus.text}
+                                 </div>
                                </div>
                              </div>
                              
                              <div className="event-content">
+                               <div className="event-meta">
+                                 <div className="event-date-badge">
+                                   <Calendar size={18} />
+                                   <span>{formatEventDate(event.startDate)}</span>
+                                 </div>
+                                 {!event.allDay && (
+                                   <div className="event-time-badge">
+                                     <Clock size={18} />
+                                     <span>{formatEventTime(event.startDate)} - {formatEventTime(event.endDate)}</span>
+                                   </div>
+                                 )}
+                                 {event.allDay && (
+                                   <div className="event-time-badge all-day">
+                                     <Clock size={18} />
+                                     <span>All Day Event</span>
+                                   </div>
+                                 )}
+                               </div>
+                               
                                <div className="event-header">
                                  <h3>{event.title}</h3>
                                </div>
@@ -919,27 +945,11 @@ export default function Home() {
                                  <p className="event-description">{event.description}</p>
                                )}
                                
-                               <div className="event-details">
-                                 <div className="event-detail">
-                                   <Calendar size={16} />
-                                   <span>{formatEventDate(event.startDate)}</span>
-                                 </div>
-                                 
-                                 {!event.allDay && (
-                                   <div className="event-detail">
-                                     <Clock size={16} />
-                                     <span>
-                                       {formatEventTime(event.startDate)} - {formatEventTime(event.endDate)}
-                                     </span>
-                                   </div>
-                                 )}
-                                 
-                                 {event.allDay && (
-                                   <div className="event-detail">
-                                     <Clock size={16} />
-                                     <span>All Day Event</span>
-                                   </div>
-                                 )}
+                               <div className="event-footer">
+                                 <button className="btn-event-details">
+                                   <span>View Details</span>
+                                   <ChevronRight size={18} />
+                                 </button>
                                </div>
                              </div>
                            </>
@@ -953,25 +963,29 @@ export default function Home() {
                    className="nav-arrow nav-arrow-right" 
                    onClick={goToNextEvent}
                    aria-label="Next event"
+                   disabled={clinicEvents.length <= 1}
                  >
-                   <ChevronRight size={24} />
+                   <ChevronRight size={28} />
                  </button>
                </div>
               
-               {/* Event indicators */}
                {clinicEvents.length > 1 && (
-                 <div className="event-indicators">
-                   <div className="event-counter">
-                     Event {currentEventIndex + 1} of {clinicEvents.length}
+                 <div className="event-controls">
+                   <div className="event-indicators">
+                     {clinicEvents.map((_, index) => (
+                       <button
+                         key={index}
+                         className={`indicator ${index === currentEventIndex ? 'active' : ''}`}
+                         onClick={() => goToEvent(index)}
+                         aria-label={`Go to event ${index + 1}`}
+                       />
+                     ))}
                    </div>
-                   {clinicEvents.map((_, index) => (
-                     <button
-                       key={index}
-                       className={`indicator ${index === currentEventIndex ? 'active' : ''}`}
-                       onClick={() => goToEvent(index)}
-                       aria-label={`Go to event ${index + 1}`}
-                     />
-                   ))}
+                   <div className="event-counter">
+                     <span className="counter-current">{currentEventIndex + 1}</span>
+                     <span className="counter-separator">/</span>
+                     <span className="counter-total">{clinicEvents.length}</span>
+                   </div>
                  </div>
                )}
             </div>
