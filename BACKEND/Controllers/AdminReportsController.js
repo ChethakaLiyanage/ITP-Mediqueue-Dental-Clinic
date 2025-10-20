@@ -257,6 +257,20 @@ exports.getPatientReport = async (req, res) => {
       }).lean();
     }
 
+    // Helper to compute age from DOB
+    const computeAge = (dob) => {
+      if (!dob) return null;
+      const birth = new Date(dob);
+      if (isNaN(birth.getTime())) return null;
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age;
+    };
+
     // Combine and format patients
     const allPatients = [
       ...registeredPatients.map(p => ({
@@ -264,7 +278,7 @@ exports.getPatientReport = async (req, res) => {
         name: p.userId?.name || 'N/A',
         email: p.userId?.email || 'N/A',
         contact: p.userId?.contact_no || p.userId?.phone || 'N/A',
-        age: p.age || 'N/A',
+        age: computeAge(p.dob) ?? 'N/A',
         gender: p.gender || 'N/A',
         type: 'Registered',
         status: 'Active',
@@ -340,26 +354,46 @@ exports.getAppointmentReport = async (req, res) => {
     const filter = { createdAt: { $gte: startDate } };
     if (status && status !== 'all') filter.status = status;
 
-    const appointments = await AppointmentModel.find(filter)
-      .populate('patientId', 'name email phone')
-      .populate('dentistId', 'name specialization')
-      .populate('createdBy', 'name')
-      .lean();
+    // Important: Appointment schema stores codes (patientCode, dentistCode, createdByCode)
+    // and does not have ObjectId refs for patient/dentist/createdBy. Attempting to populate
+    // unknown paths can throw in strict populate mode. Query raw documents safely instead.
+    const appointments = await AppointmentModel.find(filter).lean();
 
-    const formattedAppointments = appointments.map(apt => ({
-      appointmentId: apt._id,
-      patientName: apt.patientId?.name || 'N/A',
-      patientEmail: apt.patientId?.email || 'N/A',
-      dentistName: apt.dentistId?.name || 'N/A',
-      specialization: apt.dentistId?.specialization || 'N/A',
-      appointmentDate: apt.appointmentDate,
-      timeSlot: apt.timeSlot,
-      status: apt.status,
-      reason: apt.reason || 'N/A',
-      notes: apt.notes || 'N/A',
-      createdBy: apt.createdBy?.name || 'System',
-      createdDate: apt.createdAt
-    }));
+    // Only use QueueModel for supplemental data
+    const QueueModel = require('../Model/QueueModel');
+    const queues = await QueueModel.find({
+      appointmentCode: { $in: appointments.map(a => a.appointmentCode).filter(Boolean) }
+    }).select('appointmentCode reason createdAt').lean();
+
+    const queueByAppt = new Map();
+    for (const q of queues) {
+      if (!queueByAppt.has(q.appointmentCode)) queueByAppt.set(q.appointmentCode, q);
+    }
+
+    const formattedAppointments = appointments.map(apt => {
+      const q = apt.appointmentCode ? queueByAppt.get(apt.appointmentCode) : null;
+      const displayReason = (q?.reason && q.reason !== 'General consultation') ? q.reason : (apt.reason || 'N/A');
+
+      // Handle both camelCase and snake_case field names
+      const patientCode = apt.patientCode || apt.patient_code;
+      const dentistCode = apt.dentistCode || apt.dentist_code;
+      const apptDate = apt.appointmentDate || apt.appointment_date;
+
+      return {
+        appointmentId: apt._id,
+        patientName: apt.patientSnapshot?.name || apt.actualPatientName || patientCode || 'N/A',
+        patientEmail: apt.patientSnapshot?.email || apt.actualPatientEmail || 'N/A',
+        dentistName: dentistCode || 'N/A',
+        specialization: 'N/A',
+        appointmentDate: apptDate,
+        timeSlot: apt.timeSlot || (apptDate ? new Date(apptDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
+        status: apt.status,
+        reason: displayReason,
+        notes: apt.notes || 'N/A',
+        createdBy: apt.createdByCode || apt.created_by_code || (apt.origin === 'patient' ? 'Patient' : 'System'),
+        createdDate: apt.createdAt
+      };
+    });
 
     if (format === 'csv') {
       const csvHeader = 'Appointment ID,Patient Name,Patient Email,Dentist,Specialization,Date,Time,Status,Reason,Created By,Created Date\n';

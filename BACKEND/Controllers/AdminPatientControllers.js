@@ -9,11 +9,12 @@ exports.getReceptionistPatientActivities = async (req, res) => {
   try {
     const { receptionistId, dateRange, status } = req.query;
     
-    // Build filter for patients - only include those registered by receptionists
+    // Build filter for patients - include those with registeredBy, registeredByCode or createdByCode
     const filter = {
       $or: [
         { registeredBy: { $exists: true, $ne: null } },
-        { registeredByCode: { $exists: true, $ne: null, $ne: "" } }
+        { registeredByCode: { $exists: true, $ne: null, $ne: "" } },
+        { createdByCode: { $exists: true, $ne: null, $ne: "" } }
       ]
     };
     
@@ -75,6 +76,15 @@ exports.getReceptionistPatientActivities = async (req, res) => {
           role: { $in: ['Receptionist', 'receptionist'] }
         }).lean();
         
+        if (receptionist) {
+          receptionistDetails = receptionist;
+        }
+      } else if (patient.createdByCode) {
+        // Fallback: some records store the receptionist code in createdByCode
+        const receptionist = await User.findOne({
+          userCode: patient.createdByCode,
+          role: { $in: ['Receptionist', 'receptionist'] }
+        }).lean();
         if (receptionist) {
           receptionistDetails = receptionist;
         }

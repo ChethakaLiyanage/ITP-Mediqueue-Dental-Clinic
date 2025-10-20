@@ -425,11 +425,12 @@ ${patient.allergies ? `- Allergies: ${patient.allergies}` : ''}
                     )}
                   </td>
                   <td>
-                    {patient.registeredBy ? (
+                    {patient.registeredByCode || patient.createdByCode ? (
                       <div className="registered-by">
-                        <span className="name">{patient.registeredBy}</span>
-                        {patient.registeredByCode && (
-                          <span className="code">({patient.registeredByCode})</span>
+                        {/* Show code prominently; name if backend provides */}
+                        <span className="code">{patient.registeredByCode || patient.createdByCode}</span>
+                        {patient.registeredBy && (
+                          <span className="name">&nbsp;— {patient.registeredBy}</span>
                         )}
                       </div>
                     ) : (

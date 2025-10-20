@@ -101,7 +101,12 @@ const AdminReports = () => {
       const response = await axios.get(url, config);
 
       if (response.data.success) {
-        setReportData(response.data.data);
+        console.log(`Fetched ${reportType} data:`, response.data.data);
+        // Ensure we maintain the existing data structure and only update the relevant section
+        setReportData(prevData => ({
+          ...prevData,
+          ...response.data.data
+        }));
       }
     } catch (error) {
       console.error(`Error fetching ${reportType} report:`, error);
@@ -222,12 +227,7 @@ const AdminReports = () => {
         >
           📅 Appointments
         </button>
-        <button 
-          className={`tab-btn ${activeTab === 'activities' ? 'active' : ''}`}
-          onClick={() => setActiveTab('activities')}
-        >
-          📋 Activities
-        </button>
+        {/* Activities tab removed */}
       </div>
 
       {/* Loading State */}
@@ -566,8 +566,13 @@ const AdminReports = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {(reportData?.appointments || []).length > 0 ? (
-                      reportData.appointments.map((appointment, index) => (
+                    {console.log('Appointments data:', reportData?.appointments, 'Length:', (reportData?.appointments || []).length)}
+                    {(() => {
+                      const appointments = reportData?.appointments || [];
+                      console.log('Processing appointments:', appointments);
+                      return appointments.length > 0;
+                    })() ? (
+                      (reportData?.appointments || []).map((appointment, index) => (
                         <tr key={index}>
                           <td>{appointment.patientName || 'N/A'}</td>
                           <td>{appointment.dentistName || 'N/A'}</td>
@@ -579,7 +584,7 @@ const AdminReports = () => {
                             </span>
                           </td>
                           <td>{appointment.reason || 'N/A'}</td>
-                          <td>{appointment.createdAt ? formatDate(appointment.createdAt) : 'N/A'}</td>
+                          <td>{appointment.createdBy || 'N/A'}</td>
                         </tr>
                       ))
                     ) : (
@@ -595,73 +600,7 @@ const AdminReports = () => {
         </div>
       )}
 
-      {/* Activities Report Tab */}
-      {activeTab === 'activities' && (
-        <div className="report-content">
-          <div className="report-filters">
-            <button 
-              className="download-btn"
-              onClick={() => downloadReport('activities')}
-            >
-              📥 Download CSV
-            </button>
-          </div>
-
-          {reportData && !loading && (
-            <>
-              <div className="report-summary">
-                <div className="summary-item">
-                  <span className="summary-label">Total Activities:</span>
-                  <span className="summary-value">{reportData.summary.total}</span>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">Clinic Events:</span>
-                  <span className="summary-value">{reportData.summary.clinicEvents}</span>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">Inquiries:</span>
-                  <span className="summary-value">{reportData.summary.inquiries}</span>
-                </div>
-              </div>
-
-              <div className="report-table-container">
-                <table className="report-table">
-                  <thead>
-                    <tr>
-                      <th>Type</th>
-                      <th>Title</th>
-                      <th>Description</th>
-                      <th>Created By</th>
-                      <th>Created Date</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reportData.activities.map((activity, index) => (
-                      <tr key={index}>
-                        <td>
-                          <span className={`type-badge ${activity.type.toLowerCase().replace(' ', '-')}`}>
-                            {activity.type}
-                          </span>
-                        </td>
-                        <td>{activity.title}</td>
-                        <td className="description-cell">{activity.description}</td>
-                        <td>{activity.createdBy}</td>
-                        <td>{formatDate(activity.createdDate)}</td>
-                        <td>
-                          <span className={`status-badge ${activity.status.toLowerCase()}`}>
-                            {activity.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      {/* Activities Report Tab removed per request */}
     </div>
   );
 };

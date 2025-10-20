@@ -17,7 +17,7 @@ import LeavePage from "./Components/Leave/DentistLeavePage";
 import DentistSchedulesPage from "./Components/Schedules/DentistSchedulesPage";
 import InventoryNotification from "./Components/Notification/InventoryNotification";
 import AdminNav from "./Components/Nav/AdminNav";
-import AdminDashboard from "./Components/Dashboard/AdminDashboard";
+import AdminDashboard from "./Components/Dashboard/Admindashboard";
 import StaffManagement from "./Components/Admin/StaffManagement";
 import ReceptionistActivities from "./Components/Admin/ReceptionistActivities";
 import PatientManagement from "./Components/Admin/PatientManagement";

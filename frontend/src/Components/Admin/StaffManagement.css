@@ -348,17 +348,15 @@
 
 /* Modal Styles */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: fixed !important;
+  inset: 0 !important; /* ensures full viewport coverage */
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 20000 !important; /* above sidebar */
   padding: 1rem;
+  box-sizing: border-box;
 }
 
 .modal-content {
@@ -369,14 +367,36 @@
   width: 95vw;
   max-height: 90vh;
   overflow-y: auto;
-  margin: 0 auto;
+  margin: 0; /* let alignment be controlled per-modal */
+  position: relative;
+  z-index: 20001;
+}
+
+/* Avoid left cut-off behind fixed admin sidebar on desktop */
+@media (min-width: 1024px) {
+  .modal-overlay {
+    /* Place modal toward the right to avoid overlap with fixed sidebar */
+    justify-content: flex-end;
+    padding-left: 0; /* no extra left push */
+    padding-right: 24px; /* small right gutter */
+  }
+}
+
+/* Make edit staff modal narrower so it clears the left sidebar visually */
+.edit-staff-modal {
+  max-width: 1100px !important;
+  width: clamp(720px, 78vw, 1100px) !important;
+  margin-left: auto; /* align to right */
+  margin-right: 24px; /* small gutter from edge */
 }
 
 /* Specific styles for Add Staff Modal */
 .add-staff-modal {
-  max-width: 1200px !important;
-  width: 95vw !important;
-  min-width: 800px;
+  max-width: 1100px !important;
+  width: clamp(720px, 78vw, 1100px) !important;
+  min-width: 720px;
+  margin-left: auto; /* align to right */
+  margin-right: 24px; /* small gutter from edge */
 }
 
 .modal-header {
