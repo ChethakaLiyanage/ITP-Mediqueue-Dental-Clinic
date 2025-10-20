@@ -598,6 +598,7 @@ export default function Home() {
           <nav className="nav-menu">
             <a href="#home" className="nav-link">Home</a>
             <a href="#services" className="nav-link">Services</a>
+            <a href="#events" className="nav-link">Events</a>
             <a href="#about" className="nav-link">About</a>
             <a href="#contact" className="nav-link">Contact</a>
           </nav>
@@ -944,13 +945,6 @@ export default function Home() {
                                {event.description && (
                                  <p className="event-description">{event.description}</p>
                                )}
-                               
-                               <div className="event-footer">
-                                 <button className="btn-event-details">
-                                   <span>View Details</span>
-                                   <ChevronRight size={18} />
-                                 </button>
-                               </div>
                              </div>
                            </>
                          );

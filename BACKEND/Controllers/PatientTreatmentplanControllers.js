@@ -24,10 +24,17 @@ const getMyTreatments = async (req, res) => {
     }
 
     const includeDeleted = req.query.includeDeleted === "1";
+    const includeArchived = req.query.includeArchived === "1";
     const filter = { patientCode };
     
     if (!includeDeleted) {
       filter.isDeleted = false;
+    }
+
+    // By default, only show active treatments (not archived)
+    // Medical history will use includeArchived=1 to get all treatments
+    if (!includeArchived && !req.query.status) {
+      filter.status = 'active';
     }
 
     // Optional filters from query params

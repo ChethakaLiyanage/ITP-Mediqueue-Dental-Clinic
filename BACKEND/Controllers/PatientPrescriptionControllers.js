@@ -18,7 +18,15 @@ const getMyPrescriptions = async (req, res) => {
       });
     }
 
+    // By default, only show active prescriptions
+    // To get all prescriptions (including inactive), pass ?includeInactive=1
     const filter = { patientCode };
+    
+    // Only show active prescriptions by default (for profile view)
+    // Medical history will use includeInactive=1 to get all prescriptions
+    if (req.query.includeInactive !== "1") {
+      filter.isActive = true;
+    }
     
     // Optional filters from query params
     if (req.query.active === "1") filter.isActive = true;

@@ -12,6 +12,8 @@ const {
   me,
 } = require("../Controllers/DentistAuthControllers");
 
+const { updateProfile } = require("../Controllers/AuthControllers");
+
 const upload = require("../middleware/uploadDentistPhoto");
 
 // Login
@@ -19,6 +21,9 @@ auth_router.post("/login", login);
 
 // Get current user profile
 auth_router.get("/me", verifyToken, me);
+
+// Update user profile (patient information)
+auth_router.put("/update-profile", verifyToken, updateProfile);
 
 // Register dentist (with optional photo)
 auth_router.post(

@@ -134,18 +134,33 @@ export default function ProfileTreatments() {
           <div className="profile-info-header">
             <h3 className="profile-info-title">
               <Activity className="text-green-600" size={20} />
-              My Treatment Plans
+              Active Treatment Plans
             </h3>
             <p className="profile-info-subtitle">
-              Access your dental treatment plans and procedures
+              View your active treatment plans. Archived treatments can be found in your <button 
+                onClick={() => navigate('/profile/medical-history')}
+                style={{ 
+                  display: 'inline',
+                  padding: '0',
+                  background: 'none',
+                  border: 'none',
+                  color: '#10b981',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit'
+                }}
+              >
+                medical history
+              </button>.
             </p>
           </div>
 
           {treatments.length === 0 ? (
             <div className="profile-empty-state">
               <Activity className="text-gray-400" size={48} />
-              <h4>No Treatment Plans Found</h4>
-              <p>You don't have any treatment plans yet. Your treatment plans will appear here once they are created by your dentist.</p>
+              <h4>No Active Treatment Plans</h4>
+              <p>You don't have any active treatment plans. Your treatment plans will appear here once they are created by your dentist. Archived treatments can be viewed in your medical history.</p>
             </div>
           ) : (
             <div className="treatments-grid">

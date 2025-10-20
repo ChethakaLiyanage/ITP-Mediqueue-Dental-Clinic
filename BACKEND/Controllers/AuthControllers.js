@@ -6,7 +6,7 @@ const Patient = require("../Model/PatientModel");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[0-9]{9,15}$/;
-const GENDERS = new Set(["male", "female", "other"]);
+const GENDERS = new Set(["male", "female", "other", "Male", "Female", "Other"]);
 
 function normalizeString(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -47,7 +47,9 @@ async function register(req, res) {
   const address = normalizeString(body.address);
   const nic = normalizeString(body.nic).toUpperCase();
   const dob = parseISODate(body.dob);
-  const gender = normalizeString(body.gender).toLowerCase();
+  // Capitalize first letter for gender to match PatientModel enum: Male, Female, Other
+  const genderRaw = normalizeString(body.gender).toLowerCase();
+  const gender = genderRaw.charAt(0).toUpperCase() + genderRaw.slice(1);
   const allergies = optionalString(body.allergies);
 
   const errors = [];
@@ -191,8 +193,15 @@ async function me(req, res) {
 }
 
 async function updateProfile(req, res) {
-  const userId = req.user?.id;
+  console.log('=== UPDATE PROFILE REQUEST ===');
+  console.log('req.user:', req.user);
+  console.log('req.body:', req.body);
+  
+  const userId = req.user?._id || req.user?.id;
+  console.log('Extracted userId:', userId);
+  
   if (!userId) {
+    console.error('No userId found in request');
     return res.status(401).json({ message: "Unauthorized" });
   }
 
@@ -200,10 +209,14 @@ async function updateProfile(req, res) {
   const name = normalizeString(body.name);
   const email = normalizeString(body.email).toLowerCase();
   const dob = parseISODate(body.dob);
-  const gender = normalizeString(body.gender).toLowerCase();
+  // Capitalize first letter for gender to match PatientModel enum: Male, Female, Other
+  const genderRaw = normalizeString(body.gender).toLowerCase();
+  const gender = genderRaw.charAt(0).toUpperCase() + genderRaw.slice(1);
   const address = normalizeString(body.address);
   const allergies = optionalString(body.allergies);
   const phone = optionalString(body.phone);
+  
+  console.log('Parsed data:', { name, email, dob, gender, address, phone });
 
   const errors = [];
   if (!name) errors.push("Name is required");

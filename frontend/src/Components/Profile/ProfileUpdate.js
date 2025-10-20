@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./profileupdate.css";
+import { ArrowLeft, User, Mail, Phone, Calendar, MapPin, AlertTriangle, Save } from "lucide-react";
+import "./profile.css";
 
 const initialForm = {
   name: "",
@@ -86,31 +87,20 @@ export default function ProfileUpdate() {
 
     setSaving(true);
     try {
-      // First get the user ID from the profile
-      const profileRes = await fetch("http://localhost:5000/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (!profileRes.ok) {
-        throw new Error("Unable to get user ID");
-      }
-      
-      const profileData = await profileRes.json();
-      const userId = profileData.user?._id || profileData.user?.id;
-      
-      if (!userId) {
-        throw new Error("User ID not found");
-      }
-      
       const updateData = {
         name: form.name,
         email: form.email,
-        contact_no: form.phone,
+        phone: form.phone,
+        dob: form.dob,
+        gender: form.gender,
+        address: form.address,
+        allergies: form.allergies || "",
       };
       
       console.log("Sending profile update:", updateData);
+      console.log("Token exists:", !!token);
       
-      const res = await fetch(`http://localhost:5000/users/${userId}`, {
+      const res = await fetch("http://localhost:5000/auth/update-profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -127,6 +117,7 @@ export default function ProfileUpdate() {
       }
 
       if (res.status === 401) {
+        console.error("Unauthorized - token may be invalid or expired");
         localStorage.removeItem("token");
         window.dispatchEvent(new Event("auth-change"));
         navigate("/login", { replace: true });
@@ -134,7 +125,8 @@ export default function ProfileUpdate() {
       }
 
       if (!res.ok) {
-        throw new Error(data.message || "Failed to update profile");
+        console.error("Update failed with status:", res.status, "Data:", data);
+        throw new Error(data.message || data.errors?.[0] || "Failed to update profile");
       }
 
       setMessage(data.message || "Profile updated successfully");
@@ -147,62 +139,202 @@ export default function ProfileUpdate() {
   };
 
   if (loading) {
-    return <div className="form-wrap">Loading profile...</div>;
+    return (
+      <div className="profile-page">
+        <div className="profile-container">
+          <div className="profile-loading-container">
+            <div className="profile-loading-card">
+              <div className="profile-loading-spinner" />
+              <p className="profile-loading-text">Loading your profile...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="form-wrap">
-      <h2>Update Profile</h2>
-      {error && <div className="msg" style={{ color: "crimson" }}>{error}</div>}
-      {message && <div className="msg" style={{ color: "#065f46" }}>{message}</div>}
-
-      <form onSubmit={handleSubmit}>
-        <label>
-          Name
-          <input name="name" value={form.name} onChange={handleChange} required />
-        </label>
-        <label>
-          Email
-          <input type="email" name="email" value={form.email} onChange={handleChange} required />
-        </label>
-        <label>
-          Phone
-          <input name="phone" value={form.phone} onChange={handleChange} placeholder="Enter phone number" />
-        </label>
-        <label>
-          Date of Birth
-          <input type="date" name="dob" value={form.dob} onChange={handleChange} required />
-        </label>
-        <label>
-          Gender
-          <select name="gender" value={form.gender} onChange={handleChange} required>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-          </select>
-        </label>
-        <label>
-          Address
-          <textarea name="address" value={form.address} onChange={handleChange} required rows={3} />
-        </label>
-        <label>
-          Allergies
-          <textarea name="allergies" value={form.allergies} onChange={handleChange} rows={3} />
-        </label>
-
-        <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-          <button
-            type="button"
-            style={{ background: "#e5e7eb", color: "#111827", padding: "10px 12px", borderRadius: 8, border: "none" }}
+    <div className="profile-page">
+      <div className="profile-container">
+        {/* Breadcrumb */}
+        <div className="profile-breadcrumb">
+          <button 
+            className="breadcrumb-back-btn"
             onClick={() => navigate("/profile")}
           >
-            Cancel
+            <ArrowLeft size={16} />
+            Back to Profile
           </button>
-          <button type="submit" disabled={saving}>
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
+          <span className="breadcrumb-separator">/</span>
+          <span className="breadcrumb-current">Update Profile</span>
         </div>
-      </form>
+
+        <div className="profile-info-card">
+          <div className="profile-info-header">
+            <h3 className="profile-info-title">
+              <User className="text-blue-600" size={20} />
+              Update Your Information
+            </h3>
+            <p className="profile-info-subtitle">
+              Keep your personal information up to date
+            </p>
+          </div>
+
+          {error && (
+            <div className="profile-alert profile-alert-error">
+              <AlertTriangle size={20} />
+              <span>{error}</span>
+            </div>
+          )}
+          
+          {message && (
+            <div className="profile-alert profile-alert-success">
+              <Save size={20} />
+              <span>{message}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="profile-update-form">
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">
+                  <User size={16} />
+                  Full Name
+                </label>
+                <input 
+                  type="text"
+                  name="name" 
+                  value={form.name} 
+                  onChange={handleChange} 
+                  className="form-input"
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <Mail size={16} />
+                  Email Address
+                </label>
+                <input 
+                  type="email" 
+                  name="email" 
+                  value={form.email} 
+                  onChange={handleChange} 
+                  className="form-input"
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <Phone size={16} />
+                  Phone Number
+                </label>
+                <input 
+                  type="text"
+                  name="phone" 
+                  value={form.phone} 
+                  onChange={handleChange} 
+                  className="form-input"
+                  placeholder="Enter phone number" 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <Calendar size={16} />
+                  Date of Birth
+                </label>
+                <input 
+                  type="date" 
+                  name="dob" 
+                  value={form.dob} 
+                  onChange={handleChange} 
+                  className="form-input"
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <User size={16} />
+                  Gender
+                </label>
+                <select 
+                  name="gender" 
+                  value={form.gender} 
+                  onChange={handleChange} 
+                  className="form-input"
+                  required
+                >
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div className="form-group form-group-full">
+                <label className="form-label">
+                  <MapPin size={16} />
+                  Address
+                </label>
+                <textarea 
+                  name="address" 
+                  value={form.address} 
+                  onChange={handleChange} 
+                  className="form-textarea"
+                  rows={3}
+                  required 
+                />
+              </div>
+
+              <div className="form-group form-group-full">
+                <label className="form-label">
+                  <AlertTriangle size={16} />
+                  Allergies (Optional)
+                </label>
+                <textarea 
+                  name="allergies" 
+                  value={form.allergies} 
+                  onChange={handleChange} 
+                  className="form-textarea"
+                  rows={3}
+                  placeholder="List any known allergies or medications you're allergic to"
+                />
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => navigate("/profile")}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className="btn-primary"
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <div className="btn-spinner" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save size={18} />
+                    Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

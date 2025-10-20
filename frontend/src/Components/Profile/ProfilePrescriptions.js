@@ -134,18 +134,33 @@ export default function ProfilePrescriptions() {
           <div className="profile-info-header">
             <h3 className="profile-info-title">
               <Pill className="text-blue-600" size={20} />
-              My Prescriptions
+              Active Prescriptions
             </h3>
             <p className="profile-info-subtitle">
-              View your prescription history and medications
+              View your active prescriptions and current medications. Past prescriptions can be found in your <button 
+                onClick={() => navigate('/profile/medical-history')}
+                style={{ 
+                  display: 'inline',
+                  padding: '0',
+                  background: 'none',
+                  border: 'none',
+                  color: '#3b82f6',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit'
+                }}
+              >
+                medical history
+              </button>.
             </p>
           </div>
 
           {prescriptions.length === 0 ? (
             <div className="profile-empty-state">
               <Pill className="text-gray-400" size={48} />
-              <h4>No Prescriptions Found</h4>
-              <p>You don't have any prescriptions yet. Your prescriptions will appear here once they are issued by your dentist.</p>
+              <h4>No Active Prescriptions</h4>
+              <p>You don't have any active prescriptions. Your prescriptions will appear here once they are issued by your dentist. Past prescriptions can be viewed in your medical history.</p>
             </div>
           ) : (
             <div className="prescriptions-grid">
