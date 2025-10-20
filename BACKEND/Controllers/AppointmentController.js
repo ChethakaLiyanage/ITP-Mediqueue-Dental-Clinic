@@ -385,6 +385,7 @@ const getAvailableSlots = async (req, res) => {
     // POST /appointments - Create a new appointment
     const createAppointment = async (req, res) => {
       try {
+        console.log('🔍 createAppointment called with:', req.body);
         const { 
           dentistCode, 
           appointmentDate, 
@@ -477,13 +478,15 @@ const getAvailableSlots = async (req, res) => {
           patientCode,
           dentistCode,
           appointmentDate: appointmentDateTime,
-          duration: parseInt(duration),
+          duration: typeof duration === 'number' ? duration : parseInt(duration),
           reason: reason || '',
           notes: notes || '',
-          createdBy: patientCode,
+          createdByCode: patientCode,
           isBookingForSomeoneElse,
           relationshipToPatient,
-          status: isTodayAppointment ? 'confirmed' : 'pending' // Auto-confirm today's appointments
+          status: isTodayAppointment ? 'confirmed' : 'pending', // Auto-confirm today's appointments
+          origin: isAuthenticatedUser ? 'patient' : 'guest',
+          patientType: isAuthenticatedUser ? 'registered' : 'unregistered'
         };
         
         // Add actual patient details if booking for someone else OR if unregistered user
@@ -501,6 +504,7 @@ const getAvailableSlots = async (req, res) => {
           });
         }
 
+        console.log('🔍 Creating appointment with data:', JSON.stringify(appointmentData, null, 2));
         const appointment = new Appointment(appointmentData);
         await appointment.save();
         const appointmentCode = appointment.appointmentCode;
@@ -510,7 +514,8 @@ const getAvailableSlots = async (req, res) => {
     try {
       // Calculate end time
       const startTime = appointmentDateTime;
-      const endTime = new Date(startTime.getTime() + (duration * 60000)); // Add duration in milliseconds
+      const durationMs = (typeof duration === 'number' ? duration : parseInt(duration)) * 60000;
+      const endTime = new Date(startTime.getTime() + durationMs); // Add duration in milliseconds
       
       // Format time slot
       const startHour = startTime.getHours().toString().padStart(2, '0');
@@ -522,7 +527,7 @@ const getAvailableSlots = async (req, res) => {
         dentistCode: dentistCode,
         date: appointmentDateTime,
         timeSlot: `${startHour}:${startMin}-${endHour}:${endMin}`,
-        slotDuration: parseInt(duration),
+           slotDuration: typeof duration === 'number' ? duration : parseInt(duration),
         status: 'booked',
         isAvailable: false,
         appointmentId: appointmentCode,
@@ -571,7 +576,7 @@ const getAvailableSlots = async (req, res) => {
           position: nextPosition,
           status: 'waiting',
           reason: reason || 'General consultation',
-          duration: parseInt(duration),
+             duration: typeof duration === 'number' ? duration : parseInt(duration),
           notes: notes || '',
           
           // For someone else booking details
@@ -598,17 +603,21 @@ const getAvailableSlots = async (req, res) => {
         appointmentCode: appointmentCode,
         patientCode: patientCode,
         dentistCode: dentistCode,
-        appointmentDate: localAppointmentDateTime,
+        appointmentDate: appointmentDateTime,
         status: 'confirmed',
         isTodayAppointment: true
       }
     });
   } catch (error) {
-    console.error("Error creating appointment:", error);
+    console.error("❌ Error creating appointment:", error);
+    console.error("❌ Error stack:", error.stack);
+    console.error("❌ Request body:", req.body);
+    console.error("❌ User info:", req.user);
     res.status(500).json({
       success: false,
       message: "Failed to create appointment",
-      error: error.message
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
