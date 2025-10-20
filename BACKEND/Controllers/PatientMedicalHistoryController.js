@@ -411,8 +411,8 @@ const exportMedicalHistory = async (req, res) => {
       res.setHeader('Content-Disposition', `attachment; filename="medical-history-${new Date().toISOString().split('T')[0]}.json"`);
       return res.json(exportData);
     } else if (format === 'pdf') {
-      // Generate PDF
-      const doc = new PDFDocument();
+      // Generate PDF with professional design
+      const doc = new PDFDocument({ margin: 50, size: 'A4' });
       const filename = `medical-history-${new Date().toISOString().split('T')[0]}.pdf`;
       
       res.setHeader('Content-Type', 'application/pdf');
@@ -420,30 +420,95 @@ const exportMedicalHistory = async (req, res) => {
       
       doc.pipe(res);
       
-      // PDF Header
-      doc.fontSize(20).text('Medical History Report', 50, 50);
-      doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`, 50, 80);
-      doc.text(`Patient: ${patientInfo.name}`, 50, 100);
+      // Header with blue background-like effect
+      doc.fontSize(28)
+         .fillColor('#1e3a8a')
+         .text('MEDICAL HISTORY REPORT', 50, 50, { align: 'center' });
+      
+      doc.fontSize(11)
+         .fillColor('#64748b')
+         .text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 50, 90, { align: 'center' });
+      
+      // Horizontal line
+      doc.moveTo(50, 115)
+         .lineTo(545, 115)
+         .strokeColor('#1e3a8a')
+         .lineWidth(2)
+         .stroke();
+      
+      // Patient Information Section with border
+      let yPosition = 140;
+      doc.roundedRect(50, yPosition, 495, 140, 5)
+         .strokeColor('#e2e8f0')
+         .lineWidth(1)
+         .stroke();
+      
+      doc.fontSize(16)
+         .fillColor('#1e40af')
+         .text('Patient Information', 70, yPosition + 15);
+      
+      yPosition += 50;
+      const leftColumn = 70;
+      const rightColumn = 300;
+      
+      doc.fontSize(11)
+         .fillColor('#475569')
+         .font('Helvetica-Bold')
+         .text('Patient Name:', leftColumn, yPosition);
+      doc.font('Helvetica')
+         .fillColor('#1e293b')
+         .text(patientInfo.name, rightColumn, yPosition);
+      
+      yPosition += 25;
+      doc.font('Helvetica-Bold')
+         .fillColor('#475569')
+         .text('Patient Code:', leftColumn, yPosition);
+      doc.font('Helvetica')
+         .fillColor('#1e293b')
+         .text(patientCode, rightColumn, yPosition);
+      
+      yPosition += 25;
       if (patientInfo.age) {
-        doc.text(`Age: ${patientInfo.age} years old`, 50, 120);
+        doc.font('Helvetica-Bold')
+           .fillColor('#475569')
+           .text('Age:', leftColumn, yPosition);
+        doc.font('Helvetica')
+           .fillColor('#1e293b')
+           .text(`${patientInfo.age} years old`, rightColumn, yPosition);
       }
-      doc.text(`Gender: ${patientInfo.gender}`, 50, 140);
       
-      let yPosition = 180;
+      yPosition += 25;
+      doc.font('Helvetica-Bold')
+         .fillColor('#475569')
+         .text('Gender:', leftColumn, yPosition);
+      doc.font('Helvetica')
+         .fillColor('#1e293b')
+         .text(patientInfo.gender, rightColumn, yPosition);
       
-      // Patient Summary
-      doc.fontSize(16).text('Summary', 50, yPosition);
+      // Summary Section
+      yPosition += 50;
+      doc.fontSize(16)
+         .fillColor('#1e40af')
+         .font('Helvetica-Bold')
+         .text('Summary', 50, yPosition);
+      
       yPosition += 30;
-      doc.fontSize(12).text(`Total Treatments: ${exportData.summary.totalTreatments}`, 50, yPosition);
+      doc.fontSize(12)
+         .fillColor('#1e293b')
+         .font('Helvetica');
+      doc.text(`Total Treatments: ${exportData.summary.totalTreatments}`, 70, yPosition);
       yPosition += 20;
-      doc.text(`Total Prescriptions: ${exportData.summary.totalPrescriptions}`, 50, yPosition);
+      doc.text(`Total Prescriptions: ${exportData.summary.totalPrescriptions}`, 70, yPosition);
       yPosition += 20;
-      doc.text(`Total Appointments: ${exportData.summary.totalAppointments}`, 50, yPosition);
+      doc.text(`Total Appointments: ${exportData.summary.totalAppointments}`, 70, yPosition);
       yPosition += 40;
       
       // Treatments Section
       if (enrichedTreatments.length > 0) {
-        doc.fontSize(16).text('Completed Treatments', 50, yPosition);
+        doc.fontSize(16)
+           .fillColor('#1e40af')
+           .font('Helvetica-Bold')
+           .text('Completed Treatments', 50, yPosition);
         yPosition += 30;
         
         enrichedTreatments.forEach((treatment, index) => {
@@ -452,18 +517,48 @@ const exportMedicalHistory = async (req, res) => {
             yPosition = 50;
           }
           
-          doc.fontSize(14).text(`${index + 1}. ${treatment.diagnosis}`, 50, yPosition);
-          yPosition += 20;
-          doc.fontSize(10).text(`Dentist: Dr. ${treatment.dentistName}`, 70, yPosition);
-          yPosition += 15;
-          doc.text(`Completed: ${new Date(treatment.deletedAt).toLocaleDateString()}`, 70, yPosition);
-          yPosition += 15;
+          // Treatment item with border
+          const itemHeight = 85 + (treatment.treatment_notes ? 20 : 0);
+          doc.roundedRect(50, yPosition, 495, itemHeight, 3)
+             .strokeColor('#e2e8f0')
+             .lineWidth(1)
+             .stroke();
+          
+          doc.fontSize(13)
+             .fillColor('#1e293b')
+             .font('Helvetica-Bold')
+             .text(`${index + 1}. ${treatment.diagnosis}`, 70, yPosition + 15);
+          
+          yPosition += 40;
+          doc.fontSize(10)
+             .fillColor('#475569')
+             .font('Helvetica-Bold')
+             .text('Dentist:', 70, yPosition);
+          doc.font('Helvetica')
+             .fillColor('#1e293b')
+             .text(`Dr. ${treatment.dentistName}`, 140, yPosition);
+          
+          yPosition += 18;
+          doc.font('Helvetica-Bold')
+             .fillColor('#475569')
+             .text('Completed:', 70, yPosition);
+          doc.font('Helvetica')
+             .fillColor('#1e293b')
+             .text(new Date(treatment.deletedAt).toLocaleDateString(), 140, yPosition);
+          
           if (treatment.treatment_notes) {
-            doc.text(`Notes: ${treatment.treatment_notes}`, 70, yPosition);
-            yPosition += 15;
+            yPosition += 18;
+            doc.font('Helvetica-Bold')
+               .fillColor('#475569')
+               .text('Notes:', 70, yPosition);
+            doc.font('Helvetica')
+               .fillColor('#1e293b')
+               .text(treatment.treatment_notes, 140, yPosition, { width: 385 });
           }
-          yPosition += 20;
+          
+          yPosition += itemHeight - 53;
         });
+        yPosition += 20;
       }
       
       // Prescriptions Section
@@ -473,7 +568,10 @@ const exportMedicalHistory = async (req, res) => {
           yPosition = 50;
         }
         
-        doc.fontSize(16).text('Prescriptions', 50, yPosition);
+        doc.fontSize(16)
+           .fillColor('#1e40af')
+           .font('Helvetica-Bold')
+           .text('Prescriptions', 50, yPosition);
         yPosition += 30;
         
         enrichedPrescriptions.forEach((prescription, index) => {
@@ -482,15 +580,44 @@ const exportMedicalHistory = async (req, res) => {
             yPosition = 50;
           }
           
-          doc.fontSize(14).text(`${index + 1}. Prescription ${prescription.prescriptionCode}`, 50, yPosition);
-          yPosition += 20;
-          doc.fontSize(10).text(`Dentist: Dr. ${prescription.dentistName}`, 70, yPosition);
-          yPosition += 15;
-          doc.text(`Issued: ${new Date(prescription.issuedAt).toLocaleDateString()}`, 70, yPosition);
-          yPosition += 15;
-          doc.text(`Medicines: ${prescription.medicines?.length || 0}`, 70, yPosition);
-          yPosition += 20;
+          // Prescription item with border
+          doc.roundedRect(50, yPosition, 495, 75, 3)
+             .strokeColor('#e2e8f0')
+             .lineWidth(1)
+             .stroke();
+          
+          doc.fontSize(13)
+             .fillColor('#1e293b')
+             .font('Helvetica-Bold')
+             .text(`${index + 1}. Prescription ${prescription.prescriptionCode}`, 70, yPosition + 15);
+          
+          yPosition += 40;
+          doc.fontSize(10)
+             .fillColor('#475569')
+             .font('Helvetica-Bold')
+             .text('Dentist:', 70, yPosition);
+          doc.font('Helvetica')
+             .fillColor('#1e293b')
+             .text(`Dr. ${prescription.dentistName}`, 140, yPosition);
+          
+          yPosition += 18;
+          doc.font('Helvetica-Bold')
+             .fillColor('#475569')
+             .text('Issued:', 70, yPosition);
+          doc.font('Helvetica')
+             .fillColor('#1e293b')
+             .text(new Date(prescription.issuedAt).toLocaleDateString(), 140, yPosition);
+          
+          doc.font('Helvetica-Bold')
+             .fillColor('#475569')
+             .text('Medicines:', 300, yPosition);
+          doc.font('Helvetica')
+             .fillColor('#1e293b')
+             .text(`${prescription.medicines?.length || 0}`, 380, yPosition);
+          
+          yPosition += 32;
         });
+        yPosition += 20;
       }
       
       // Appointments Section
@@ -500,7 +627,10 @@ const exportMedicalHistory = async (req, res) => {
           yPosition = 50;
         }
         
-        doc.fontSize(16).text('Appointments', 50, yPosition);
+        doc.fontSize(16)
+           .fillColor('#1e40af')
+           .font('Helvetica-Bold')
+           .text('Appointments', 50, yPosition);
         yPosition += 30;
         
         enrichedAppointments.forEach((appointment, index) => {
@@ -509,19 +639,61 @@ const exportMedicalHistory = async (req, res) => {
             yPosition = 50;
           }
           
-          doc.fontSize(14).text(`${index + 1}. Appointment with Dr. ${appointment.dentistName}`, 50, yPosition);
-          yPosition += 20;
-          doc.fontSize(10).text(`Date: ${new Date(appointment.appointmentDate).toLocaleDateString()}`, 70, yPosition);
-          yPosition += 15;
-          doc.text(`Status: ${appointment.status}`, 70, yPosition);
-          yPosition += 15;
+          // Appointment item with border
+          const appointmentHeight = 95 + (appointment.reason ? 20 : 0);
+          doc.roundedRect(50, yPosition, 495, appointmentHeight, 3)
+             .strokeColor('#e2e8f0')
+             .lineWidth(1)
+             .stroke();
+          
+          doc.fontSize(13)
+             .fillColor('#1e293b')
+             .font('Helvetica-Bold')
+             .text(`${index + 1}. Appointment`, 70, yPosition + 15);
+          
+          yPosition += 40;
+          doc.fontSize(10)
+             .fillColor('#475569')
+             .font('Helvetica-Bold')
+             .text('Dentist:', 70, yPosition);
+          doc.font('Helvetica')
+             .fillColor('#1e293b')
+             .text(`Dr. ${appointment.dentistName}`, 140, yPosition);
+          
+          yPosition += 18;
+          doc.font('Helvetica-Bold')
+             .fillColor('#475569')
+             .text('Date:', 70, yPosition);
+          doc.font('Helvetica')
+             .fillColor('#1e293b')
+             .text(new Date(appointment.appointmentDate).toLocaleDateString(), 140, yPosition);
+          
+          doc.font('Helvetica-Bold')
+             .fillColor('#475569')
+             .text('Status:', 300, yPosition);
+          doc.font('Helvetica')
+             .fillColor('#1e293b')
+             .text(appointment.status || 'Scheduled', 370, yPosition);
+          
+          yPosition += 18;
           if (appointment.reason) {
-            doc.text(`Reason: ${appointment.reason}`, 70, yPosition);
-            yPosition += 15;
+            doc.font('Helvetica-Bold')
+               .fillColor('#475569')
+               .text('Reason:', 70, yPosition);
+            doc.font('Helvetica')
+               .fillColor('#1e293b')
+               .text(appointment.reason, 140, yPosition, { width: 385 });
+            yPosition += 18;
           }
-          yPosition += 20;
+          
+          yPosition += appointmentHeight - (appointment.reason ? 71 : 53);
         });
       }
+      
+      // Footer
+      doc.fontSize(9)
+         .fillColor('#94a3b8')
+         .text('This is a computer-generated document. No signature is required.', 50, 750, { align: 'center' });
       
       doc.end();
     } else {
