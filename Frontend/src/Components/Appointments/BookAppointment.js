@@ -343,7 +343,9 @@ const BookAppointment = () => {
       
     } catch (error) {
       console.error('Error booking appointment:', error);
-      setError(error.response?.data?.message || 'Failed to book appointment. Please try again.');
+      console.error('Error response data:', error.response?.data);
+      console.error('Error response status:', error.response?.status);
+      setError(error.response?.data?.message || error.response?.data?.error || 'Failed to book appointment. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -896,5 +898,3 @@ const BookAppointment = () => {
 };
 
 export default BookAppointment;
-
-
