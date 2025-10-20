@@ -7,6 +7,7 @@ const adminInquiryController = require("../Controllers/AdminInquiryControllers")
 const adminPatientController = require("../Controllers/AdminPatientControllers");
 const patientManagementController = require("../Controllers/PatientManagementControllers");
 const adminReportsController = require("../Controllers/AdminReportsController");
+const adminAppointmentController = require("../Controllers/AdminAppointmentControllers");
 const { uploadDentistPhoto, handleUploadError } = require("../middleware/upload");
 
 // =============================
@@ -45,9 +46,10 @@ admin_router.get("/patients/stats", adminPatientController.getPatientRegistratio
 admin_router.get("/patients/all", adminPatientController.getAllPatients);
 
 // =============================
-// Appointment Routes (Receptionist Activities) - REMOVED
+// Appointment Routes (Receptionist Activities)
 // =============================
-// Note: Admin appointment routes removed as part of appointment system rebuild
+admin_router.get("/appointments/receptionist-activities", adminAppointmentController.getReceptionistAppointmentActivities);
+admin_router.get("/appointments/receptionists", adminAppointmentController.getActiveAppointmentReceptionists);
 
 // =============================
 // Patient Management Routes

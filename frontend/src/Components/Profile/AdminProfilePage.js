@@ -305,7 +305,7 @@ export default function AdminProfilePage() {
         <div className="admin-profile-empty">No profile found for admin code: {adminCode}</div>
       ) : (
         <div className="admin-profile-content">
-          {/* Rest of the profile content - same as before */}
+          {/* Personal Information Section */}
           <div className="admin-profile-grid">
             <div className="admin-profile-field">
               <label className="admin-profile-label">Full Name *</label>
@@ -361,7 +361,101 @@ export default function AdminProfilePage() {
             </div>
           </div>
 
-          {/* Continue with permissions and other sections... */}
+          {/* Permissions Section */}
+          <div className="admin-profile-section">
+            <h3 className="admin-profile-section-title">Permissions</h3>
+            {editing ? (
+              <div className="admin-permission-grid">
+                {availablePermissions.map(permission => (
+                  <div key={permission} className="admin-permission-item">
+                    <input
+                      type="checkbox"
+                      id={permission}
+                      checked={form.permission.includes(permission)}
+                      onChange={() => handlePermissionChange(permission)}
+                    />
+                    <label htmlFor={permission} className="admin-permission-label">
+                      {permission.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="admin-permission-display">
+                {profile?.permission && profile.permission.length > 0 ? (
+                  <div className="admin-permission-tags">
+                    {profile.permission.map(perm => (
+                      <span key={perm} className="admin-permission-tag">
+                        {perm.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="admin-profile-static">No specific permissions assigned</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Status Section */}
+          <div className="admin-profile-section">
+            <h3 className="admin-profile-section-title">Account Status</h3>
+            {editing ? (
+              <div className="admin-status-toggle">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={form.isActive}
+                  onChange={(e) => setForm({...form, isActive: e.target.checked})}
+                />
+                <label htmlFor="isActive" className="admin-status-label">
+                  Account is active
+                </label>
+              </div>
+            ) : (
+              <div className="admin-status-display">
+                <span className={`admin-status-badge ${user?.isActive !== false ? 'active' : 'inactive'}`}>
+                  {user?.isActive !== false ? 'Active' : 'Inactive'}
+                </span>
+                <small className="admin-profile-note" style={{display: 'block', marginTop: '0.5rem'}}>
+                  {user?.isActive !== false 
+                    ? 'This account is currently active and can access the system' 
+                    : 'This account is inactive and cannot access the system'}
+                </small>
+              </div>
+            )}
+          </div>
+
+          {/* Role Information Section */}
+          <div className="admin-profile-section">
+            <h3 className="admin-profile-section-title">Admin Role Information</h3>
+            <div className="admin-role-info">
+              <div className="admin-role-item">
+                <div className="admin-role-label">Admin Code</div>
+                <div className="admin-role-value">
+                  <span className="admin-code-badge">{profile?.adminCode || adminCode || 'N/A'}</span>
+                </div>
+              </div>
+              <div className="admin-role-item">
+                <div className="admin-role-label">Role Type</div>
+                <div className="admin-role-value">
+                  <span className="admin-role-badge-large">Administrator</span>
+                </div>
+              </div>
+              <div className="admin-role-item">
+                <div className="admin-role-label">Created At</div>
+                <div className="admin-role-value">
+                  {profile?.createdAt ? new Date(profile.createdAt).toLocaleString() : 'N/A'}
+                </div>
+              </div>
+              <div className="admin-role-item">
+                <div className="admin-role-label">Last Updated</div>
+                <div className="admin-role-value">
+                  {profile?.updatedAt ? new Date(profile.updatedAt).toLocaleString() : 'N/A'}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

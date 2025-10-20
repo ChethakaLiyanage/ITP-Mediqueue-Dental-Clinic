@@ -397,16 +397,35 @@
 .action-buttons {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
 }
 
-.promote-btn, .delete-btn {
-  background: none;
+.action-btn, .promote-btn, .delete-btn, .view-btn {
   border: none;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
   font-size: 1rem;
-  transition: background 0.2s ease;
+  min-width: 36px;
+  height: 36px;
+}
+
+.action-btn:hover, .promote-btn:hover, .delete-btn:hover, .view-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.view-btn {
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.view-btn:hover {
+  background: #dbeafe;
 }
 
 .promote-btn {
