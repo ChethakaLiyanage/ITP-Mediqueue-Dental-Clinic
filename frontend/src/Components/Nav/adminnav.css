@@ -11,12 +11,51 @@
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
 }
 
+/* Reset any conflicting styles */
+.admin-shell * {
+  box-sizing: border-box;
+}
+
+/* Global reset for admin pages */
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden;
+}
+
+html {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure no global styles interfere with sidebar */
+* {
+  box-sizing: border-box;
+}
+
+/* Reset any potential conflicting styles */
+.admin-shell,
+.admin-shell * {
+  box-sizing: border-box;
+}
+
+/* Ensure no conflicting styles affect sidebar positioning */
+.admin-shell {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 .admin-shell {
   display: flex !important;
   min-height: 100vh;
   width: 100%;
   background: var(--gray-50);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  position: relative;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  outline: none !important;
 }
 
 /* Sidebar */
@@ -25,20 +64,54 @@
   min-height: 100vh;
   background: linear-gradient(180deg, var(--admin-purple) 0%, var(--admin-purple-dark) 100%);
   color: var(--white);
-  padding: 24px 20px;
+  padding: 24px 20px 24px 20px;
   display: flex;
   flex-direction: column;
   gap: 24px;
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  height: 100vh !important;
   z-index: 1000;
   transition: transform 0.3s ease;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  margin: 0 !important;
+  border: none !important;
+  outline: none !important;
+  transform: translateX(0) !important;
 }
 
 .admin-aside.collapsed {
   transform: translateX(-280px);
+}
+
+/* When sidebar is collapsed, adjust main content */
+.admin-shell:has(.admin-aside.collapsed) .admin-main {
+  margin-left: 0;
+}
+
+/* Force sidebar to left edge - remove all gaps */
+.admin-aside {
+  left: 0 !important;
+  right: auto !important;
+  margin: 0 !important;
+  padding-left: 20px !important;
+  border: none !important;
+  outline: none !important;
+  position: fixed !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  transform: translateX(0) !important;
+}
+
+/* Ensure sidebar is flush with viewport edge */
+.admin-aside:not(.collapsed) {
+  left: 0 !important;
+  margin-left: 0 !important;
+  padding-left: 20px !important;
+  border-left: none !important;
+  transform: translateX(0) !important;
 }
 
 /* Brand Section */
@@ -203,12 +276,17 @@
   min-width: 0;
   background: var(--gray-50);
   min-height: 100vh;
-  margin-left: 280px;
+  margin-left: 0 !important;
+  transition: margin-left 0.3s ease;
+  position: relative;
+  z-index: 1;
+  width: 100% !important;
+  padding-left: 280px !important;
 }
 
 .admin-topbar {
   background: var(--white);
-  padding: 16px 24px;
+  padding: 16px 24px 16px 8px;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -245,9 +323,7 @@
 }
 
 .admin-content {
-  padding: 24px;
-  width: 100%;
-  max-width: 100%;
+  padding: 24px 24px 24px 8px;
 }
 
 /* Mobile Overlay */
@@ -273,16 +349,20 @@
   }
 
   .admin-aside {
-    transform: translateX(-280px);
-    position: fixed;
+    transform: translateX(-280px) !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
   }
 
   .admin-aside.mobile-open {
-    transform: translateX(0);
+    transform: translateX(0) !important;
   }
 
   .admin-main {
     margin-left: 0 !important;
+    width: 100% !important;
   }
 
   .admin-topbar {

@@ -51,7 +51,7 @@
 }
 
 .dashboard-content {
-  padding: 2rem;
+  padding: 2rem 2rem 2rem 8px;
   max-width: 1200px;
   margin: 0 auto;
 }

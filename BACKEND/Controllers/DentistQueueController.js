@@ -98,6 +98,29 @@ async function getTodayQueueForDentist(req, res) {
               }
 
               console.warn('⚠️ No appointment found for queue:', q.appointmentCode, 'Using fallback data');
+              
+              // Check if this queue item itself has "for someone else" data
+              if (q.isBookingForSomeoneElse && q.actualPatientName) {
+                console.log('✅ Queue item has "for someone else" data:', q.actualPatientName);
+                return {
+                  ...q,
+                  queueNo: q.queueCode,
+                  reason: q.reason || reason || "General consultation",
+                  appointment_date: q.date,
+                  patientCode: q.patientCode, // Booker's patient code
+                  patientName: q.actualPatientName, // ✅ ACTUAL PATIENT NAME
+                  patientContact: q.actualPatientPhone || "-",
+                  patientAge: q.actualPatientAge || null,
+                  patientGender: null, // Not available in queue
+                  patientRelation: q.relationshipToPatient || null,
+                  patientNotes: q.notes || null,
+                  bookerPatientCode: q.patientCode, // Booker's patient code
+                  appointmentForPatientCode: null,
+                  isBookingForSomeoneElse: true,
+                };
+              }
+              
+              // Regular fallback for normal appointments
               return {
                 ...q,
                 queueNo: q.queueCode,

@@ -2,6 +2,8 @@
   min-height: 100vh;
   background-color: #f5f7fa;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .admin-header {
@@ -52,9 +54,10 @@
 }
 
 .dashboard-content {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 2rem 2rem 2rem 8px;
+  max-width: none;
+  margin: 0;
+  margin-left: 0 !important;
 }
 
 .admin-details-section {
@@ -341,13 +344,28 @@
   --admin-spacing-xl: 2rem;
 }
 
+/* Global reset for admin pages to prevent sidebar gaps */
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden;
+}
+
+html {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 /* Enhanced Admin Dashboard */
 .admin-dashboard-content {
-  padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 2rem 2rem 2rem 8px;
+  max-width: none;
+  margin: 0;
   background: var(--admin-bg-primary);
   min-height: 100vh;
+  margin-left: 0 !important;
+  padding-left: 280px !important;
+  transition: margin-left 0.3s ease;
 }
 
 /* Admin Details Section */
