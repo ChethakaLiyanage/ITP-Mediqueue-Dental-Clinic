@@ -176,11 +176,11 @@ export default function ProfileTreatments() {
                     </div>
                     <div className="treatment-info">
                       <h4 className="treatment-title">
-                        {treatment.planName || `Treatment Plan #${treatment.planCode || treatment._id.slice(-8)}`}
+                        {treatment.diagnosis || `Treatment Plan #${treatment.planCode || treatment._id.slice(-8)}`}
                       </h4>
                       <p className="treatment-date">
                         <Calendar size={14} />
-                        {new Date(treatment.createdAt).toLocaleDateString()}
+                        {new Date(treatment.created_date || treatment.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     <Eye className="text-gray-400" size={20} />
@@ -193,7 +193,7 @@ export default function ProfileTreatments() {
                     </div>
                     <div className="treatment-detail">
                       <FileText size={14} />
-                      <span>{treatment.procedures?.length || 0} procedures</span>
+                      <span>Version {treatment.version || 1}</span>
                     </div>
                   </div>
                   

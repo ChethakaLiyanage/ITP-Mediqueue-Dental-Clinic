@@ -211,14 +211,14 @@ export default function ProfilePrescriptionDetail() {
             )}
 
             {/* Medications */}
-            {prescription.medications && prescription.medications.length > 0 && (
+            {prescription.medicines && prescription.medicines.length > 0 && (
               <div className="prescription-section">
                 <h5 className="prescription-section-title">
                   <Pill size={18} />
-                  Medications ({prescription.medications.length})
+                  Medications ({prescription.medicines.length})
                 </h5>
                 <div className="medications-list">
-                  {prescription.medications.map((medication, index) => (
+                  {prescription.medicines.map((medication, index) => (
                     <div key={index} className="medication-item">
                       <div className="medication-header">
                         <span className="medication-number">{index + 1}</span>

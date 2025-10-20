@@ -12,6 +12,7 @@ const {
   requestAppointmentChange
 } = require("../Controllers/AppointmentController");
 const requireAuth = require("../middleware/requireAuth");
+const optionalAuth = require("../middleware/optionalAuth");
 const requireRole = require("../middleware/requireRole");
 
 const router = express.Router();
@@ -22,11 +23,17 @@ router.get("/check", checkAppointments);
 // GET /appointments/available-slots - Get available time slots (no auth required for booking)
 router.get("/available-slots", getAvailableSlots);
 
+// POST /appointments - Create appointment (allows both authenticated and unregistered users)
+router.post("/", optionalAuth, createAppointment);
+
+// PUT /appointments/:id - Update appointment (allows both authenticated and unregistered users)
+router.put("/:id", optionalAuth, updateAppointment);
+
+// DELETE /appointments/:id - Cancel appointment (allows both authenticated and unregistered users)
+router.delete("/:id", optionalAuth, cancelAppointment);
+
 // All other routes require authentication
 router.use(requireAuth);
-
-// POST /appointments - Create appointment (authenticated users only)
-router.post("/", createAppointment);
 
 // GET /appointments - Get appointments (for patients, dentists, admins)
 router.get("/", getAppointments);
@@ -38,13 +45,7 @@ router.post("/verify-otp", requireRole(["Patient"]), verifyOTP);
 // GET /appointments/:id - Get a specific appointment
 router.get("/:id", getAppointment);
 
-// POST /appointments - Create a new appointment (patients only) - moved above auth middleware
 
-// PUT /appointments/:id - Update an appointment
-router.put("/:id", updateAppointment);
-
-// DELETE /appointments/:id - Cancel an appointment
-router.delete("/:id", cancelAppointment);
 
 // POST /appointments/:id/request-change - Request change for confirmed appointment
 router.post("/:id/request-change", requestAppointmentChange);

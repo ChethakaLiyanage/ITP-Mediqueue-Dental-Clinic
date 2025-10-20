@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Calendar, Clock, User, Phone, Mail, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Search, Calendar, Clock, User, Phone, Mail, AlertCircle, CheckCircle, Loader2, X } from 'lucide-react';
 import api from '../../services/apiService';
 import './CheckAppointment.css';
 
@@ -14,6 +14,75 @@ const CheckAppointment = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [verificationModal, setVerificationModal] = useState({ show: false, type: '', appointment: null });
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [verificationPhone, setVerificationPhone] = useState('');
+
+  // Helper functions for appointment actions
+  const canReschedule = (appointment) => {
+    const appointmentDate = new Date(appointment.appointmentDate);
+    const today = new Date();
+    const isToday = appointmentDate.toDateString() === today.toDateString();
+    return appointment.status === 'pending' && !isToday;
+  };
+
+  const canCancel = (appointment) => {
+    const appointmentDate = new Date(appointment.appointmentDate);
+    const today = new Date();
+    const isToday = appointmentDate.toDateString() === today.toDateString();
+    return appointment.status === 'pending' && !isToday;
+  };
+
+  const handleReschedule = (appointment) => {
+    setVerificationModal({ show: true, type: 'reschedule', appointment });
+  };
+
+  const handleCancel = (appointment) => {
+    setVerificationModal({ show: true, type: 'cancel', appointment });
+  };
+
+  const handleVerification = async () => {
+    if (!verificationEmail && !verificationPhone) {
+      setError('Please provide either email or phone number for verification');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+
+      const { appointment, type } = verificationModal;
+      const verificationData = {
+        ...(verificationEmail && { verificationEmail }),
+        ...(verificationPhone && { verificationPhone })
+      };
+
+      if (type === 'reschedule') {
+        // Navigate to booking page with reschedule data
+        navigate('/book-appointment', {
+          state: {
+            rescheduleAppointment: appointment,
+            selectedDate: appointment.appointmentDate,
+            verificationData
+          }
+        });
+      } else if (type === 'cancel') {
+        // Cancel the appointment
+        await api.delete(`/appointments/${appointment._id}`, { data: verificationData });
+        setSuccess('Appointment cancelled successfully');
+        setVerificationModal({ show: false, type: '', appointment: null });
+        setVerificationEmail('');
+        setVerificationPhone('');
+        // Refresh the appointments list
+        handleSearch({ preventDefault: () => {} });
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      setError(error.response?.data?.message || 'Failed to verify. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -259,6 +328,28 @@ const CheckAppointment = () => {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Action Buttons for Unregistered Users */}
+                  <div className="appointment-actions">
+                    {canReschedule(appointment) && (
+                      <button 
+                        className="action-btn secondary"
+                        onClick={() => handleReschedule(appointment)}
+                      >
+                        <Calendar size={16} />
+                        Reschedule
+                      </button>
+                    )}
+                    {canCancel(appointment) && (
+                      <button 
+                        className="action-btn danger"
+                        onClick={() => handleCancel(appointment)}
+                      >
+                        <X size={16} />
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -313,6 +404,59 @@ const CheckAppointment = () => {
           Login
         </button>
       </div>
+
+      {/* Verification Modal */}
+      {verificationModal.show && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Verify Your Identity</h3>
+            <p>
+              Please provide your email or phone number to {verificationModal.type} this appointment:
+            </p>
+            <p><strong>{verificationModal.appointment?.appointmentCode}</strong></p>
+            
+            <div className="form-group">
+              <label>Email:</label>
+              <input
+                type="email"
+                value={verificationEmail}
+                onChange={(e) => setVerificationEmail(e.target.value)}
+                placeholder="Enter your email"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Phone:</label>
+              <input
+                type="tel"
+                value={verificationPhone}
+                onChange={(e) => setVerificationPhone(e.target.value)}
+                placeholder="Enter your phone number"
+              />
+            </div>
+            
+            <div className="modal-actions">
+              <button 
+                className="action-btn secondary"
+                onClick={() => {
+                  setVerificationModal({ show: false, type: '', appointment: null });
+                  setVerificationEmail('');
+                  setVerificationPhone('');
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                className="action-btn primary"
+                onClick={handleVerification}
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="animate-spin" size={16} /> : 'Verify'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

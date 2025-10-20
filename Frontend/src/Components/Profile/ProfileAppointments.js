@@ -17,7 +17,6 @@ import {
   XCircle,
   Calendar as CalendarIcon,
   User as UserIcon,
-  Edit,
   MessageCircle
 } from "lucide-react";
 import "./ProfileAppointments.css";
@@ -321,9 +320,6 @@ export default function ProfileAppointments() {
     return appointment.status === 'pending';
   };
 
-  const canDirectEdit = (appointment) => {
-    return appointment.status === 'pending';
-  };
 
   const canRequestChange = (appointment) => {
     return appointment.status === 'confirmed';
@@ -671,23 +667,7 @@ export default function ProfileAppointments() {
                 
                 <div className="appointment-actions">
                   
-                  {/* Direct Edit for Pending Appointments */}
-                  {canDirectEdit(appointment) && (
-                    <button 
-                      className="action-btn secondary"
-                      onClick={() => navigate("/book-appointment", { 
-                        state: { 
-                          editAppointment: appointment,
-                          selectedDate: appointment.appointmentDate 
-                        } 
-                      })}
-                    >
-                      <Edit size={16} />
-                      Edit
-                    </button>
-                  )}
-                  
-                  {/* Reschedule for Pending or Confirmed */}
+                  {/* Reschedule for Pending Appointments */}
                   {canReschedule(appointment) && (
                     <button 
                       className="action-btn secondary"

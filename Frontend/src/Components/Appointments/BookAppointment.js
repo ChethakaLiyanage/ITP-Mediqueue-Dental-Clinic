@@ -29,6 +29,10 @@ const BookAppointment = () => {
   const [actualPatientAge, setActualPatientAge] = useState('');
   const [relationshipToPatient, setRelationshipToPatient] = useState('Self');
   
+  // Reschedule state
+  const [rescheduleAppointment, setRescheduleAppointment] = useState(null);
+  const [verificationData, setVerificationData] = useState(null);
+  
   // OTP state
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -58,6 +62,21 @@ const BookAppointment = () => {
   // Fetch dentists on component mount
   useEffect(() => {
     fetchDentists();
+  }, []);
+
+  // Handle reschedule data from navigation state
+  useEffect(() => {
+    const state = window.history.state?.usr;
+    if (state?.rescheduleAppointment) {
+      setRescheduleAppointment(state.rescheduleAppointment);
+      setVerificationData(state.verificationData);
+      if (state.selectedDate) {
+        setSelectedDate(new Date(state.selectedDate).toISOString().split('T')[0]);
+      }
+      if (state.rescheduleAppointment.dentistCode) {
+        setSelectedDentist(state.rescheduleAppointment.dentistCode);
+      }
+    }
   }, []);
 
   const fetchDentists = async () => {
@@ -267,31 +286,59 @@ const BookAppointment = () => {
       setLoading(true);
       setError('');
       
-          const appointmentData = {
-            dentistCode: selectedDentist,
-            appointmentDate: selectedSlot,
-            duration: selectedDuration,
-            reason: reason.trim(),
-            notes: notes.trim(),
-            // Include patient code for authenticated users
-            ...(isAuthenticated && { patientCode: user.patientCode }),
-            // Include booking for someone else data if applicable
-            isBookingForSomeoneElse: isBookingForSomeoneElse,
-            // Include patient details for unregistered users OR when booking for someone else
-            ...((!isAuthenticated || isBookingForSomeoneElse) && {
-              actualPatientName: actualPatientName.trim(),
-              actualPatientEmail: actualPatientEmail.trim(),
-              actualPatientPhone: actualPatientPhone.trim(),
-              actualPatientAge: actualPatientAge ? parseInt(actualPatientAge) : null,
-              relationshipToPatient: relationshipToPatient
-            })
-          };
-
-      const response = await api.post('/appointments', appointmentData);
+      let response;
       
-      setSuccess('Appointment booked successfully!');
+      if (rescheduleAppointment) {
+        // Handle rescheduling
+        const updateData = {
+          dentistCode: selectedDentist,
+          appointmentDate: selectedSlot,
+          duration: selectedDuration,
+          reason: reason.trim(),
+          notes: notes.trim(),
+          // Include verification data for unregistered users
+          ...(verificationData && verificationData)
+        };
+        
+        response = await api.put(`/appointments/${rescheduleAppointment._id}`, updateData);
+        setSuccess('Appointment rescheduled successfully!');
+      } else {
+        // Handle new booking
+        const appointmentData = {
+          dentistCode: selectedDentist,
+          appointmentDate: selectedSlot, // This is already in ISO format from backend
+          duration: selectedDuration,
+          reason: reason.trim(),
+          notes: notes.trim(),
+          // Include patient code for authenticated users
+          ...(isAuthenticated && { patientCode: user.patientCode }),
+          // Include booking for someone else data if applicable
+          isBookingForSomeoneElse: isBookingForSomeoneElse,
+          // Include patient details for unregistered users OR when booking for someone else
+          ...((!isAuthenticated || isBookingForSomeoneElse) && {
+            actualPatientName: actualPatientName.trim(),
+            actualPatientEmail: actualPatientEmail.trim(),
+            actualPatientPhone: actualPatientPhone.trim(),
+            actualPatientAge: actualPatientAge ? parseInt(actualPatientAge) : null,
+            relationshipToPatient: relationshipToPatient
+          })
+        };
+        
+        response = await api.post('/appointments', appointmentData);
+        setSuccess('Appointment booked successfully!');
+      }
       setTimeout(() => {
-        navigate('/profile');
+        if (rescheduleAppointment) {
+          // For rescheduling, redirect to check appointments page
+          navigate('/check-appointment');
+        } else {
+          // Redirect based on user authentication status for new bookings
+          if (isAuthenticated) {
+            navigate('/profile'); // Registered users go to profile
+          } else {
+            navigate('/'); // Unregistered users go to home page
+          }
+        }
       }, 2000);
       
     } catch (error) {
@@ -830,7 +877,7 @@ const BookAppointment = () => {
                     ) : (
                       <>
                         <CheckCircle className="button-icon" />
-                    Book Appointment
+                    {rescheduleAppointment ? 'Reschedule Appointment' : 'Book Appointment'}
                       </>
                     )}
                   </button>

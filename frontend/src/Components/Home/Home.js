@@ -1110,21 +1110,21 @@ export default function Home() {
               </div>
               <p>Leading dental care provider in Sri Lanka, committed to providing exceptional oral health services with modern technology and experienced specialists.</p>
               <div className="social-links">
-                <a href="#" aria-label="Facebook"><i className="fab fa-facebook"></i></a>
-                <a href="#" aria-label="Instagram"><i className="fab fa-instagram"></i></a>
-                <a href="#" aria-label="Twitter"><i className="fab fa-twitter"></i></a>
-                <a href="#" aria-label="LinkedIn"><i className="fab fa-linkedin"></i></a>
+                <a href="https://facebook.com/mediqueue" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i className="fab fa-facebook"></i></a>
+                <a href="https://instagram.com/mediqueue" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i className="fab fa-instagram"></i></a>
+                <a href="https://twitter.com/mediqueue" target="_blank" rel="noopener noreferrer" aria-label="Twitter"><i className="fab fa-twitter"></i></a>
+                <a href="https://linkedin.com/company/mediqueue" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i className="fab fa-linkedin"></i></a>
               </div>
             </div>
 
             <div className="footer-section">
               <h3>Services</h3>
               <ul>
-                <li><a href="#">General Dentistry</a></li>
-                <li><a href="#">Restorative Dentistry</a></li>
-                <li><a href="#">Paediatric Dentistry</a></li>
-                <li><a href="#">Orthodontics</a></li>
-                <li><a href="#">Smile Enhancement</a></li>
+                <li><a href="#services">General Dentistry</a></li>
+                <li><a href="#services">Restorative Dentistry</a></li>
+                <li><a href="#services">Paediatric Dentistry</a></li>
+                <li><a href="#services">Orthodontics</a></li>
+                <li><a href="#services">Smile Enhancement</a></li>
               </ul>
             </div>
 
@@ -1134,6 +1134,7 @@ export default function Home() {
                 <li><a href="#home">Home</a></li>
                 <li><a href="#about">About Us</a></li>
                 <li><a href="#services">Services</a></li>
+                <li><a href="#events">Events</a></li>
                 <li><a href="#contact">Contact</a></li>
                 <li><Link to="/book-appointment">Book Appointment</Link></li>
               </ul>

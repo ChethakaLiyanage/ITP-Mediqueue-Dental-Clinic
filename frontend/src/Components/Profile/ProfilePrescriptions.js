@@ -193,7 +193,7 @@ export default function ProfilePrescriptions() {
                     </div>
                     <div className="prescription-detail">
                       <FileText size={14} />
-                      <span>{prescription.medications?.length || 0} medications</span>
+                      <span>{prescription.medicines?.length || 0} medications</span>
                     </div>
                   </div>
                   

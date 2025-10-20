@@ -3,6 +3,7 @@ const DentistModel = require("../Model/DentistModel");
 const PatientModel = require("../Model/PatientModel");
 const ScheduleModel = require("../Model/ScheduleModel");
 const { getDayNameUTC } = require("../utils/time");
+const { createLocalDateTime, formatAppointmentDate, isToday } = require("../utils/timezone");
 const crypto = require('crypto');
 
 // In-memory OTP storage (in production, use Redis or database)
@@ -59,7 +60,20 @@ const isSlotAvailable = async (dentistCode, appointmentDate) => {
     // Get day name and working hours
     const dateStr = appointmentDate.toISOString().slice(0, 10); // Get YYYY-MM-DD format
     const dayName = getDayNameUTC(dateStr);
-    const workingHours = dentist.availability_schedule?.[dayName];
+    let workingHours = dentist.availability_schedule?.[dayName];
+    
+    // If not found with abbreviated format, try full day name
+    if (!workingHours) {
+      const fullDayName = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      const daySchedule = dentist.availability_schedule?.[fullDayName];
+      
+      // If it's in the new format with start/end/available
+      if (daySchedule && typeof daySchedule === 'object' && daySchedule.available === true) {
+        workingHours = `${daySchedule.start}-${daySchedule.end}`;
+      } else if (daySchedule && typeof daySchedule === 'string') {
+        workingHours = daySchedule;
+      }
+    }
     
     console.log(`🔍 Day: ${dayName}, Working hours: ${workingHours}`);
     
@@ -220,7 +234,21 @@ const getAvailableSlots = async (req, res) => {
     const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
     
     // Get dentist's working hours from availability_schedule
-    const workingHours = dentist.availability_schedule?.[dayName];
+    // Handle both formats: abbreviated (Mon, Tue) and full (monday, tuesday)
+    let workingHours = dentist.availability_schedule?.[dayName];
+    
+    // If not found with abbreviated format, try full day name
+    if (!workingHours) {
+      const fullDayName = targetDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      const daySchedule = dentist.availability_schedule?.[fullDayName];
+      
+      // If it's in the new format with start/end/available
+      if (daySchedule && typeof daySchedule === 'object' && daySchedule.available === true) {
+        workingHours = `${daySchedule.start}-${daySchedule.end}`;
+      } else if (daySchedule && typeof daySchedule === 'string') {
+        workingHours = daySchedule;
+      }
+    }
     
     if (!workingHours || workingHours === 'Not Available' || workingHours === '-') {
       return res.status(200).json({
@@ -284,69 +312,46 @@ const getAvailableSlots = async (req, res) => {
 
     console.log(`🔍 Generated ${allPossibleSlots.length} possible slots for working hours ${workingHours}`);
 
-    // 3. Check ScheduleModel for blocked/booked slots
-    const blockedSlots = await ScheduleModel.find({
+    // 3. Check ScheduleModel for all blocked/booked slots (this is the central source)
+    const scheduleSlots = await ScheduleModel.find({
       dentistCode: dentistCode,
       date: { $gte: startOfDay, $lte: endOfDay },
       status: { $in: ['booked', 'blocked_leave', 'blocked_event', 'blocked_maintenance'] }
     });
 
-    console.log(`🔍 Found ${blockedSlots.length} blocked slots in ScheduleModel`);
+    console.log(`🔍 Found ${scheduleSlots.length} blocked/booked slots in ScheduleModel`);
 
-    // 3.5. Check AppointmentModel for existing appointments (queue table)
-    const existingAppointments = await Appointment.find({
-      dentistCode: dentistCode,
-      appointmentDate: { $gte: startOfDay, $lte: endOfDay },
-      status: { $ne: 'cancelled' } // Exclude cancelled appointments
-    });
-
-    console.log(`🔍 Found ${existingAppointments.length} existing appointments in AppointmentModel`);
-
-    // 4. Filter out blocked slots, existing appointments, AND past time slots
+    // 4. Filter out blocked slots and past time slots
     const availableSlots = [];
     const currentTime = new Date();
     
     for (const slot of allPossibleSlots) {
-      // Create slot time for comparison (using LOCAL time, not UTC)
-        const slotTime = new Date(targetDate);
+      // Create slot time for comparison (using LOCAL time)
+      const slotTime = new Date(targetDate);
       slotTime.setHours(parseInt(slot.startTime.split(':')[0]), parseInt(slot.startTime.split(':')[1]), 0, 0);
       
       // Check if this slot is in the past
       const isPastSlot = slotTime <= currentTime;
       
-      // Check if this slot is blocked in ScheduleModel
-      const isBlocked = blockedSlots.some(blockedSlot => {
-        return blockedSlot.timeSlot === slot.timeSlot;
+      // Check if this slot is blocked in ScheduleModel (this covers all conflicts)
+      const isBlocked = scheduleSlots.some(scheduleSlot => {
+        return scheduleSlot.timeSlot === slot.timeSlot;
       });
 
-      // Check if this slot has an existing appointment (using local time)
-      const hasExistingAppointment = existingAppointments.some(appointment => {
-        const appointmentHour = appointment.appointmentDate.getHours();
-        const appointmentMin = appointment.appointmentDate.getMinutes();
-        const slotStartHour = parseInt(slot.startTime.split(':')[0]);
-        const slotStartMin = parseInt(slot.startTime.split(':')[1]);
-        
-        // Check if appointment time matches slot start time
-        return appointmentHour === slotStartHour && appointmentMin === slotStartMin;
-      });
-
-      if (!isPastSlot && !isBlocked && !hasExistingAppointment) {
+      if (!isPastSlot && !isBlocked) {
         availableSlots.push({
-            time: slotTime.toISOString(),
-            available: true,
-            timeSlot: slot.timeSlot,
+          time: slotTime.toISOString(),
+          available: true,
+          timeSlot: slot.timeSlot,
           duration: slotDuration,
           displayTime: slot.startTime
-          });
-        } else {
+        });
+      } else {
         if (isPastSlot) {
           console.log(`🚫 Slot ${slot.timeSlot} is in the past, skipping`);
         }
         if (isBlocked) {
           console.log(`🚫 Slot ${slot.timeSlot} is blocked in ScheduleModel, skipping`);
-        }
-        if (hasExistingAppointment) {
-          console.log(`🚫 Slot ${slot.timeSlot} has existing appointment, skipping`);
         }
       }
     }
@@ -404,8 +409,18 @@ const getAvailableSlots = async (req, res) => {
 
     // Handle patient code - support both authenticated and unregistered users
     let patientCode;
+    let isAuthenticatedUser = false;
+    
+    console.log('🔍 User authentication check:', { 
+      hasUser: !!req.user, 
+      userId: req.user?.id, 
+      userRole: req.user?.role,
+      patientCode: req.user?.patientCode,
+      bodyPatientCode: req.body.patientCode 
+    });
     
     if (req.user) {
+      isAuthenticatedUser = true;
       // Authenticated user - check if patientCode is provided in request body first
       patientCode = req.body.patientCode || req.user.patientCode;
       
@@ -425,6 +440,7 @@ const getAvailableSlots = async (req, res) => {
           });
         }
       }
+      console.log('✅ Authenticated user patientCode:', patientCode);
     } else {
       // Unregistered user - create a temporary patient code
       patientCode = `GUEST-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
@@ -436,8 +452,10 @@ const getAvailableSlots = async (req, res) => {
           message: "Name, email, and phone number are required for guest bookings"
         });
       }
+      console.log('✅ Unregistered user patientCode:', patientCode);
     }
 
+    // Parse appointment date - treat as local time
     const appointmentDateTime = new Date(appointmentDate);
     
     // Check if the specific slot is available in ScheduleModel
@@ -452,84 +470,83 @@ const getAvailableSlots = async (req, res) => {
         // Check if appointment is for today - if so, auto-confirm
         const today = new Date();
         const appointmentDateObj = new Date(appointmentDateTime);
-        const isToday = appointmentDateObj.toDateString() === today.toDateString();
+        const isTodayAppointment = appointmentDateObj.toDateString() === today.toDateString();
         
-        if (isToday) {
-          console.log(`✅ Today's appointment - going directly to queue: ${appointmentDateTime.toISOString()}`);
-        } else {
-          console.log(`📅 Future appointment - storing in AppointmentModel: ${appointmentDateTime.toISOString()}`);
-        }
+        // ALL appointments should be stored in AppointmentModel first
+        const appointmentData = {
+          patientCode,
+          dentistCode,
+          appointmentDate: appointmentDateTime,
+          duration: parseInt(duration),
+          reason: reason || '',
+          notes: notes || '',
+          createdBy: patientCode,
+          isBookingForSomeoneElse,
+          relationshipToPatient,
+          status: isTodayAppointment ? 'confirmed' : 'pending' // Auto-confirm today's appointments
+        };
         
-        let appointment = null;
-        let appointmentCode = null;
-        
-        if (isToday) {
-          // For today's appointments, skip AppointmentModel and go directly to QueueModel
-          console.log(`🚀 Today's appointment - skipping AppointmentModel, going to QueueModel`);
-          
-          // Generate appointment code manually for today's appointments
-          const Counter = require("../Model/Counter");
-          const { pad } = require("../utils/seq");
-          const counter = await Counter.findOneAndUpdate(
-            { scope: 'appointmentCode' },
-            { $inc: { seq: 1 } },
-            { new: true, upsert: true }
-          );
-          appointmentCode = `AP-${pad(counter.seq, 4)}`;
-          
-        } else {
-          // For future appointments, create in AppointmentModel as usual
-          const appointmentData = {
-            patientCode,
-            dentistCode,
-            appointmentDate: appointmentDateTime,
-            duration: parseInt(duration),
-            reason: reason || '',
-            notes: notes || '',
-            createdBy: patientCode,
+        // Add actual patient details if booking for someone else OR if unregistered user
+        if (isBookingForSomeoneElse || !isAuthenticatedUser) {
+          appointmentData.actualPatientName = actualPatientName;
+          appointmentData.actualPatientEmail = actualPatientEmail;
+          appointmentData.actualPatientPhone = actualPatientPhone;
+          appointmentData.actualPatientAge = actualPatientAge ? parseInt(actualPatientAge) : null;
+          console.log(`🔍 Storing patient details:`, {
+            actualPatientName,
+            actualPatientEmail,
+            actualPatientPhone,
             isBookingForSomeoneElse,
-            relationshipToPatient,
-            status: 'pending'
-          };
-
-          // Add actual patient details if booking for someone else OR if unregistered user
-          if (isBookingForSomeoneElse || !req.user) {
-            appointmentData.actualPatientName = actualPatientName;
-            appointmentData.actualPatientEmail = actualPatientEmail;
-            appointmentData.actualPatientPhone = actualPatientPhone;
-            appointmentData.actualPatientAge = actualPatientAge ? parseInt(actualPatientAge) : null;
-          }
-
-          appointment = new Appointment(appointmentData);
-          await appointment.save();
-          appointmentCode = appointment.appointmentCode;
-          console.log(`✅ Future appointment saved to AppointmentModel: ${appointmentCode}`);
+            isAuthenticatedUser
+          });
         }
 
-    // Also save to ScheduleModel to block the slot
+        const appointment = new Appointment(appointmentData);
+        await appointment.save();
+        const appointmentCode = appointment.appointmentCode;
+        console.log(`✅ Appointment saved to AppointmentModel: ${appointmentCode} (Status: ${appointment.status})`);
+
+    // Save to ScheduleModel to block the slot (this is the central storage)
     try {
-      // Create a new slot entry to mark this time as booked
+      // Calculate end time
+      const startTime = appointmentDateTime;
+      const endTime = new Date(startTime.getTime() + (duration * 60000)); // Add duration in milliseconds
+      
+      // Format time slot
+      const startHour = startTime.getHours().toString().padStart(2, '0');
+      const startMin = startTime.getMinutes().toString().padStart(2, '0');
+      const endHour = endTime.getHours().toString().padStart(2, '0');
+      const endMin = endTime.getMinutes().toString().padStart(2, '0');
+      
       const slotData = {
         dentistCode: dentistCode,
         date: appointmentDateTime,
-        timeSlot: `${appointmentDateTime.getUTCHours().toString().padStart(2, '0')}:${appointmentDateTime.getUTCMinutes().toString().padStart(2, '0')}-${(appointmentDateTime.getUTCHours() + Math.floor(duration/60)).toString().padStart(2, '0')}:${((appointmentDateTime.getUTCMinutes() + duration%60) % 60).toString().padStart(2, '0')}`,
+        timeSlot: `${startHour}:${startMin}-${endHour}:${endMin}`,
+        slotDuration: parseInt(duration),
         status: 'booked',
         isAvailable: false,
         appointmentId: appointmentCode,
         patientCode: patientCode,
         reason: reason || 'Appointment',
+        createdBy: patientCode,
         lastModifiedBy: patientCode
       };
       
       const slot = new ScheduleModel(slotData);
-        await slot.save();
-      console.log(`✅ Appointment slot saved to ScheduleModel: ${appointmentCode}`);
+      await slot.save();
+      console.log(`✅ Appointment slot saved to ScheduleModel: ${appointmentCode} (${slotData.timeSlot})`);
     } catch (scheduleError) {
-      console.warn("Could not save to schedule model:", scheduleError.message);
+      console.error("❌ Could not save to schedule model:", scheduleError.message);
+      // Rollback appointment creation if schedule save fails
+      await Appointment.findByIdAndDelete(appointment._id);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to save appointment to schedule"
+      });
     }
 
     // For today's appointments, also add to QueueModel
-    if (isToday) {
+    if (isTodayAppointment) {
       try {
         const Queue = require("../Model/QueueModel");
         
@@ -559,10 +576,10 @@ const getAvailableSlots = async (req, res) => {
           
           // For someone else booking details
           isBookingForSomeoneElse: isBookingForSomeoneElse || false,
-          actualPatientName: actualPatientName || null,
-          actualPatientEmail: actualPatientEmail || null,
-          actualPatientPhone: actualPatientPhone || null,
-          actualPatientAge: actualPatientAge ? parseInt(actualPatientAge) : null,
+          actualPatientName: (isBookingForSomeoneElse || !isAuthenticatedUser) ? actualPatientName || null : null,
+          actualPatientEmail: (isBookingForSomeoneElse || !isAuthenticatedUser) ? actualPatientEmail || null : null,
+          actualPatientPhone: (isBookingForSomeoneElse || !isAuthenticatedUser) ? actualPatientPhone || null : null,
+          actualPatientAge: (isBookingForSomeoneElse || !isAuthenticatedUser) ? (actualPatientAge ? parseInt(actualPatientAge) : null) : null,
           relationshipToPatient: relationshipToPatient || null
         };
 
@@ -576,12 +593,12 @@ const getAvailableSlots = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: isToday ? "Today's appointment added to queue successfully" : "Appointment created successfully",
+      message: isTodayAppointment ? "Today's appointment added to queue successfully" : "Appointment created successfully",
       appointment: appointment || {
         appointmentCode: appointmentCode,
         patientCode: patientCode,
         dentistCode: dentistCode,
-        appointmentDate: appointmentDateTime,
+        appointmentDate: localAppointmentDateTime,
         status: 'confirmed',
         isTodayAppointment: true
       }
@@ -610,10 +627,33 @@ const updateAppointment = async (req, res) => {
       });
     }
 
-    // Check permissions
-    const canUpdate = req.user.role === 'Admin' || 
-                     (req.user.role === 'Patient' && appointment.patientCode === req.user.patientCode) ||
-                     (req.user.role === 'Dentist' && appointment.dentistCode === req.user.dentistCode);
+    // Check permissions - support both authenticated and unregistered users
+    let canUpdate = false;
+    let wasAuthenticated = false;
+    
+    if (req.user) {
+      // Authenticated user permissions
+      wasAuthenticated = true;
+      canUpdate = req.user.role === 'Admin' || 
+                   (req.user.role === 'Patient' && appointment.patientCode === req.user.patientCode) ||
+                   (req.user.role === 'Dentist' && appointment.dentistCode === req.user.dentistCode);
+    } else {
+      // Unregistered user - check if they provided matching email/phone
+      const { verificationEmail, verificationPhone } = req.body;
+      
+      if (verificationEmail && appointment.actualPatientEmail) {
+        canUpdate = verificationEmail.toLowerCase() === appointment.actualPatientEmail.toLowerCase();
+      } else if (verificationPhone && appointment.actualPatientPhone) {
+        canUpdate = verificationPhone === appointment.actualPatientPhone;
+      }
+      
+      if (!canUpdate) {
+        return res.status(403).json({
+          success: false,
+          message: "Please provide your email or phone number to verify ownership of this appointment"
+        });
+      }
+    }
     
     if (!canUpdate) {
       return res.status(403).json({
@@ -636,7 +676,9 @@ const updateAppointment = async (req, res) => {
 
     // Update appointment
     Object.assign(appointment, updates);
-    appointment.updatedBy = req.user.patientCode || req.user.dentistCode || req.user.id;
+    appointment.updatedBy = wasAuthenticated ? 
+      (req.user.patientCode || req.user.dentistCode || req.user.id) : 
+      (appointment.actualPatientEmail || appointment.actualPatientPhone || 'unregistered');
     await appointment.save();
 
     res.status(200).json({
@@ -667,10 +709,33 @@ const cancelAppointment = async (req, res) => {
       });
     }
 
-    // Check permissions
-    const canCancel = req.user.role === 'Admin' || 
-                     (req.user.role === 'Patient' && appointment.patientCode === req.user.patientCode) ||
-                     (req.user.role === 'Dentist' && appointment.dentistCode === req.user.dentistCode);
+    // Check permissions - support both authenticated and unregistered users
+    let canCancel = false;
+    let wasAuthenticated = false;
+    
+    if (req.user) {
+      // Authenticated user permissions
+      wasAuthenticated = true;
+      canCancel = req.user.role === 'Admin' || 
+                   (req.user.role === 'Patient' && appointment.patientCode === req.user.patientCode) ||
+                   (req.user.role === 'Dentist' && appointment.dentistCode === req.user.dentistCode);
+    } else {
+      // Unregistered user - check if they provided matching email/phone
+      const { verificationEmail, verificationPhone } = req.body;
+      
+      if (verificationEmail && appointment.actualPatientEmail) {
+        canCancel = verificationEmail.toLowerCase() === appointment.actualPatientEmail.toLowerCase();
+      } else if (verificationPhone && appointment.actualPatientPhone) {
+        canCancel = verificationPhone === appointment.actualPatientPhone;
+      }
+      
+      if (!canCancel) {
+        return res.status(403).json({
+          success: false,
+          message: "Please provide your email or phone number to verify ownership of this appointment"
+        });
+      }
+    }
     
     if (!canCancel) {
       return res.status(403).json({
@@ -707,7 +772,9 @@ const cancelAppointment = async (req, res) => {
 
     // Update appointment status
     appointment.status = 'cancelled';
-    appointment.updatedBy = req.user.patientCode || req.user.dentistCode || req.user.id;
+    appointment.updatedBy = wasAuthenticated ? 
+      (req.user.patientCode || req.user.dentistCode || req.user.id) : 
+      (appointment.actualPatientEmail || appointment.actualPatientPhone || 'unregistered');
     await appointment.save();
 
     // Update schedule model if it exists
@@ -948,21 +1015,21 @@ const verifyOTP = async (req, res) => {
         let query = {};
         
         if (method === 'email') {
-          // Search by actual patient email (for bookings for someone else)
+          // Search by actual patient email (for unregistered users and bookings for someone else)
           query = {
             $or: [
               { actualPatientEmail: { $regex: value, $options: 'i' } },
-              // Also search in patient records if they exist
-              { 'patient.email': { $regex: value, $options: 'i' } }
+              // Also search in patient snapshot if they exist
+              { 'patientSnapshot.email': { $regex: value, $options: 'i' } }
             ]
           };
         } else if (method === 'phone') {
-          // Search by actual patient phone (for bookings for someone else)
+          // Search by actual patient phone (for unregistered users and bookings for someone else)
           query = {
             $or: [
               { actualPatientPhone: { $regex: value, $options: 'i' } },
-              // Also search in patient records if they exist
-              { 'patient.phone': { $regex: value, $options: 'i' } }
+              // Also search in patient snapshot if they exist
+              { 'patientSnapshot.phone': { $regex: value, $options: 'i' } }
             ]
           };
         } else {
@@ -972,12 +1039,16 @@ const verifyOTP = async (req, res) => {
           });
         }
 
+        console.log(`🔍 Searching appointments with query:`, JSON.stringify(query, null, 2));
+
         // Find appointments matching the search criteria
         const appointments = await Appointment.find(query)
           .populate('dentistCode', 'userId specialization')
           .populate('dentistCode.userId', 'name')
           .sort({ appointmentDate: -1 })
           .limit(10); // Limit to 10 most recent appointments
+
+        console.log(`🔍 Found ${appointments.length} appointments for ${method}: ${value}`);
 
         res.status(200).json({
           success: true,

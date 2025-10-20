@@ -166,7 +166,7 @@ export default function ProfileTreatmentDetail() {
               Treatment Plan Details
             </h3>
             <p className="profile-info-subtitle">
-              {treatment.planName || `Treatment Plan #${treatment.planCode || treatment._id.slice(-8)}`}
+              {treatment.diagnosis || `Treatment Plan #${treatment.planCode || treatment._id.slice(-8)}`}
             </p>
           </div>
 
@@ -174,7 +174,7 @@ export default function ProfileTreatmentDetail() {
             {/* Treatment Header */}
             <div className="treatment-detail-header">
               <div className="treatment-detail-title">
-                <h4>{treatment.planName || `Treatment Plan #${treatment.planCode || treatment._id.slice(-8)}`}</h4>
+                <h4>{treatment.diagnosis || `Treatment Plan #${treatment.planCode || treatment._id.slice(-8)}`}</h4>
                 <div className={`status-badge ${getStatusColor(treatment.status)}`}>
                   {getStatusIcon(treatment.status)}
                   <span>{treatment.status || 'Active'}</span>
@@ -183,7 +183,7 @@ export default function ProfileTreatmentDetail() {
               <div className="treatment-detail-meta">
                 <div className="treatment-meta-item">
                   <Calendar size={16} />
-                  <span>Created: {new Date(treatment.createdAt || treatment.created_date).toLocaleDateString()}</span>
+                  <span>Created: {new Date(treatment.created_date || treatment.createdAt).toLocaleDateString()}</span>
                 </div>
                 <div className="treatment-meta-item">
                   <User size={16} />
@@ -214,36 +214,6 @@ export default function ProfileTreatmentDetail() {
               </div>
             )}
 
-            {/* Procedures */}
-            {treatment.procedures && treatment.procedures.length > 0 && (
-              <div className="treatment-section">
-                <h5 className="treatment-section-title">
-                  <Activity size={18} />
-                  Procedures ({treatment.procedures.length})
-                </h5>
-                <div className="procedures-list">
-                  {treatment.procedures.map((procedure, index) => (
-                    <div key={index} className="procedure-item">
-                      <div className="procedure-header">
-                        <span className="procedure-number">{index + 1}</span>
-                        <span className="procedure-name">{procedure.name || procedure.procedure}</span>
-                        {procedure.status && (
-                          <span className={`procedure-status ${getStatusColor(procedure.status)}`}>
-                            {procedure.status}
-                          </span>
-                        )}
-                      </div>
-                      {procedure.description && (
-                        <p className="procedure-description">{procedure.description}</p>
-                      )}
-                      {procedure.notes && (
-                        <p className="procedure-notes">{procedure.notes}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Additional Information */}
             <div className="treatment-section">
@@ -264,10 +234,10 @@ export default function ProfileTreatmentDetail() {
                   <strong>Dentist Code:</strong>
                   <span>{treatment.dentistCode || 'N/A'}</span>
                 </div>
-                {treatment.updatedAt && (
+                {treatment.updated_date && (
                   <div className="treatment-info-item">
                     <strong>Last Updated:</strong>
-                    <span>{new Date(treatment.updatedAt || treatment.updated_date).toLocaleDateString()}</span>
+                    <span>{new Date(treatment.updated_date).toLocaleDateString()}</span>
                   </div>
                 )}
               </div>
