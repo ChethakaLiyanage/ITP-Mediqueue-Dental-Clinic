@@ -81,7 +81,7 @@ const SupplierDetails = ({ supplier, onClose, onRatingUpdate }) => {
             <h3>Address</h3>
             <div className="address-block">
               {supplier.address.street && <p>{supplier.address.street}</p>}
-              <p>
+              <p>``
                 {[supplier.address.city, supplier.address.state, supplier.address.zipCode]
                   .filter(Boolean)
                   .join(', ')}
